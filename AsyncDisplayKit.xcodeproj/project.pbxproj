@@ -130,6 +130,7 @@
 		A4F554B52C86B3F30050AF73 /* ASCellNode.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F553182C86B3F30050AF73 /* ASCellNode.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		A4F554B62C86B3F30050AF73 /* ASCenterLayoutSpec.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F553192C86B3F30050AF73 /* ASCenterLayoutSpec.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		A4F554B72C86B3F30050AF73 /* ASCollectionElement.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F5531A2C86B3F30050AF73 /* ASCollectionElement.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		11274E9FBE0742759C8C27CB /* ASCollectionElement+Private.h in Headers */ = {isa = PBXBuildFile; fileRef = 89DA0B7B0B7541FF9E487E95 /* ASCollectionElement+Private.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		A4F554B82C86B3F30050AF73 /* ASCollectionFlowLayoutDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F5531B2C86B3F30050AF73 /* ASCollectionFlowLayoutDelegate.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		A4F554B92C86B3F30050AF73 /* ASCollectionGalleryLayoutDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F5531C2C86B3F30050AF73 /* ASCollectionGalleryLayoutDelegate.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		A4F554BA2C86B3F30050AF73 /* ASCollectionInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F5531D2C86B3F30050AF73 /* ASCollectionInternal.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -321,6 +322,8 @@
 		A4F555742C86B3F40050AF73 /* ASBatchFetching.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F553DB2C86B3F30050AF73 /* ASBatchFetching.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		A4F555752C86B3F40050AF73 /* ASBatchFetching.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F553DC2C86B3F30050AF73 /* ASBatchFetching.mm */; };
 		A4F555762C86B3F40050AF73 /* ASCellNode+Internal.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F553DD2C86B3F30050AF73 /* ASCellNode+Internal.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		B5F1792688D54A61B7121834 /* ASCellNodeReusePool.h in Headers */ = {isa = PBXBuildFile; fileRef = E7B7A13CD9D5486697127824 /* ASCellNodeReusePool.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		0AB5707095BF461BBBC2086C /* ASCellNodeReusePool.mm in Sources */ = {isa = PBXBuildFile; fileRef = CF9FFDDB6A1942EC96525400 /* ASCellNodeReusePool.mm */; };
 		A4F555772C86B3F40050AF73 /* ASCollectionLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F553DE2C86B3F30050AF73 /* ASCollectionLayout.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		A4F555782C86B3F40050AF73 /* ASCollectionLayout.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F553DF2C86B3F30050AF73 /* ASCollectionLayout.mm */; };
 		A4F555792C86B3F40050AF73 /* ASCollectionLayoutCache.h in Headers */ = {isa = PBXBuildFile; fileRef = A4F553E02C86B3F30050AF73 /* ASCollectionLayoutCache.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -671,6 +674,7 @@
 		A4F553182C86B3F30050AF73 /* ASCellNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCellNode.h; sourceTree = "<group>"; };
 		A4F553192C86B3F30050AF73 /* ASCenterLayoutSpec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCenterLayoutSpec.h; sourceTree = "<group>"; };
 		A4F5531A2C86B3F30050AF73 /* ASCollectionElement.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCollectionElement.h; sourceTree = "<group>"; };
+		89DA0B7B0B7541FF9E487E95 /* ASCollectionElement+Private.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ASCollectionElement+Private.h"; sourceTree = "<group>"; };
 		A4F5531B2C86B3F30050AF73 /* ASCollectionFlowLayoutDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCollectionFlowLayoutDelegate.h; sourceTree = "<group>"; };
 		A4F5531C2C86B3F30050AF73 /* ASCollectionGalleryLayoutDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCollectionGalleryLayoutDelegate.h; sourceTree = "<group>"; };
 		A4F5531D2C86B3F30050AF73 /* ASCollectionInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCollectionInternal.h; sourceTree = "<group>"; };
@@ -863,6 +867,8 @@
 		A4F553DB2C86B3F30050AF73 /* ASBatchFetching.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASBatchFetching.h; sourceTree = "<group>"; };
 		A4F553DC2C86B3F30050AF73 /* ASBatchFetching.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ASBatchFetching.mm; sourceTree = "<group>"; };
 		A4F553DD2C86B3F30050AF73 /* ASCellNode+Internal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "ASCellNode+Internal.h"; sourceTree = "<group>"; };
+		E7B7A13CD9D5486697127824 /* ASCellNodeReusePool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCellNodeReusePool.h; sourceTree = "<group>"; };
+		CF9FFDDB6A1942EC96525400 /* ASCellNodeReusePool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ASCellNodeReusePool.mm; sourceTree = "<group>"; };
 		A4F553DE2C86B3F30050AF73 /* ASCollectionLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCollectionLayout.h; sourceTree = "<group>"; };
 		A4F553DF2C86B3F30050AF73 /* ASCollectionLayout.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ASCollectionLayout.mm; sourceTree = "<group>"; };
 		A4F553E02C86B3F30050AF73 /* ASCollectionLayoutCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASCollectionLayoutCache.h; sourceTree = "<group>"; };
@@ -1597,6 +1603,9 @@
 				A4F553162C86B3F30050AF73 /* ASButtonNode+Private.h */,
 				A4F553172C86B3F30050AF73 /* ASButtonNode+Yoga.h */,
 				A4F553DD2C86B3F30050AF73 /* ASCellNode+Internal.h */,
+				E7B7A13CD9D5486697127824 /* ASCellNodeReusePool.h */,
+				CF9FFDDB6A1942EC96525400 /* ASCellNodeReusePool.mm */,
+				89DA0B7B0B7541FF9E487E95 /* ASCollectionElement+Private.h */,
 				A4F553DE2C86B3F30050AF73 /* ASCollectionLayout.h */,
 				A4F553DF2C86B3F30050AF73 /* ASCollectionLayout.mm */,
 				A4F553E02C86B3F30050AF73 /* ASCollectionLayoutCache.h */,
@@ -1889,6 +1898,7 @@
 				A4F554A92C86B3F30050AF73 /* ASAsciiArtBoxCreator.h in Headers */,
 				A4F554E92C86B3F30050AF73 /* ASInternalHelpers.h in Headers */,
 				A4F554B72C86B3F30050AF73 /* ASCollectionElement.h in Headers */,
+				11274E9FBE0742759C8C27CB /* ASCollectionElement+Private.h in Headers */,
 				A4F554D82C86B3F30050AF73 /* ASDisplayNode+Subclasses.h in Headers */,
 				A4F5559A2C86B3F40050AF73 /* ASImageNode+Private.h in Headers */,
 				A4F554F22C86B3F40050AF73 /* ASLayoutSpec.h in Headers */,
@@ -2044,6 +2054,7 @@
 				A4F554E82C86B3F30050AF73 /* ASIntegerMap.h in Headers */,
 				A4F555412C86B3F40050AF73 /* ASYogaUtilities.h in Headers */,
 				A4F555762C86B3F40050AF73 /* ASCellNode+Internal.h in Headers */,
+				B5F1792688D54A61B7121834 /* ASCellNodeReusePool.h in Headers */,
 				A4F5557C2C86B3F40050AF73 /* ASCollectionLayoutDefines.h in Headers */,
 				A4F554D12C86B3F30050AF73 /* ASDimensionInternal.h in Headers */,
 				A4F554DF2C86B3F30050AF73 /* ASEqualityHelpers.h in Headers */,
@@ -2483,6 +2494,7 @@
 				A4F5558A2C86B3F40050AF73 /* ASDisplayNode+AsyncDisplay.mm in Sources */,
 				A4F555FC2C86B3F40050AF73 /* UIResponder+AsyncDisplayKit.mm in Sources */,
 				A4F555752C86B3F40050AF73 /* ASBatchFetching.mm in Sources */,
+				0AB5707095BF461BBBC2086C /* ASCellNodeReusePool.mm in Sources */,
 				A4F554852C86B3F30050AF73 /* ASElementMap.mm in Sources */,
 				A4F554732C86B3F30050AF73 /* _ASAsyncTransactionGroup.mm in Sources */,
 				A4F5558E2C86B3F40050AF73 /* ASDisplayNode+UIViewBridge.mm in Sources */,

@@ -36,6 +36,30 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, weak) id <ASCellNodeInteractionDelegate> interactionDelegate;
 
+/**
+ * Readwrite reuse identifier. Set by the pool-aware node block in
+ * ASCollectionView/ASTableView when a node is first created with a reuseIdentifier.
+ */
+@property (nullable, copy) NSString *reuseIdentifier;
+
+/**
+ * Called from _poolPreparationQueue (background) after the node's view has been
+ * removed from superview and recursivelyClearContents has been called on MT.
+ *
+ * Performs non-UIKit pool preparation:
+ *   1. [self prepareForReuse]
+ *   2. self.scrollView = nil
+ *   3. self.collectionElement = nil
+ *   4. self.interactionDelegate = nil
+ *   5. [self exitHierarchyState:ASHierarchyStateRangeManaged]
+ *
+ * Does NOT call removeFromSuperview (done on MT before dispatch).
+ * Does NOT call recursivelyClearContents (done on MT before dispatch).
+ * Does NOT reset transform (done on MT before dispatch).
+ * Does NOT invalidate calculatedLayout (needed for layout cache skip on re-entry).
+ */
+- (void)_prepareForPool;
+
 /*
  * Back-pointer to the containing scrollView instance, set only for visible cells.  Used for Cell Visibility Event callbacks.
  */

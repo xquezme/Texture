@@ -45,6 +45,7 @@
     unsigned int showsVerticalScrollIndicator:1;
     unsigned int showsHorizontalScrollIndicator:1;
     unsigned int pagingEnabled:1;
+    unsigned int enableNodeReuse:1; // default is NO
   } _flags;
 }
 @property (nonatomic, weak) id <ASCollectionDelegate>   delegate;
@@ -65,6 +66,7 @@
 @property (nonatomic) BOOL showsVerticalScrollIndicator;
 @property (nonatomic) BOOL showsHorizontalScrollIndicator;
 @property (nonatomic) BOOL pagingEnabled;
+@property (nonatomic) BOOL enableNodeReuse; // default is NO
 @end
 
 @implementation _ASCollectionPendingState
@@ -203,6 +205,16 @@
   _flags.pagingEnabled = pagingEnabled;
 }
 
+- (BOOL)enableNodeReuse
+{
+  return _flags.enableNodeReuse;
+}
+
+- (void)setEnableNodeReuse:(BOOL)enableNodeReuse
+{
+  _flags.enableNodeReuse = enableNodeReuse;
+}
+
 #pragma mark Tuning Parameters
 
 - (ASRangeTuningParameters)tuningParametersForRangeType:(ASLayoutRangeType)rangeType
@@ -320,6 +332,7 @@
     view.inverted                       = pendingState.inverted;
     view.allowsSelection                = pendingState.allowsSelection;
     view.allowsMultipleSelection        = pendingState.allowsMultipleSelection;
+    view.enableNodeReuse                = pendingState.enableNodeReuse;
     view.cellLayoutMode                 = pendingState.cellLayoutMode;
     view.layoutInspector                = pendingState.layoutInspector;
     view.showsVerticalScrollIndicator   = pendingState.showsVerticalScrollIndicator;
@@ -580,6 +593,25 @@
     return _pendingState.allowsMultipleSelection;
   } else {
     return self.view.allowsMultipleSelection;
+  }
+}
+
+- (void)setEnableNodeReuse:(BOOL)enableNodeReuse
+{
+  if ([self pendingState]) {
+    _pendingState.enableNodeReuse = enableNodeReuse;
+  } else {
+    ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
+    self.view.enableNodeReuse = enableNodeReuse;
+  }
+}
+
+- (BOOL)enableNodeReuse
+{
+  if ([self pendingState]) {
+    return _pendingState.enableNodeReuse;
+  } else {
+    return self.view.enableNodeReuse;
   }
 }
 

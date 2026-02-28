@@ -11,7 +11,9 @@
 #import "ASBatchFetching.h"
 #import "ASDelegateProxy.h"
 #import "ASCellNode+Internal.h"
+#import "ASCellNodeReusePool.h"
 #import "ASCollectionElement.h"
+#import "ASCollectionElement+Private.h"
 #import "ASCollectionInternal.h"
 #import "ASCollectionLayout.h"
 #import "ASCollectionNode+Beta.h"
@@ -228,6 +230,10 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
     unsigned int collectionNodeCanMoveItem:1;
     unsigned int collectionNodeMoveItem:1;
 
+    // Node reuse pool support
+    unsigned int collectionNodeReuseIdentifierForItem:1;
+    unsigned int collectionNodeConfigureNode:1;
+
     // Whether this data source conforms to ASCollectionDataSourceInterop
     unsigned int interop:1;
     // Whether this interop data source returns YES from +dequeuesCellsForNodeBackedItems
@@ -245,6 +251,8 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
   } _layoutInspectorFlags;
   
   BOOL _hasDataControllerLayoutDelegate;
+  BOOL _enableNodeReuse;
+  ASCellNodeReusePool *_nodeReusePool;
 }
 
 @end
@@ -328,13 +336,40 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
 {
   ASDisplayNodeAssertMainThread();
   ASDisplayNodeCAssert(_batchUpdateCount == 0, @"ASCollectionView deallocated in the middle of a batch update.");
-  
+
+  // Drain the pool on the main thread before the pool is released, ensuring any
+  // nodes that need main-thread cleanup get it before dealloc.
+  [_nodeReusePool drain];
+
   // Sometimes the UIKit classes can call back to their delegate even during deallocation, due to animation completion blocks etc.
   _isDeallocating = YES;
   if (!ASActivateExperimentalFeature(ASExperimentalCollectionTeardown)) {
     [self setAsyncDelegate:nil];
     [self setAsyncDataSource:nil];
   }
+}
+
+#pragma mark - Node Reuse
+
+- (BOOL)enableNodeReuse
+{
+  ASDisplayNodeAssertMainThread();
+  return _enableNodeReuse;
+}
+
+- (void)setEnableNodeReuse:(BOOL)enableNodeReuse
+{
+  ASDisplayNodeAssertMainThread();
+  _enableNodeReuse = enableNodeReuse;
+}
+
+- (ASCellNodeReusePool *)nodeReusePool
+{
+  if (!_enableNodeReuse) return nil;
+  if (!_nodeReusePool) {
+    _nodeReusePool = [[ASCellNodeReusePool alloc] init];
+  }
+  return _nodeReusePool;
 }
 
 #pragma mark -
@@ -472,6 +507,8 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
     _asyncDataSourceFlags.nodeModelForItem = [_asyncDataSource respondsToSelector:@selector(collectionNode:nodeModelForItemAtIndexPath:)];
     _asyncDataSourceFlags.collectionNodeCanMoveItem = [_asyncDataSource respondsToSelector:@selector(collectionNode:canMoveItemWithNode:)];
     _asyncDataSourceFlags.collectionNodeMoveItem = [_asyncDataSource respondsToSelector:@selector(collectionNode:moveItemAtIndexPath:toIndexPath:)];
+    _asyncDataSourceFlags.collectionNodeReuseIdentifierForItem = [_asyncDataSource respondsToSelector:@selector(collectionNode:reuseIdentifierForItemAtIndexPath:)];
+    _asyncDataSourceFlags.collectionNodeConfigureNode = [_asyncDataSource respondsToSelector:@selector(collectionNode:configureNode:atIndexPath:)];
 
     _asyncDataSourceFlags.interop = [_asyncDataSource conformsToProtocol:@protocol(ASCollectionDataSourceInterop)];
     if (_asyncDataSourceFlags.interop) {
@@ -1997,10 +2034,36 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
   // Wrap the node block
   BOOL disableRangeController = ASCellLayoutModeIncludes(ASCellLayoutModeDisableRangeController);
   __weak __typeof__(self) weakSelf = self;
+
+  // Pool-aware wrapper: if reuse is enabled and the DS provides a reuseIdentifier,
+  // attempt to dequeue from the pool before allocating a fresh node.
+  NSString *reuseId = nil;
+  if (_enableNodeReuse && _asyncDataSourceFlags.collectionNodeReuseIdentifierForItem) {
+    GET_COLLECTIONNODE_OR_RETURN(collectionNode, ^{ return [[ASCellNode alloc] init]; });
+    reuseId = [_asyncDataSource collectionNode:collectionNode
+                    reuseIdentifierForItemAtIndexPath:indexPath];
+  }
+  __weak ASCellNodeReusePool *weakPool = self.nodeReusePool;
+  NSString *capturedId = reuseId;
+  BOOL isInverted = self.inverted;
+
   return ^{
     __typeof__(self) strongSelf = weakSelf;
-    ASCellNode *node = (block ? block() : cell);
-    ASDisplayNodeAssert([node isKindOfClass:[ASCellNode class]], @"ASCollectionNode provided a non-ASCellNode! %@, %@", node, strongSelf);
+    ASCellNode *node = nil;
+
+    // Try pool dequeue first (lock order: element._lock already released by caller;
+    // pool._mutex acquired here — invariant maintained).
+    if (capturedId) {
+      node = [weakPool dequeueNodeWithIdentifier:capturedId];
+    }
+
+    if (!node) {
+      node = (block ? block() : cell);
+      ASDisplayNodeAssert([node isKindOfClass:[ASCellNode class]], @"ASCollectionNode provided a non-ASCellNode! %@, %@", node, strongSelf);
+      if (capturedId) {
+        node.reuseIdentifier = capturedId;
+      }
+    }
 
     if (!disableRangeController) {
       [node enterHierarchyState:ASHierarchyStateRangeManaged];
@@ -2008,11 +2071,40 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
     if (node.interactionDelegate == nil) {
       node.interactionDelegate = strongSelf;
     }
-    if (strongSelf.inverted) {
+    if (isInverted) {
       node.transform = CATransform3DMakeScale(1, -1, 1);
     }
     return node;
   };
+}
+
+- (void)dataController:(ASDataController *)dataController
+    willFinalizeElement:(ASCollectionElement *)element
+           atIndexPath:(NSIndexPath *)indexPath
+{
+  ASDisplayNodeAssertMainThread();
+  if (!_enableNodeReuse) return;
+  if (!_asyncDataSourceFlags.collectionNodeReuseIdentifierForItem) return;
+
+  GET_COLLECTIONNODE_OR_RETURN(collectionNode, (void)0);
+  NSString *reuseId = [_asyncDataSource collectionNode:collectionNode
+                          reuseIdentifierForItemAtIndexPath:indexPath];
+  if (reuseId.length == 0) return;
+
+  element.preservesNodeBlock = YES;
+
+  if (_asyncDataSourceFlags.collectionNodeConfigureNode) {
+    __weak ASCollectionNode *weakCN = collectionNode;
+    __weak id<ASCollectionDataSource> weakDS = _asyncDataSource;
+    NSIndexPath *capturedPath = indexPath;
+    element.configureBlock = ^(ASCellNode *node) {
+      ASCollectionNode *cn = weakCN;
+      id<ASCollectionDataSource> ds = weakDS;
+      if (cn && ds) {
+        [ds collectionNode:cn configureNode:node atIndexPath:capturedPath];
+      }
+    };
+  }
 }
 
 - (NSUInteger)dataController:(ASDataController *)dataController rowsInSection:(NSUInteger)section
@@ -2339,6 +2431,22 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
   });
 }
 
+- (void)rangeController:(ASRangeController *)rangeController enqueueNode:(ASCellNode *)node
+{
+  // Called from _poolPreparationQueue (background). Pool is thread-safe.
+  [_nodeReusePool enqueueNode:node identifier:node.reuseIdentifier];
+}
+
+- (void)rangeController:(ASRangeController *)rangeController
+  needsAllocationForElements:(NSArray<ASCollectionElement *> *)elements
+{
+  // Called on main thread after the range controller loop detects pooled elements
+  // that re-entered the preload range and need background pre-allocation.
+  if (_enableNodeReuse) {
+    [_dataController allocateNodesForElements:elements];
+  }
+}
+
 #pragma mark - ASCellNodeDelegate
 
 - (void)nodeSelectedStateDidChange:(ASCellNode *)node
@@ -2496,6 +2604,10 @@ static NSString * const kReuseIdentifier = @"_ASCollectionReuseIdentifier";
   }
 
   _lastBoundsSizeUsedForMeasuringNodes = newSize;
+
+  // Pooled nodes were measured for the old constrained size. Drain them so the next
+  // allocation produces nodes measured for the new size.
+  [_nodeReusePool drain];
 
   // Laying out all nodes is expensive.
   // We only need to do this if the bounds changed in the non-scrollable direction.

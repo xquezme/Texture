@@ -38,6 +38,7 @@
   BOOL _selected;
   BOOL _highlighted;
   BOOL _neverShowPlaceholders;
+  NSString *_reuseIdentifier;
 }
 
 @end
@@ -177,6 +178,32 @@
     self.highlighted = highlighted;
     _suspendInteractionDelegate = NO;
   }
+}
+
+- (NSString *)reuseIdentifier
+{
+  return ASLockedSelf(_reuseIdentifier);
+}
+
+- (void)setReuseIdentifier:(NSString *)reuseIdentifier
+{
+  ASLockScopeSelf();
+  ASCompareAssignCopy(_reuseIdentifier, reuseIdentifier);
+}
+
+- (void)prepareForReuse
+{
+  // Default implementation is a no-op. Subclasses override to reset content.
+}
+
+- (void)_prepareForPool
+{
+  // Called from _poolPreparationQueue (background). No UIKit calls allowed.
+  [self prepareForReuse];
+  self.scrollView = nil;
+  self.collectionElement = nil;
+  self.interactionDelegate = nil;
+  [self exitHierarchyState:ASHierarchyStateRangeManaged];
 }
 
 - (BOOL)canUpdateToNodeModel:(id)nodeModel

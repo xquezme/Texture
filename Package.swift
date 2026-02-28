@@ -61,9 +61,18 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "TextureTests",
+            name: "TextureUnitTests",
             dependencies: ["AsyncDisplayKit"],
-            path: "Tests"
+            path: "Tests/TextureUnitTests",
+            cSettings: [
+                .headerSearchPath("../../Source/Texture/Private"),
+                .headerSearchPath("../../Source/Texture/include"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v5),
+                // Bridging header is passed via SWIFT_OBJC_BRIDGING_HEADER build setting
+                // when running with xcodebuild (see README for usage).
+            ]
         ),
     ],
     cLanguageStandard: .c11,

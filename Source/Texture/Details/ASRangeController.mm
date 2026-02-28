@@ -12,6 +12,7 @@
 #import "_ASHierarchyChangeSet.h"
 #import "ASAssert.h"
 #import "ASCollectionElement.h"
+#import "ASCollectionElement+Private.h"
 #import "ASCollectionView.h"
 #import "ASDisplayNodeExtras.h"
 #import "ASDisplayNodeInternal.h" // Required for interfaceState and hierarchyState setter methods.
@@ -45,7 +46,14 @@
   // to [.right, .down] so that when the user first opens a screen
   // the ranges point down into the content.
   ASScrollDirection _previousScrollDirection;
-  
+
+  // Pool eviction support
+  dispatch_queue_t _poolPreparationQueue;
+  struct {
+    unsigned int enqueueNode:1;
+    unsigned int needsAllocationForElements:1;
+  } _delegateFlags;
+
 #if AS_RANGECONTROLLER_LOG_UPDATE_FREQ
   NSUInteger _updateCountThisFrame;
   CADisplayLink *_displayLink;
@@ -71,6 +79,10 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
   _contentHasBeenScrolled = NO;
   _preserveCurrentRangeMode = NO;
   _previousScrollDirection = ASScrollDirectionDown | ASScrollDirectionRight;
+
+  _poolPreparationQueue = dispatch_queue_create(
+      "org.AsyncDisplayKit.ASRangeController.poolPreparation",
+      DISPATCH_QUEUE_SERIAL);
   
   [[[self class] allRangeControllersWeakSet] addObject:self];
   
@@ -178,6 +190,15 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
   if (dataSource && _layoutController) {
     [self updateIfNeeded];
   }
+}
+
+- (void)setDelegate:(id<ASRangeControllerDelegate>)delegate
+{
+  _delegate = delegate;
+  _delegateFlags.enqueueNode = [delegate respondsToSelector:
+      @selector(rangeController:enqueueNode:)];
+  _delegateFlags.needsAllocationForElements = [delegate respondsToSelector:
+      @selector(rangeController:needsAllocationForElements:)];
 }
 
 // Clear the visible bit from any nodes that disappeared since last update.
@@ -365,7 +386,8 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
       }
     }
 
-    ASCellNode *node = [map elementForItemAtIndexPath:indexPath].nodeIfAllocated;
+    ASCollectionElement *element = [map elementForItemAtIndexPath:indexPath];
+    ASCellNode *node = element.nodeIfAllocated;
     if (node != nil) {
       ASDisplayNodeAssert(node.hierarchyState & ASHierarchyStateRangeManaged, @"All nodes reaching this point should be range-managed, or interfaceState may be incorrectly reset.");
       if (ASInterfaceStateIncludesVisible(interfaceState)) {
@@ -376,7 +398,12 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
 #if ASRangeControllerLoggingEnabled
         [modifiedIndexPaths addObject:indexPath];
 #endif
+        BOOL leavingPreload = ASInterfaceStateIncludesPreload(node.pendingInterfaceState)
+                              && !ASInterfaceStateIncludesPreload(interfaceState);
 
+        // Fire existing state callbacks first (didExitPreloadState cancels downloads,
+        // didExitDisplayState marks node as off-screen). Order is critical: these must
+        // run BEFORE pool eviction so the node is fully wound-down before pooling.
         BOOL nodeShouldScheduleDisplay = [node shouldScheduleDisplayWithNewInterfaceState:interfaceState];
         [node recursivelySetInterfaceState:interfaceState];
 
@@ -386,11 +413,67 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
             _pendingDisplayNodesTimestamp = CACurrentMediaTime();
           }
         }
+
+        // Pool eviction: when a poolable node exits the preload range entirely.
+        if (leavingPreload && node.reuseIdentifier != nil && _delegateFlags.enqueueNode) {
+          // ── MT, synchronous: atomically evict _node from element ─────────────
+          ASSizeRange constrainedSize;
+          ASCellNode *nodeToPool = [element _evictNodeCapturingConstrainedSize:&constrainedSize];
+          if (nodeToPool != nil) {
+            // ── MT, synchronous: UIKit + CALayer cleanup ────────────────────────
+            if (nodeToPool.isNodeLoaded) {
+              [nodeToPool.view removeFromSuperview]; // severs UIKit retain chain
+              [nodeToPool recursivelyClearContents]; // free GPU textures (layer.contents = nil)
+              nodeToPool.transform = CATransform3DIdentity; // reset inverted-list transform
+            }
+
+            // ── BG, async: non-UIKit pool preparation ───────────────────────────
+            // element._lock already released above; pool._mutex acquired in enqueueNode
+            // — lock-order invariant maintained.
+            __weak ASRangeController *weakSelf = self;
+            __weak id<ASRangeControllerDelegate> weakDelegate = _delegate;
+            dispatch_async(_poolPreparationQueue, ^{
+              // Cache the layout size so re-entry to preload can skip re-measurement.
+              // calculatedSize is non-zero when layoutThatFits: has been called; fall
+              // back to frame.size for manual-layout nodes.
+              CGSize measured = nodeToPool.calculatedSize;
+              CGSize sizeToCache = CGSizeEqualToSize(measured, CGSizeZero)
+                  ? nodeToPool.frame.size : measured;
+              [element setCachedLayoutSize:sizeToCache forConstrainedSize:constrainedSize];
+
+              // Clear node refs and hierarchy state (BG-safe, no UIKit).
+              [nodeToPool _prepareForPool];
+
+              // Enqueue into the pool via the delegate (ASCollectionView/ASTableView).
+              id<ASRangeControllerDelegate> delegate = weakDelegate;
+              if (delegate) {
+                [delegate rangeController:weakSelf enqueueNode:nodeToPool];
+              }
+            });
+          }
+        }
       }
     }
   }
 
   [self _setVisibleNodes:newVisibleNodes];
+
+  // Post-loop: trigger background pre-allocation for pooled elements that have
+  // re-entered the preload range. This ensures nodes are ready before
+  // -cellForItemAtIndexPath: fires, avoiding main-thread allocation jank.
+  if (_delegateFlags.needsAllocationForElements) {
+    NSMutableArray<ASCollectionElement *> *toAllocate = nil;
+    for (NSIndexPath *indexPath in preloadIndexPaths) {
+      ASCollectionElement *element = [map elementForItemAtIndexPath:indexPath];
+      if (element.preservesNodeBlock && element.nodeIfAllocated == nil) {
+        if (!toAllocate) toAllocate = [NSMutableArray array];
+        [toAllocate addObject:element];
+      }
+    }
+    if (toAllocate.count > 0) {
+      [_delegate rangeController:self needsAllocationForElements:toAllocate];
+    }
+  }
   
   // TODO: This code is for debugging only, but would be great to clean up with a delegate method implementation.
   if (ASDisplayNode.shouldShowRangeDebugOverlay) {

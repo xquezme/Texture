@@ -18,6 +18,7 @@
 @property (nonatomic, readonly) ASDataController *dataController;
 @property (nonatomic, weak) ASTableNode *tableNode;
 @property (nonatomic, readonly) ASRangeController *rangeController;
+@property (nonatomic) BOOL enableNodeReuse;
 
 /**
  * Initializer.

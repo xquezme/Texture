@@ -84,6 +84,18 @@ ASDK_EXTERN NSString * const ASCollectionInvalidUpdateException;
  */
 - (ASSizeRange)dataController:(ASDataController *)dataController constrainedSizeForNodeAtIndexPath:(NSIndexPath *)indexPath;
 
+/**
+ * Called on the main thread immediately after a standard-path row element is created
+ * and inserted into the map. NOT called for elements created via the canUpdateToNodeModel:
+ * path or for supplementary elements.
+ *
+ * Use this to set pool-related configuration (preservesNodeBlock, configureBlock) on the
+ * element, e.g. in ASCollectionView/ASTableView.
+ */
+- (void)dataController:(ASDataController *)dataController
+    willFinalizeElement:(ASCollectionElement *)element
+           atIndexPath:(NSIndexPath *)indexPath;
+
 - (NSArray<NSString *> *)dataController:(ASDataController *)dataController supplementaryNodeKindsInSections:(NSIndexSet *)sections;
 
 - (NSUInteger)dataController:(ASDataController *)dataController supplementaryNodesOfKind:(NSString *)kind inSection:(NSUInteger)section;
@@ -241,6 +253,15 @@ ASDK_EXTERN NSString * const ASCollectionInvalidUpdateException;
  * @discussion Used to respond to setNeedsLayout calls in ASCellNode
  */
 - (void)relayoutNodes:(id<NSFastEnumeration>)nodes nodesSizeChanged:(NSMutableArray<ASCellNode *> *)nodesSizesChanged;
+
+/**
+ * Trigger background pre-allocation for elements that have re-entered the preload range
+ * after being evicted to the reuse pool. Safe to call on the main thread.
+ *
+ * Increments _editingTransactionGroupCount so isProcessingUpdates / waitUntilAllUpdatesAreProcessed
+ * correctly reflect in-flight allocation work.
+ */
+- (void)allocateNodesForElements:(NSArray<ASCollectionElement *> *)elements;
 
 /**
  * See ASCollectionNode.h for full documentation of these methods.

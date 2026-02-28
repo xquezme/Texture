@@ -102,6 +102,21 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) BOOL allowsMultipleSelection;
 
 /**
+ * When YES, enables node-level reuse pooling for items that return a non-nil
+ * reuseIdentifierForItemAtIndexPath:.
+ *
+ * When a node exits the preload range, its view is removed from the cell's
+ * contentView, its GPU textures are freed, and the node is moved to a reuse
+ * pool keyed by its reuseIdentifier. When the same item re-enters the preload
+ * range, a node is dequeued from the pool and re-configured via
+ * configureNode:atIndexPath: instead of being allocated from scratch.
+ *
+ * Set this property before the first data load. Toggling mid-scroll is not supported.
+ * Default: NO.
+ */
+@property (nonatomic) BOOL enableNodeReuse;
+
+/**
  * A Boolean value that determines whether bouncing always occurs when vertical scrolling reaches the end of the content.
  * The default value of this property is NO.
  */
@@ -677,6 +692,43 @@ NS_ASSUME_NONNULL_BEGIN
  * @param destinationIndexPath  The new item index path.
  */
 - (void)collectionNode:(ASCollectionNode *)collectionNode moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath toIndexPath:(NSIndexPath *)destinationIndexPath;
+
+/**
+ * Return a reuse identifier to opt this item into pool-based node reuse.
+ *
+ * Items that return nil (or when collectionNode.enableNodeReuse == NO) are not
+ * pooled and follow the existing allocation behaviour (nodeBlock discarded after
+ * first use). Items that return a non-empty string are pooled per-identifier.
+ *
+ * @param collectionNode The sender.
+ * @param indexPath      The index path of the item.
+ *
+ * @return A non-empty string to enable pool reuse for this item, or nil to opt out.
+ */
+- (nullable NSString *)collectionNode:(ASCollectionNode *)collectionNode
+    reuseIdentifierForItemAtIndexPath:(NSIndexPath *)indexPath;
+
+/**
+ * Called to bind data to a node on every load cycle — both on initial allocation
+ * and after pool dequeue.
+ *
+ * Threading: Normally called on a BACKGROUND THREAD. May be called on the MAIN
+ * THREAD in edge cases (fast scroll before pre-allocation completes). Implementations
+ * must be thread-safe. Do not call UIKit APIs directly from this method.
+ *
+ * Layout contract: Do NOT modify layout-affecting properties here without also
+ * calling [node setNeedsLayout], which invalidates the layout cache.
+ *
+ * Content restoration: After pool dequeue, the existing state machine fires
+ * didEnterPreloadState which restarts network downloads etc. No extra calls needed.
+ *
+ * @param collectionNode The sender.
+ * @param node           The node to configure.
+ * @param indexPath      The index path of the item.
+ */
+- (void)collectionNode:(ASCollectionNode *)collectionNode
+         configureNode:(ASCellNode *)node
+           atIndexPath:(NSIndexPath *)indexPath;
 
 /**
  * Generate a unique identifier for an element in a collection. This helps state restoration persist the scroll position

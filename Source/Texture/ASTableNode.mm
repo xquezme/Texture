@@ -42,6 +42,7 @@
 @property (nonatomic) BOOL animatesContentOffset;
 @property (nonatomic) BOOL automaticallyAdjustsContentOffset;
 @property (nonatomic) BOOL pagingEnabled;
+@property (nonatomic) BOOL enableNodeReuse; // default is NO
 @end
 
 @implementation _ASTablePendingState
@@ -162,6 +163,7 @@
     view.allowsSelectionDuringEditing         = pendingState.allowsSelectionDuringEditing;
     view.allowsMultipleSelection              = pendingState.allowsMultipleSelection;
     view.allowsMultipleSelectionDuringEditing = pendingState.allowsMultipleSelectionDuringEditing;
+    view.enableNodeReuse                      = pendingState.enableNodeReuse;
     view.automaticallyAdjustsContentOffset    = pendingState.automaticallyAdjustsContentOffset;
     view.leadingScreensForBatching            = pendingState.leadingScreensForBatching;
 #if !TARGET_OS_TV
@@ -521,6 +523,25 @@
     return _pendingState.allowsMultipleSelectionDuringEditing;
   } else {
     return self.view.allowsMultipleSelectionDuringEditing;
+  }
+}
+
+- (void)setEnableNodeReuse:(BOOL)enableNodeReuse
+{
+  if ([self pendingState]) {
+    _pendingState.enableNodeReuse = enableNodeReuse;
+  } else {
+    ASDisplayNodeAssert([self isNodeLoaded], @"ASTableNode should be loaded if pendingState doesn't exist");
+    self.view.enableNodeReuse = enableNodeReuse;
+  }
+}
+
+- (BOOL)enableNodeReuse
+{
+  if ([self pendingState]) {
+    return _pendingState.enableNodeReuse;
+  } else {
+    return self.view.enableNodeReuse;
   }
 }
 

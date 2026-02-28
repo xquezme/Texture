@@ -105,6 +105,21 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) BOOL allowsMultipleSelectionDuringEditing;
 
 /**
+ * When YES, enables node-level reuse pooling for rows that return a non-nil
+ * reuseIdentifierForRowAtIndexPath:.
+ *
+ * When a node exits the preload range, its view is removed from the cell's
+ * contentView, its GPU textures are freed, and the node is moved to a reuse
+ * pool keyed by its reuseIdentifier. When the same row re-enters the preload
+ * range, a node is dequeued from the pool and re-configured via
+ * configureNode:atIndexPath: instead of being allocated from scratch.
+ *
+ * Set this property before the first data load. Toggling mid-scroll is not supported.
+ * Default: NO.
+ */
+@property (nonatomic) BOOL enableNodeReuse;
+
+/**
  * Tuning parameters for a range type in full mode.
  *
  * @param rangeType The range type to get the tuning parameters for.
@@ -574,6 +589,43 @@ NS_ASSUME_NONNULL_BEGIN
  * @deprecated The data source is always accessed on the main thread, and this method will not be called.
  */
 - (void)tableViewUnlockDataSource:(ASTableView *)tableView ASDISPLAYNODE_DEPRECATED_MSG("Data source accesses are on the main thread. Method will not be called.");
+
+/**
+ * Return a reuse identifier to opt this row into pool-based node reuse.
+ *
+ * Rows that return nil (or when tableNode.enableNodeReuse == NO) are not
+ * pooled and follow the existing allocation behaviour (nodeBlock discarded after
+ * first use). Rows that return a non-empty string are pooled per-identifier.
+ *
+ * @param tableNode The sender.
+ * @param indexPath The index path of the row.
+ *
+ * @return A non-empty string to enable pool reuse for this row, or nil to opt out.
+ */
+- (nullable NSString *)tableNode:(ASTableNode *)tableNode
+    reuseIdentifierForRowAtIndexPath:(NSIndexPath *)indexPath;
+
+/**
+ * Called to bind data to a node on every load cycle — both on initial allocation
+ * and after pool dequeue.
+ *
+ * Threading: Normally called on a BACKGROUND THREAD. May be called on the MAIN
+ * THREAD in edge cases (fast scroll before pre-allocation completes). Implementations
+ * must be thread-safe. Do not call UIKit APIs directly from this method.
+ *
+ * Layout contract: Do NOT modify layout-affecting properties here without also
+ * calling [node setNeedsLayout], which invalidates the layout cache.
+ *
+ * Content restoration: After pool dequeue, the existing state machine fires
+ * didEnterPreloadState which restarts network downloads etc. No extra calls needed.
+ *
+ * @param tableNode The sender.
+ * @param node      The node to configure.
+ * @param indexPath The index path of the row.
+ */
+- (void)tableNode:(ASTableNode *)tableNode
+    configureNode:(ASCellNode *)node
+      atIndexPath:(NSIndexPath *)indexPath;
 
 /**
  * Generate a unique identifier for an element in a table. This helps state restoration persist the scroll position

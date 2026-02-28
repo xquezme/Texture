@@ -27,6 +27,7 @@
 
 #import "ASInternalHelpers.h"
 #import "ASCellNode+Internal.h"
+#import "ASCollectionElement+Private.h"
 #import "ASDisplayNode+Subclasses.h"
 #import "NSIndexSet+ASHelpers.h"
 
@@ -69,6 +70,7 @@ typedef void (^ASDataControllerSynchronizationBlock)();
     unsigned int constrainedSizeForNodeAtIndexPath:1;
     unsigned int constrainedSizeForSupplementaryNodeOfKindAtIndexPath:1;
     unsigned int contextForSection:1;
+    unsigned int willFinalizeElement:1;
   } _dataSourceFlags;
 }
 
@@ -95,6 +97,7 @@ typedef void (^ASDataControllerSynchronizationBlock)();
   _dataSourceFlags.constrainedSizeForNodeAtIndexPath = [_dataSource respondsToSelector:@selector(dataController:constrainedSizeForNodeAtIndexPath:)];
   _dataSourceFlags.constrainedSizeForSupplementaryNodeOfKindAtIndexPath = [_dataSource respondsToSelector:@selector(dataController:constrainedSizeForSupplementaryNodeOfKind:atIndexPath:)];
   _dataSourceFlags.contextForSection = [_dataSource respondsToSelector:@selector(dataController:contextForSection:)];
+  _dataSourceFlags.willFinalizeElement = [_dataSource respondsToSelector:@selector(dataController:willFinalizeElement:atIndexPath:)];
 
   self.visibleMap = self.pendingMap = [[ASElementMap alloc] init];
   
@@ -168,7 +171,19 @@ typedef void (^ASDataControllerSynchronizationBlock)();
       // Layout the node if the size range is valid.
       ASSizeRange sizeRange = element.constrainedSize;
       if (ASSizeRangeHasSignificantArea(sizeRange)) {
-        [self _layoutNode:node withConstrainedSize:sizeRange];
+        // Layout cache skip: if the constrained size is unchanged from the last time
+        // we measured this node (e.g. after a pool dequeue), skip re-layout and
+        // restore the cached frame. Both cache fields are read atomically under lock.
+        // configureNode:atIndexPath: must NOT change layout-affecting properties without
+        // calling [node setNeedsLayout], which nils calculatedLayout and busts the cache.
+        CGSize cached = [element cachedLayoutSizeForConstrainedSize:sizeRange];
+        if (!CGSizeEqualToSize(cached, CGSizeZero)) {
+          node.frame = CGRectMake(0, 0, cached.width, cached.height);
+        } else {
+          [self _layoutNode:node withConstrainedSize:sizeRange];
+          // Atomic write under lock — safe from concurrent reads on other threads.
+          [element setCachedLayoutSize:node.frame.size forConstrainedSize:sizeRange];
+        }
       }
     };
     
@@ -397,7 +412,10 @@ typedef void (^ASDataControllerSynchronizationBlock)();
         NSIndexPath *oldIndexPath = [changeSet oldIndexPathForNewIndexPath:indexPath];
         if (oldIndexPath != nil) {
           ASCollectionElement *oldElement = [previousMap elementForItemAtIndexPath:oldIndexPath];
-          ASCellNode *oldNode = oldElement.node;
+          // Use nodeIfAllocated to avoid triggering node creation on pooled elements.
+          // If the element was evicted (nil), canUpdateToNodeModel: returns NO and
+          // the standard nodeBlock path is used — same as when no node exists.
+          ASCellNode *oldNode = oldElement.nodeIfAllocated;
           if ([oldNode canUpdateToNodeModel:nodeModel]) {
             // Just wrap the node in a block. The collection element will -setNodeModel:
             nodeBlock = ^{
@@ -426,6 +444,13 @@ typedef void (^ASDataControllerSynchronizationBlock)();
                                                                   traitCollection:traitCollection];
     [map insertElement:element atIndexPath:indexPath];
     changeSet.countForAsyncLayout += (shouldAsyncLayout ? 1 : 0);
+
+    // Notify the data source (e.g. ASCollectionView) so it can configure pool-related
+    // properties (preservesNodeBlock, configureBlock) on the element. Only called for
+    // standard-path row items (not canUpdateToNodeModel: elements, not supplementaries).
+    if (isRowKind && nodeBlock != nil && _dataSourceFlags.willFinalizeElement) {
+      [dataSource dataController:self willFinalizeElement:element atIndexPath:indexPath];
+    }
   }
 }
 
@@ -834,6 +859,23 @@ typedef void (^ASDataControllerSynchronizationBlock)();
     // Step 2: Populate new elements for all sections
     [self _insertElementsIntoMap:map kind:kind forSections:sectionIndexes traitCollection:traitCollection shouldFetchSizeRanges:shouldFetchSizeRanges changeSet:changeSet previousMap:previousMap];
   }
+}
+
+#pragma mark - Pool Pre-Allocation
+
+- (void)allocateNodesForElements:(NSArray<ASCollectionElement *> *)elements
+{
+  ASDisplayNodeAssertMainThread();
+  if (elements.count == 0) return;
+  NSArray *snapshot = [elements copy]; // capture on MT before dispatch
+  // Must maintain _editingTransactionGroupCount so isProcessingUpdates /
+  // waitUntilAllUpdatesAreProcessed see this work. Follows same pattern as
+  // updateWithChangeSet: (see ++_editingTransactionGroupCount above step3 dispatch).
+  ++_editingTransactionGroupCount;
+  dispatch_group_async(_editingTransactionGroup, _editingTransactionQueue, ^{
+    [self _allocateNodesFromElements:snapshot strictlyOnCurrentThread:NO];
+    --self->_editingTransactionGroupCount;
+  });
 }
 
 #pragma mark - Relayout

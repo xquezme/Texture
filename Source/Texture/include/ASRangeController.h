@@ -20,6 +20,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class _ASHierarchyChangeSet;
+@class ASCollectionElement;
 @protocol ASRangeControllerDataSource;
 @protocol ASRangeControllerDelegate;
 @protocol ASLayoutController;
@@ -161,6 +162,26 @@ AS_SUBCLASSING_RESTRICTED
 - (void)rangeController:(ASRangeController *)rangeController updateWithChangeSet:(_ASHierarchyChangeSet *)changeSet updates:(dispatch_block_t)updates;
 
 - (BOOL)rangeControllerShouldUpdateRanges:(ASRangeController *)rangeController;
+
+@optional
+
+/**
+ * Called from _poolPreparationQueue (a serial background queue) after a node has been
+ * prepared for pool reuse. Delegate should enqueue the node in the appropriate reuse pool.
+ *
+ * Thread safety: Called from background; delegate implementation must be thread-safe.
+ */
+- (void)rangeController:(ASRangeController *)rangeController enqueueNode:(ASCellNode *)node;
+
+/**
+ * Called on the main thread after the range update loop, when one or more pooled elements
+ * have re-entered the preload range and need background pre-allocation.
+ *
+ * The delegate should call ASDataController's -allocateNodesForElements: to trigger
+ * background pre-allocation so nodes are ready before -cellForItemAtIndexPath: fires.
+ */
+- (void)rangeController:(ASRangeController *)rangeController
+  needsAllocationForElements:(NSArray<ASCollectionElement *> *)elements;
 
 @end
 

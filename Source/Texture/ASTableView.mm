@@ -14,7 +14,9 @@
 #import "_ASHierarchyChangeSet.h"
 #import "ASBatchFetching.h"
 #import "ASCellNode+Internal.h"
+#import "ASCellNodeReusePool.h"
 #import "ASCollectionElement.h"
+#import "ASCollectionElement+Private.h"
 #import "ASCollections.h"
 #import "ASConfigurationInternal.h"
 #import "ASDelegateProxy.h"
@@ -275,6 +277,8 @@ static NSString * const kCellReuseIdentifier = @"_ASTableViewCell";
     unsigned int tableNodeMoveRow:1;
     unsigned int sectionIndexMethods:1; // if both section index methods are implemented
     unsigned int modelIdentifierMethods:1; // if both modelIdentifierForElementAtIndexPath and indexPathForElementWithModelIdentifier are implemented
+    unsigned int tableNodeReuseIdentifierForRow:1;
+    unsigned int tableNodeConfigureNode:1;
   } _asyncDataSourceFlags;
 }
 
@@ -289,6 +293,8 @@ static NSString * const kCellReuseIdentifier = @"_ASTableViewCell";
 {
   __weak id<ASTableDelegate> _asyncDelegate;
   __weak id<ASTableDataSource> _asyncDataSource;
+  BOOL _enableNodeReuse;
+  ASCellNodeReusePool *_nodeReusePool;
 }
 
 // Using _ASDisplayLayer ensures things like -layout are properly forwarded to ASTableNode.
@@ -365,13 +371,34 @@ static NSString * const kCellReuseIdentifier = @"_ASTableViewCell";
 {
   ASDisplayNodeAssertMainThread();
   ASDisplayNodeCAssert(_batchUpdateCount == 0, @"ASTableView deallocated in the middle of a batch update.");
-  
+
+  [_nodeReusePool drain];
+
   // Sometimes the UIKit classes can call back to their delegate even during deallocation.
   _isDeallocating = YES;
   if (!ASActivateExperimentalFeature(ASExperimentalCollectionTeardown)) {
     [self setAsyncDelegate:nil];
     [self setAsyncDataSource:nil];
   }
+}
+
+- (BOOL)enableNodeReuse
+{
+  return _enableNodeReuse;
+}
+
+- (void)setEnableNodeReuse:(BOOL)enableNodeReuse
+{
+  _enableNodeReuse = enableNodeReuse;
+}
+
+- (ASCellNodeReusePool *)nodeReusePool
+{
+  if (!_enableNodeReuse) return nil;
+  if (!_nodeReusePool) {
+    _nodeReusePool = [[ASCellNodeReusePool alloc] init];
+  }
+  return _nodeReusePool;
 }
 
 #pragma mark -
@@ -426,7 +453,9 @@ static NSString * const kCellReuseIdentifier = @"_ASTableViewCell";
     _asyncDataSourceFlags.tableViewMoveRow = [_asyncDataSource respondsToSelector:@selector(tableView:moveRowAtIndexPath:toIndexPath:)];
     _asyncDataSourceFlags.sectionIndexMethods = [_asyncDataSource respondsToSelector:@selector(sectionIndexTitlesForTableView:)] && [_asyncDataSource respondsToSelector:@selector(tableView:sectionForSectionIndexTitle:atIndex:)];
     _asyncDataSourceFlags.modelIdentifierMethods = [_asyncDataSource respondsToSelector:@selector(modelIdentifierForElementAtIndexPath:inNode:)] && [_asyncDataSource respondsToSelector:@selector(indexPathForElementWithModelIdentifier:inNode:)];
-    
+    _asyncDataSourceFlags.tableNodeReuseIdentifierForRow = [_asyncDataSource respondsToSelector:@selector(tableNode:reuseIdentifierForRowAtIndexPath:)];
+    _asyncDataSourceFlags.tableNodeConfigureNode = [_asyncDataSource respondsToSelector:@selector(tableNode:configureNode:atIndexPath:)];
+
     ASDisplayNodeAssert(_asyncDataSourceFlags.tableViewNodeBlockForRow
                         || _asyncDataSourceFlags.tableViewNodeForRow
                         || _asyncDataSourceFlags.tableNodeNodeBlockForRow
@@ -755,6 +784,7 @@ static NSString * const kCellReuseIdentifier = @"_ASTableViewCell";
   CGFloat constrainedWidth = self.bounds.size.width - [self sectionIndexWidth] - contentInset.left - contentInset.right;
   if (constrainedWidth > 0 && _nodesConstrainedWidth != constrainedWidth) {
     _nodesConstrainedWidth = constrainedWidth;
+    [_nodeReusePool drain];
     [_cellsForLayoutUpdates removeAllObjects];
 
     [self beginUpdates];
@@ -1694,6 +1724,22 @@ static NSString * const kCellReuseIdentifier = @"_ASTableViewCell";
   [changeSet executeCompletionHandlerWithFinished:YES];
 }
 
+- (void)rangeController:(ASRangeController *)rangeController enqueueNode:(ASCellNode *)node
+{
+  // Called from _poolPreparationQueue (background). Pool is thread-safe.
+  [_nodeReusePool enqueueNode:node identifier:node.reuseIdentifier];
+}
+
+- (void)rangeController:(ASRangeController *)rangeController
+  needsAllocationForElements:(NSArray<ASCollectionElement *> *)elements
+{
+  // Called on main thread after the range controller loop detects pooled elements
+  // that re-entered the preload range and need background pre-allocation.
+  if (_enableNodeReuse) {
+    [_dataController allocateNodesForElements:elements];
+  }
+}
+
 #pragma mark - ASDataControllerSource
 
 - (BOOL)dataController:(ASDataController *)dataController shouldEagerlyLayoutNode:(ASCellNode *)node
@@ -1781,21 +1827,75 @@ static NSString * const kCellReuseIdentifier = @"_ASTableViewCell";
 
   // Wrap the node block
   __weak __typeof__(self) weakSelf = self;
+
+  // Pool-aware wrapper: if reuse is enabled and the DS provides a reuseIdentifier,
+  // attempt to dequeue from the pool before allocating a fresh node.
+  NSString *reuseId = nil;
+  if (_enableNodeReuse && _asyncDataSourceFlags.tableNodeReuseIdentifierForRow) {
+    if (ASTableNode *tableNode = self.tableNode) {
+      reuseId = [_asyncDataSource tableNode:tableNode reuseIdentifierForRowAtIndexPath:indexPath];
+    }
+  }
+  __weak ASCellNodeReusePool *weakPool = self.nodeReusePool;
+  NSString *capturedId = reuseId;
+  BOOL isInverted = _inverted;
+
   return ^{
     __typeof__(self) strongSelf = weakSelf;
-    ASCellNode *node = (block != nil ? block() : [[ASCellNode alloc] init]);
-    ASDisplayNodeAssert([node isKindOfClass:[ASCellNode class]], @"ASTableNode provided a non-ASCellNode! %@, %@", node, strongSelf);
+    ASCellNode *node = nil;
+
+    // Try pool dequeue first (lock order: element._lock already released by caller;
+    // pool._mutex acquired here — invariant maintained).
+    if (capturedId) {
+      node = [weakPool dequeueNodeWithIdentifier:capturedId];
+    }
+
+    if (!node) {
+      node = (block != nil ? block() : [[ASCellNode alloc] init]);
+      ASDisplayNodeAssert([node isKindOfClass:[ASCellNode class]], @"ASTableNode provided a non-ASCellNode! %@, %@", node, strongSelf);
+      if (capturedId) {
+        node.reuseIdentifier = capturedId;
+      }
+    }
 
     [node enterHierarchyState:ASHierarchyStateRangeManaged];
     if (node.interactionDelegate == nil) {
       node.interactionDelegate = strongSelf;
     }
-    if (self->_inverted) {
-        node.transform = CATransform3DMakeScale(1, -1, 1) ;
+    if (isInverted) {
+      node.transform = CATransform3DMakeScale(1, -1, 1);
     }
     return node;
   };
-  return block;
+}
+
+- (void)dataController:(ASDataController *)dataController
+    willFinalizeElement:(ASCollectionElement *)element
+           atIndexPath:(NSIndexPath *)indexPath
+{
+  ASDisplayNodeAssertMainThread();
+  if (!_enableNodeReuse) return;
+  if (!_asyncDataSourceFlags.tableNodeReuseIdentifierForRow) return;
+
+  ASTableNode *tableNode = self.tableNode;
+  if (!tableNode) return;
+  NSString *reuseId = [_asyncDataSource tableNode:tableNode reuseIdentifierForRowAtIndexPath:indexPath];
+  if (reuseId.length == 0) return;
+
+  element.preservesNodeBlock = YES;
+
+  if (_asyncDataSourceFlags.tableNodeConfigureNode) {
+    __weak ASTableNode *weakTN = tableNode;
+    __weak id<ASTableDataSource> weakDS = _asyncDataSource;
+    NSIndexPath *capturedPath = indexPath;
+    element.configureBlock = ^(ASCellNode *node) {
+      ASTableNode *tn = weakTN;
+      id<ASTableDataSource> ds = weakDS;
+      if (tn && ds) {
+        [ds tableNode:tn configureNode:node atIndexPath:capturedPath];
+      }
+    };
+  }
 }
 
 - (ASSizeRange)dataController:(ASDataController *)dataController constrainedSizeForNodeAtIndexPath:(NSIndexPath *)indexPath

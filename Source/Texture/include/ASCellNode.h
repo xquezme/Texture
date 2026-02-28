@@ -96,6 +96,28 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
 @property (nullable, copy, readonly) UICollectionViewLayoutAttributes *layoutAttributes;
 
 /**
+ * A reuse identifier for pool-based node reuse, or @c nil if this node is not pooled.
+ *
+ * Set automatically by ASCollectionView/ASTableView when the data source returns a
+ * non-nil value from @c reuseIdentifierForItemAtIndexPath:.
+ * Read-only publicly; writable via ASCellNode+Internal.h.
+ */
+@property (nullable, copy, readonly) NSString *reuseIdentifier;
+
+/**
+ * Called on a background queue before the node is returned to the reuse pool.
+ *
+ * Override to reset node content (e.g., cancel custom loading, clear displayed data).
+ * Always call @c [super prepareForReuse] in your override.
+ *
+ * @note Implementations must be thread-safe. Do NOT call UIKit APIs directly;
+ *   use @c ASPerformBlockOnMainThread if main-thread work is required.
+ * @note The node's view has already been removed from its superview and
+ *   @c recursivelyClearContents has already been called before this is invoked.
+ */
+- (void)prepareForReuse;
+
+/**
  * A Boolean value that is synchronized with the underlying collection or tableView cell property.
  * Setting this value is equivalent to calling selectItem / deselectItem on the collection or table.
  */

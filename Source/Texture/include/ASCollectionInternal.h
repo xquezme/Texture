@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak) ASCollectionNode *collectionNode;
 @property (nonatomic, readonly) ASDataController *dataController;
 @property (nonatomic, readonly) ASRangeController *rangeController;
+@property (nonatomic) BOOL enableNodeReuse;
 
 /**
  * The change set that we're currently building, if any.

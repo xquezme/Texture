@@ -81,7 +81,7 @@ static constexpr CACornerMask kASCACornerAllCorners =
 
   _ASPendingState *_pendingViewState;
 
-  UIView *_view;
+  ASDisplayView *_view;
   CALayer *_layer;
 
   std::atomic<ASDisplayNodeAtomicFlags> _atomicFlags;
@@ -148,10 +148,10 @@ static constexpr CACornerMask kASCACornerAllCorners =
   ASDisplayNodePerformanceMeasurementOptions _measurementOptions;
   ASDisplayNodeMethodOverrides _methodOverrides;
   // Tinting support
-  UIColor *_tintColor;
+  ASColor *_tintColor;
 
   // Dynamic colors support
-  UIColor *_backgroundColor;
+  ASColor *_backgroundColor;
 
 @protected
   ASDisplayNode * __weak _supernode;
@@ -168,7 +168,7 @@ static constexpr CACornerMask kASCACornerAllCorners =
   // This is the desired contentsScale, not the scale at which the layer's contents should be displayed
   CGFloat _contentsScaleForDisplay;
 
-  UIEdgeInsets _hitTestSlop;
+  ASEdgeInsets _hitTestSlop;
 
   // Layout support
   ASLayoutElementStyle *_style;
@@ -191,7 +191,7 @@ static constexpr CACornerMask kASCACornerAllCorners =
   _ASTransitionContext *_pendingLayoutTransitionContext;
   NSTimeInterval _defaultLayoutTransitionDuration;
   NSTimeInterval _defaultLayoutTransitionDelay;
-  UIViewAnimationOptions _defaultLayoutTransitionOptions;
+  NSUInteger _defaultLayoutTransitionOptions;
 
   std::atomic<int32_t> _transitionID;
   std::atomic<int32_t> _pendingTransitionID;
@@ -220,7 +220,7 @@ static constexpr CACornerMask kASCACornerAllCorners =
 
 
   // Placeholder support
-  UIImage *_placeholderImage;
+  ASImage *_placeholderImage;
   CALayer *_placeholderLayer;
 
   // keeps track of nodes/subnodes that have not finished display, used with placeholders
@@ -243,23 +243,27 @@ static constexpr CACornerMask kASCACornerAllCorners =
   NSAttributedString *_accessibilityAttributedHint;
   NSString *_accessibilityValue;
   NSAttributedString *_accessibilityAttributedValue;
-  UIAccessibilityTraits _accessibilityTraits;
+  NSUInteger _accessibilityTraits;
   CGRect _accessibilityFrame;
   NSString *_accessibilityLanguage;
   NSString *_accessibilityIdentifier;
+#if !AS_PLATFORM_MACOS
   UIAccessibilityNavigationStyle _accessibilityNavigationStyle;
+#endif
   NSArray *_accessibilityCustomActions;
   NSArray *_accessibilityHeaderElements;
   CGPoint _accessibilityActivationPoint;
-  UIBezierPath *_accessibilityPath;
+  ASBezierPath *_accessibilityPath;
 
 
   // Safe Area support
   // These properties are used on iOS 10 and lower, where safe area is not supported by UIKit.
-  UIEdgeInsets _fallbackSafeAreaInsets;
+  ASEdgeInsets _fallbackSafeAreaInsets;
 
   // Right-to-Left layout support
+#if !AS_PLATFORM_MACOS
   UISemanticContentAttribute _semanticContentAttribute;
+#endif
 
 #pragma mark - ASDisplayNode (Debugging)
   ASLayout *_unflattenedLayout;
@@ -334,7 +338,9 @@ static constexpr CACornerMask kASCACornerAllCorners =
                        maskedCorners:(CACornerMask)newMaskedCorners;
 
 /// Update the Semantic Content Attribute. Trigger layout if this value has changed.
+#if !AS_PLATFORM_MACOS
 - (void)updateSemanticContentAttributeWithAttribute:(UISemanticContentAttribute)attribute;
+#endif
 
 /// Alternative initialiser for backing with a custom view class.  Supports asynchronous display with _ASDisplayView subclasses.
 - (instancetype)initWithViewClass:(Class)viewClass;
@@ -354,7 +360,7 @@ static constexpr CACornerMask kASCACornerAllCorners =
 - (void)enumerateInterfaceStateDelegates:(void(NS_NOESCAPE ^)(id<ASInterfaceStateDelegate> delegate))block;
 
 /**
- * This method has proven helpful in a few rare scenarios, similar to a category extension on UIView,
+ * This method has proven helpful in a few rare scenarios, similar to a category extension on ASDisplayView,
  * but it's considered private API for now and its use should not be encouraged.
  * @param checkViewHierarchy If YES, and no supernode can be found, method will walk up from `self.view` to find a supernode.
  * If YES, this method must be called on the main thread and the node must not be layer-backed.

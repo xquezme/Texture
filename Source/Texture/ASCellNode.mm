@@ -7,6 +7,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <TargetConditionals.h>
+
 #import "ASCellNode+Internal.h"
 
 #import "ASEqualityHelpers.h"
@@ -32,8 +34,8 @@
   ASDisplayNodeViewControllerBlock _viewControllerBlock;
   ASDisplayNodeDidLoadBlock _viewControllerDidLoadBlock;
   ASDisplayNode *_viewControllerNode;
-  UIViewController *_viewController;
-  UICollectionViewLayoutAttributes *_layoutAttributes;
+  ASDisplayViewController *_viewController;
+  ASCollectionViewLayoutAttributes *_layoutAttributes;
   BOOL _suspendInteractionDelegate;
   BOOL _selected;
   BOOL _highlighted;
@@ -50,9 +52,11 @@
   if (!(self = [super init]))
     return nil;
 
+#if !AS_PLATFORM_MACOS
   // Use UITableViewCell defaults
   _selectionStyle = UITableViewCellSelectionStyleDefault;
   _focusStyle = UITableViewCellFocusStyleDefault;
+#endif
   self.clipsToBounds = YES;
 
   return self;
@@ -63,7 +67,7 @@
   if (!(self = [super init]))
     return nil;
   
-  ASDisplayNodeAssertNotNil(viewControllerBlock, @"should initialize with a valid block that returns a UIViewController");
+  ASDisplayNodeAssertNotNil(viewControllerBlock, @"should initialize with a valid block that returns a ASDisplayViewController");
   _viewControllerBlock = viewControllerBlock;
   _viewControllerDidLoadBlock = didLoadBlock;
 
@@ -82,10 +86,18 @@
     if ([_viewController isKindOfClass:[ASDKViewController class]]) {
       ASDKViewController *asViewController = (ASDKViewController *)_viewController;
       _viewControllerNode = asViewController.node;
+#if AS_PLATFORM_MACOS
+      if (@available(macOS 14.0, *)) {
+        [_viewController loadViewIfNeeded];
+      } else {
+        (void)_viewController.view;
+      }
+#else
       [_viewController loadViewIfNeeded];
+#endif
     } else {
       // Careful to avoid retain cycle
-      UIViewController *viewController = _viewController;
+      ASDisplayViewController *viewController = _viewController;
       _viewControllerNode = [[ASDisplayNode alloc] initWithViewBlock:^{
         return viewController.view;
       }];
@@ -189,7 +201,7 @@
   return [self.owningNode indexPathForNode:self];
 }
 
-- (UIViewController *)viewController
+- (ASDisplayViewController *)viewController
 {
   ASDisplayNodeAssertMainThread();
   // Force the view to load so that we will create the
@@ -208,6 +220,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-missing-super-calls"
 
+#if !AS_PLATFORM_MACOS
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
   ASDisplayNodeAssertMainThread();
@@ -235,15 +248,16 @@
   ASDisplayNodeAssert([self.view isKindOfClass:_ASDisplayView.class], @"ASCellNode views must be of type _ASDisplayView");
   [(_ASDisplayView *)self.view __forwardTouchesCancelled:touches withEvent:event];
 }
+#endif
 
 #pragma clang diagnostic pop
 
-- (UICollectionViewLayoutAttributes *)layoutAttributes
+- (ASCollectionViewLayoutAttributes *)layoutAttributes
 {
   return ASLockedSelf(_layoutAttributes);
 }
 
-- (void)setLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+- (void)setLayoutAttributes:(ASCollectionViewLayoutAttributes *)layoutAttributes
 {
   ASDisplayNodeAssertMainThread();
   if (ASLockedSelfCompareAssignObjects(_layoutAttributes, layoutAttributes)) {
@@ -253,12 +267,12 @@
   }
 }
 
-- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+- (void)applyLayoutAttributes:(ASCollectionViewLayoutAttributes *)layoutAttributes
 {
   // To be overriden by subclasses
 }
 
-- (void)cellNodeVisibilityEvent:(ASCellNodeVisibilityEvent)event inScrollView:(UIScrollView *)scrollView withCellFrame:(CGRect)cellFrame
+- (void)cellNodeVisibilityEvent:(ASCellNodeVisibilityEvent)event inScrollView:(ASScrollView *)scrollView withCellFrame:(CGRect)cellFrame
 {
   // To be overriden by subclasses
 }
@@ -303,12 +317,21 @@
   // NOTE: This assertion is failing in some apps and will be enabled soon.
   // ASDisplayNodeAssert(self.isNodeLoaded, @"Node should be loaded in order for it to become visible or invisible.  If not in this situation, we shouldn't trigger creating the view.");
   
-  UIView *view = self.view;
+  ASDisplayView *view = self.view;
   CGRect cellFrame = CGRectZero;
   
   // Ensure our _scrollView is still valid before converting.  It's also possible that we have already been removed from the _scrollView,
   // in which case it is not valid to perform a convertRect (this actually crashes on iOS 8).
-  UIScrollView *scrollView = (_scrollView != nil && view.superview != nil && [view isDescendantOfView:_scrollView]) ? _scrollView : nil;
+  ASScrollView *scrollView = nil;
+#if AS_PLATFORM_MACOS
+  if (_scrollView != nil && view.superview != nil && [view isDescendantOf:_scrollView]) {
+    scrollView = _scrollView;
+  }
+#else
+  if (_scrollView != nil && view.superview != nil && [view isDescendantOfView:_scrollView]) {
+    scrollView = _scrollView;
+  }
+#endif
   if (scrollView) {
     cellFrame = [view convertRect:view.bounds toView:scrollView];
   }
@@ -325,9 +348,10 @@
 {
   NSMutableArray *result = [super propertiesForDebugDescription];
   
-  UIScrollView *scrollView = self.scrollView;
+  ASScrollView *scrollView = self.scrollView;
   
   id<ASRangeManagingNode> owningNode = self.owningNode;
+#if !AS_PLATFORM_MACOS
   if ([owningNode isKindOfClass:[ASCollectionNode class]]) {
     NSIndexPath *ip = [(ASCollectionNode *)owningNode indexPathForNode:self];
     if (ip != nil) {
@@ -355,6 +379,7 @@
     }
     [result addObject:@{ @"tableView" : ASObjectDescriptionMakeTiny(scrollView) }];
   }
+#endif
 
   return result;
 }
@@ -396,7 +421,7 @@
 
 @implementation ASTextCellNode {
   NSDictionary<NSAttributedStringKey, id> *_textAttributes;
-  UIEdgeInsets _textInsets;
+  ASEdgeInsets _textInsets;
   NSString *_text;
 }
 
@@ -409,7 +434,7 @@ static const CGFloat kASTextCellNodeDefaultVerticalPadding = 11.0f;
   return [self initWithAttributes:[ASTextCellNode defaultTextAttributes] insets:[ASTextCellNode defaultTextInsets]];
 }
 
-- (instancetype)initWithAttributes:(NSDictionary *)textAttributes insets:(UIEdgeInsets)textInsets
+- (instancetype)initWithAttributes:(NSDictionary *)textAttributes insets:(ASEdgeInsets)textInsets
 {
   self = [super init];
   if (self) {
@@ -428,12 +453,12 @@ static const CGFloat kASTextCellNodeDefaultVerticalPadding = 11.0f;
 
 + (NSDictionary *)defaultTextAttributes
 {
-  return @{NSFontAttributeName : [UIFont systemFontOfSize:kASTextCellNodeDefaultFontSize]};
+  return @{NSFontAttributeName : [ASFont systemFontOfSize:kASTextCellNodeDefaultFontSize]};
 }
 
-+ (UIEdgeInsets)defaultTextInsets
++ (ASEdgeInsets)defaultTextInsets
 {
-    return UIEdgeInsetsMake(kASTextCellNodeDefaultVerticalPadding, kASTextCellNodeDefaultHorizontalPadding, kASTextCellNodeDefaultVerticalPadding, kASTextCellNodeDefaultHorizontalPadding);
+    return ASEdgeInsetsMake(kASTextCellNodeDefaultVerticalPadding, kASTextCellNodeDefaultHorizontalPadding, kASTextCellNodeDefaultVerticalPadding, kASTextCellNodeDefaultHorizontalPadding);
 }
 
 - (NSDictionary *)textAttributes
@@ -450,14 +475,14 @@ static const CGFloat kASTextCellNodeDefaultVerticalPadding = 11.0f;
   }
 }
 
-- (UIEdgeInsets)textInsets
+- (ASEdgeInsets)textInsets
 {
   return ASLockedSelf(_textInsets);
 }
 
-- (void)setTextInsets:(UIEdgeInsets)textInsets
+- (void)setTextInsets:(ASEdgeInsets)textInsets
 {
-  if (ASLockedSelfCompareAssignCustom(_textInsets, textInsets, UIEdgeInsetsEqualToEdgeInsets)) {
+  if (ASLockedSelfCompareAssignCustom(_textInsets, textInsets, ASEdgeInsetsEqualToEdgeInsets)) {
     [self setNeedsLayout];
   }
 }

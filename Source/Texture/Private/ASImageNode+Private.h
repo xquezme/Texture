@@ -11,7 +11,7 @@
 
 @interface ASImageNode (Private)
 
-- (void)_locked_setImage:(UIImage *)image;
-- (UIImage *)_locked_Image;
+- (void)_locked_setImage:(ASImage *)image;
+- (ASImage *)_locked_Image;
 
 @end

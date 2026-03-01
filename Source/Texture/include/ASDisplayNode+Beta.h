@@ -18,6 +18,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#if !AS_PLATFORM_MACOS
+@class UIAccessibilityCustomAction;
+#endif
+
 ASDK_EXTERN void ASPerformBlockOnMainThread(void (^block)(void));
 ASDK_EXTERN void ASPerformBlockOnBackgroundThread(void (^block)(void)); // DISPATCH_QUEUE_PRIORITY_DEFAULT
 
@@ -98,6 +102,7 @@ typedef struct {
 @property (nullable, readonly, copy) NSString *defaultAccessibilityHint;
 @property (nullable, readonly, copy) NSString *defaultAccessibilityValue;
 @property (nullable, readonly, copy) NSString *defaultAccessibilityIdentifier;
+#if !AS_PLATFORM_MACOS
 @property (readonly) UIAccessibilityTraits defaultAccessibilityTraits;
 
 /**
@@ -108,6 +113,7 @@ typedef struct {
  * To halt propagation, return YES; otherwise, return NO.
  */
 - (BOOL)performAccessibilityCustomAction:(UIAccessibilityCustomAction *)action;
+#endif
 
 /**
  * @abstract Currently used by ASNetworkImageNode and ASMultiplexImageNode to allow their placeholders to stay if they are loading an image from the network.

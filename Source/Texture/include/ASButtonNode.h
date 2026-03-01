@@ -8,7 +8,7 @@
 //
 
 #import "ASControlNode.h"
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -55,13 +55,14 @@ typedef NS_ENUM(unsigned char, ASButtonNodeImageAlignment) {
 /**
  * @discussion The insets used around the title and image node
  */
-@property UIEdgeInsets contentEdgeInsets;
+@property ASEdgeInsets contentEdgeInsets;
 
 /**
  * @discusstion Whether the image should be aligned at the beginning or at the end of node. Default is `ASButtonNodeImageAlignmentBeginning`.
  */
 @property ASButtonNodeImageAlignment imageAlignment;
 
+#if !AS_PLATFORM_MACOS
 /**
  *  Returns the styled title associated with the specified state.
  *
@@ -88,7 +89,7 @@ typedef NS_ENUM(unsigned char, ASButtonNodeImageAlignment) {
  *  @param color The color to use for the title.
  *  @param state The control state that uses the specified title.
  */
-- (void)setTitle:(NSString *)title withFont:(nullable UIFont *)font withColor:(nullable UIColor *)color forState:(UIControlState)state;
+- (void)setTitle:(NSString *)title withFont:(nullable ASFont *)font withColor:(nullable ASColor *)color forState:(UIControlState)state;
 #endif
 /**
  *  Returns the image used for a button state.
@@ -97,7 +98,7 @@ typedef NS_ENUM(unsigned char, ASButtonNodeImageAlignment) {
  *
  *  @return The image used for the specified state.
  */
-- (nullable UIImage *)imageForState:(UIControlState)state AS_WARN_UNUSED_RESULT;
+- (nullable ASImage *)imageForState:(UIControlState)state AS_WARN_UNUSED_RESULT;
 
 /**
  *  Sets the image to use for the specified state.
@@ -105,7 +106,7 @@ typedef NS_ENUM(unsigned char, ASButtonNodeImageAlignment) {
  *  @param image The image to use for the specified state.
  *  @param state The control state that uses the specified title.
  */
-- (void)setImage:(nullable UIImage *)image forState:(UIControlState)state;
+- (void)setImage:(nullable ASImage *)image forState:(UIControlState)state;
 
 /**
  *  Sets the background image to use for the specified state.
@@ -113,7 +114,7 @@ typedef NS_ENUM(unsigned char, ASButtonNodeImageAlignment) {
  *  @param image The image to use for the specified state.
  *  @param state The control state that uses the specified title.
  */
-- (void)setBackgroundImage:(nullable UIImage *)image forState:(UIControlState)state;
+- (void)setBackgroundImage:(nullable ASImage *)image forState:(UIControlState)state;
 
 
 /**
@@ -123,7 +124,8 @@ typedef NS_ENUM(unsigned char, ASButtonNodeImageAlignment) {
  *
  *  @return The background image used for the specified state.
  */
-- (nullable UIImage *)backgroundImageForState:(UIControlState)state AS_WARN_UNUSED_RESULT;
+- (nullable ASImage *)backgroundImageForState:(UIControlState)state AS_WARN_UNUSED_RESULT;
+#endif
 
 @end
 

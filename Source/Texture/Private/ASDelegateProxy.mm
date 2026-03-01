@@ -8,23 +8,31 @@
 //
 
 #import "ASDelegateProxy.h"
-#import "ASTableNode.h"
+#import "ASAssert.h"
 #import "ASCollectionNode.h"
 
 // UIKit performs a class check for UIDataSourceModelAssociation protocol conformance rather than an instance check, so
 //  the implementation of conformsToProtocol: below never gets called. We need to declare the two as conforming to the protocol here, then
 //  we need to implement dummy methods to get rid of a compiler warning about not conforming to the protocol.
+#if !AS_PLATFORM_MACOS
 @interface ASTableViewProxy () <UIDataSourceModelAssociation>
 @end
 
 @interface ASCollectionViewProxy () <UIDataSourceModelAssociation>
 @end
-
-@interface ASDelegateProxy (UIDataSourceModelAssociationPrivate)
-- (nullable NSString *)_modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(UIView *)view;
-- (nullable NSIndexPath *)_indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(UIView *)view;
+#else
+@interface ASCollectionViewProxy ()
 @end
+#endif
 
+#if !AS_PLATFORM_MACOS
+@interface ASDelegateProxy (UIDataSourceModelAssociationPrivate)
+- (nullable NSString *)_modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(ASDisplayView *)view;
+- (nullable NSIndexPath *)_indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(ASDisplayView *)view;
+@end
+#endif
+
+#if !AS_PLATFORM_MACOS
 @implementation ASTableViewProxy
 
 - (BOOL)interceptsSelector:(SEL)selector
@@ -75,21 +83,23 @@
           );
 }
 
-- (nullable NSString *)modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(UIView *)view {
+- (nullable NSString *)modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(ASDisplayView *)view {
   return [self _modelIdentifierForElementAtIndexPath:indexPath inView:view];
 }
 
-- (nullable NSIndexPath *)indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(UIView *)view {
+- (nullable NSIndexPath *)indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(ASDisplayView *)view {
   return [self _indexPathForElementWithModelIdentifier:identifier inView:view];
 }
 
 @end
+#endif
 
 @implementation ASCollectionViewProxy
 
 - (BOOL)interceptsSelector:(SEL)selector
 {
   return (
+#if !AS_PLATFORM_MACOS
           // handled by ASCollectionView node<->cell machinery
           selector == @selector(collectionView:cellForItemAtIndexPath:) ||
           selector == @selector(collectionView:layout:sizeForItemAtIndexPath:) ||
@@ -99,7 +109,7 @@
           selector == @selector(collectionView:layout:referenceSizeForHeaderInSection:) ||
           selector == @selector(collectionView:layout:referenceSizeForFooterInSection:) ||
           selector == @selector(collectionView:viewForSupplementaryElementOfKind:atIndexPath:) ||
-          
+
           // Selection, highlighting, menu
           selector == @selector(collectionView:shouldSelectItemAtIndexPath:) ||
           selector == @selector(collectionView:didSelectItemAtIndexPath:) ||
@@ -112,44 +122,73 @@
           selector == @selector(collectionView:canPerformAction:forItemAtIndexPath:withSender:) ||
           selector == @selector(collectionView:performAction:forItemAtIndexPath:withSender:) ||
 
-          // Item counts
-          selector == @selector(numberOfSectionsInCollectionView:) ||
-          selector == @selector(collectionView:numberOfItemsInSection:) ||
-          
           // Element appearance callbacks
           selector == @selector(collectionView:willDisplayCell:forItemAtIndexPath:) ||
           selector == @selector(collectionView:didEndDisplayingCell:forItemAtIndexPath:) ||
           selector == @selector(collectionView:willDisplaySupplementaryView:forElementKind:atIndexPath:) ||
           selector == @selector(collectionView:didEndDisplayingSupplementaryView:forElementOfKind:atIndexPath:) ||
-          
+
           // used for batch fetching API
           selector == @selector(scrollViewWillEndDragging:withVelocity:targetContentOffset:) ||
           selector == @selector(scrollViewDidEndDecelerating:) ||
-          
+
           // used for ASCellNode visibility
           selector == @selector(scrollViewDidScroll:) ||
 
           // used for ASCellNode user interaction
           selector == @selector(scrollViewWillBeginDragging:) ||
           selector == @selector(scrollViewDidEndDragging:willDecelerate:) ||
-          
+
           // intercepted due to not being supported by ASCollectionView (prevent bugs caused by usage)
           selector == @selector(collectionView:canMoveItemAtIndexPath:) ||
           selector == @selector(collectionView:moveItemAtIndexPath:toIndexPath:) ||
 
           // UIDataSourceModelAssociation
           selector == @selector(modelIdentifierForElementAtIndexPath:inView:) ||
-          selector == @selector(indexPathForElementWithModelIdentifier:inView:)
+          selector == @selector(indexPathForElementWithModelIdentifier:inView:) ||
+#else
+          // macOS: NSCollectionViewDataSource
+          selector == @selector(collectionView:itemForRepresentedObjectAtIndexPath:) ||
+          selector == @selector(collectionView:viewForSupplementaryElementOfKind:atIndexPath:) ||
+          selector == @selector(collectionView:layout:sizeForItemAtIndexPath:) ||
+          selector == @selector(collectionView:layout:insetForSectionAtIndex:) ||
+          selector == @selector(collectionView:layout:minimumLineSpacingForSectionAtIndex:) ||
+          selector == @selector(collectionView:layout:minimumInteritemSpacingForSectionAtIndex:) ||
+          selector == @selector(collectionView:layout:referenceSizeForHeaderInSection:) ||
+          selector == @selector(collectionView:layout:referenceSizeForFooterInSection:) ||
+
+          // macOS: NSCollectionViewDelegate appearance
+          selector == @selector(collectionView:willDisplayItem:forRepresentedObjectAtIndexPath:) ||
+          selector == @selector(collectionView:didEndDisplayingItem:forRepresentedObjectAtIndexPath:) ||
+          selector == @selector(collectionView:willDisplaySupplementaryView:forElementKind:atIndexPath:) ||
+          selector == @selector(collectionView:didEndDisplayingSupplementaryView:forElementOfKind:atIndexPath:) ||
+
+          // macOS: NSCollectionViewDelegate selection (set-based)
+          selector == @selector(collectionView:shouldSelectItemsAtIndexPaths:) ||
+          selector == @selector(collectionView:didSelectItemsAtIndexPaths:) ||
+          selector == @selector(collectionView:shouldDeselectItemsAtIndexPaths:) ||
+          selector == @selector(collectionView:didDeselectItemsAtIndexPaths:) ||
+          selector == @selector(collectionView:shouldChangeItemsAtIndexPaths:toHighlightState:) ||
+          selector == @selector(collectionView:didChangeItemsAtIndexPaths:toHighlightState:) ||
+#endif
+
+          // Item counts — same selector names on both platforms
+          selector == @selector(numberOfSectionsInCollectionView:) ||
+          selector == @selector(collectionView:numberOfItemsInSection:)
           );
 }
 
-- (nullable NSString *)modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(UIView *)view {
+#if !AS_PLATFORM_MACOS
+- (nullable NSString *)modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(ASDisplayView *)view {
   return [self _modelIdentifierForElementAtIndexPath:indexPath inView:view];
 }
+#endif
 
-- (nullable NSIndexPath *)indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(UIView *)view {
+#if !AS_PLATFORM_MACOS
+- (nullable NSIndexPath *)indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(ASDisplayView *)view {
   return [self _indexPathForElementWithModelIdentifier:identifier inView:view];
 }
+#endif
 
 @end
 
@@ -257,12 +296,14 @@
   return NO;
 }
 
-- (nullable NSString *)_modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(UIView *)view {
+#if !AS_PLATFORM_MACOS
+- (nullable NSString *)_modelIdentifierForElementAtIndexPath:(NSIndexPath *)indexPath inView:(ASDisplayView *)view {
   return [(id)_interceptor modelIdentifierForElementAtIndexPath:indexPath inView:view];
 }
 
-- (nullable NSIndexPath *)_indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(UIView *)view {
+- (nullable NSIndexPath *)_indexPathForElementWithModelIdentifier:(NSString *)identifier inView:(ASDisplayView *)view {
   return [(id)_interceptor indexPathForElementWithModelIdentifier:identifier inView:view];
 }
+#endif
 
 @end

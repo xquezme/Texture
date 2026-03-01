@@ -7,9 +7,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
-
 #import "ASAvailability.h"
+#import "ASPlatformDefines.h"
 
 #if AS_ENABLE_TEXTNODE
 

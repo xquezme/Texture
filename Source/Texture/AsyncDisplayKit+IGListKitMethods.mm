@@ -9,7 +9,7 @@
 
 #import "ASAvailability.h"
 
-#if AS_IG_LIST_KIT
+#if AS_IG_LIST_KIT && !AS_PLATFORM_MACOS
 
 #import "AsyncDisplayKit+IGListKitMethods.h"
 #import "ASAssert.h"
@@ -50,4 +50,4 @@
 
 @end
 
-#endif // AS_IG_LIST_KIT
+#endif // AS_IG_LIST_KIT && !AS_PLATFORM_MACOS

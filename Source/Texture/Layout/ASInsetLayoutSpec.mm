@@ -15,7 +15,7 @@
 
 @interface ASInsetLayoutSpec ()
 {
-  UIEdgeInsets _insets;
+  ASEdgeInsets _insets;
 }
 @end
 
@@ -39,7 +39,7 @@ static CGFloat centerInset(CGFloat outer, CGFloat inner)
 
 @implementation ASInsetLayoutSpec
 
-- (instancetype)initWithInsets:(UIEdgeInsets)insets child:(id<ASLayoutElement>)child
+- (instancetype)initWithInsets:(ASEdgeInsets)insets child:(id<ASLayoutElement>)child
 {
   if (!(self = [super init])) {
     return nil;
@@ -50,12 +50,12 @@ static CGFloat centerInset(CGFloat outer, CGFloat inner)
   return self;
 }
 
-+ (instancetype)insetLayoutSpecWithInsets:(UIEdgeInsets)insets child:(id<ASLayoutElement>)child NS_RETURNS_RETAINED
++ (instancetype)insetLayoutSpecWithInsets:(ASEdgeInsets)insets child:(id<ASLayoutElement>)child NS_RETURNS_RETAINED
 {
   return [[self alloc] initWithInsets:insets child:child];
 }
 
-- (void)setInsets:(UIEdgeInsets)insets
+- (void)setInsets:(ASEdgeInsets)insets
 {
   ASDisplayNodeAssert(self.isMutable, @"Cannot set properties when layout spec is not mutable");
   _insets = insets;

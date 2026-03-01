@@ -18,7 +18,7 @@
 #pragma mark - ASCollectionViewFlowLayoutInspector
 
 @interface ASCollectionViewFlowLayoutInspector ()
-@property (nonatomic, weak) UICollectionViewFlowLayout *layout;
+@property (nonatomic, weak) ASCollectionViewFlowLayout *layout;
 @end
  
 @implementation ASCollectionViewFlowLayoutInspector {
@@ -34,7 +34,7 @@
 
 #pragma mark Lifecycle
 
-- (instancetype)initWithFlowLayout:(UICollectionViewFlowLayout *)flowLayout
+- (instancetype)initWithFlowLayout:(ASCollectionViewFlowLayout *)flowLayout
 {
   NSParameterAssert(flowLayout);
   
@@ -94,7 +94,14 @@
 - (ASSizeRange)collectionView:(ASCollectionView *)collectionView constrainedSizeForSupplementaryNodeOfKind:(NSString *)kind atIndexPath:(NSIndexPath *)indexPath
 {
   ASSizeRange result = ASSizeRangeZero;
-  if (ASObjectIsEqual(kind, UICollectionElementKindSectionHeader)) {
+#if AS_PLATFORM_MACOS
+  NSString *headerKind = NSCollectionElementKindSectionHeader;
+  NSString *footerKind = NSCollectionElementKindSectionFooter;
+#else
+  NSString *headerKind = UICollectionElementKindSectionHeader;
+  NSString *footerKind = UICollectionElementKindSectionFooter;
+#endif
+  if (ASObjectIsEqual(kind, headerKind)) {
     if (_delegateFlags.implementsSizeRangeForHeader) {
       result = [[self delegateForCollectionView:collectionView] collectionNode:collectionView.collectionNode sizeRangeForHeaderInSection:indexPath.section];
     } else if (_delegateFlags.implementsReferenceSizeForHeader) {
@@ -106,7 +113,7 @@
     } else {
       result = ASSizeRangeMake(_layout.headerReferenceSize);
     }
-  } else if (ASObjectIsEqual(kind, UICollectionElementKindSectionFooter)) {
+  } else if (ASObjectIsEqual(kind, footerKind)) {
     if (_delegateFlags.implementsSizeRangeForFooter) {
       result = [[self delegateForCollectionView:collectionView] collectionNode:collectionView.collectionNode sizeRangeForFooterInSection:indexPath.section];
     } else if (_delegateFlags.implementsReferenceSizeForFooter) {
@@ -123,7 +130,11 @@
     return ASSizeRangeZero;
   }
 
+#if AS_PLATFORM_MACOS
+  if (_layout.scrollDirection == NSCollectionViewScrollDirectionVertical) {
+#else
   if (_layout.scrollDirection == UICollectionViewScrollDirectionVertical) {
+#endif
     result.min.width = result.max.width = CGRectGetWidth(collectionView.bounds);
   } else {
     result.min.height = result.max.height = CGRectGetHeight(collectionView.bounds);
@@ -134,7 +145,11 @@
 - (NSUInteger)collectionView:(ASCollectionView *)collectionView supplementaryNodesOfKind:(NSString *)kind inSection:(NSUInteger)section
 {
   ASSizeRange constraint = [self collectionView:collectionView constrainedSizeForSupplementaryNodeOfKind:kind atIndexPath:[NSIndexPath indexPathForItem:0 inSection:section]];
+#if AS_PLATFORM_MACOS
+  if (_layout.scrollDirection == NSCollectionViewScrollDirectionVertical) {
+#else
   if (_layout.scrollDirection == UICollectionViewScrollDirectionVertical) {
+#endif
     return (constraint.max.height > 0 ? 1 : 0);
   } else {
     return (constraint.max.width > 0 ? 1 : 0);
@@ -143,7 +158,11 @@
 
 - (ASScrollDirection)scrollableDirections
 {
+#if AS_PLATFORM_MACOS
+  return (self.layout.scrollDirection == NSCollectionViewScrollDirectionHorizontal) ? ASScrollDirectionHorizontalDirections : ASScrollDirectionVerticalDirections;
+#else
   return (self.layout.scrollDirection == UICollectionViewScrollDirectionHorizontal) ? ASScrollDirectionHorizontalDirections : ASScrollDirectionVerticalDirections;
+#endif
 }
 
 #pragma mark - Private helpers

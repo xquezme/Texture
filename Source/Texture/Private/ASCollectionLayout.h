@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 
 @protocol ASCollectionLayoutDelegate;
@@ -16,7 +16,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 AS_SUBCLASSING_RESTRICTED
-@interface ASCollectionLayout : UICollectionViewLayout
+@interface ASCollectionLayout : ASCollectionViewLayout
 
 /**
  * The collection node object currently using this layout object.
@@ -34,10 +34,10 @@ AS_SUBCLASSING_RESTRICTED
 /**
  * Initializes with a layout delegate.
  *
- * @discussion For developers' convenience, the delegate is retained by this layout object, similar to UICollectionView retains its UICollectionViewLayout object.
+ * @discussion For developers' convenience, the delegate is retained by this layout object, similar to how ASCollectionView retains its layout object.
  *
  * @discussion For simplicity, the delegate is read-only. If a new layout delegate is needed, construct a new layout object with that delegate and notify ASCollectionView about it.
- * This ensures the underlying UICollectionView purges its cache and properly loads the new layout.
+ * This ensures the underlying collection view purges its cache and properly loads the new layout.
  */
 - (instancetype)initWithLayoutDelegate:(id<ASCollectionLayoutDelegate>)layoutDelegate NS_DESIGNATED_INITIALIZER;
 

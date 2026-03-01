@@ -38,9 +38,11 @@
     _laysOutHorizontally = YES;
     _contentHorizontalAlignment = ASHorizontalAlignmentMiddle;
     _contentVerticalAlignment = ASVerticalAlignmentCenter;
-    _contentEdgeInsets = UIEdgeInsetsZero;
+    _contentEdgeInsets = ASEdgeInsetsZero;
     _imageAlignment = ASButtonNodeImageAlignmentBeginning;
+#if !AS_PLATFORM_MACOS
     self.accessibilityTraits = self.defaultAccessibilityTraits;
+#endif
     
     [self updateYogaLayoutIfNeeded];
   }
@@ -83,7 +85,9 @@
   if (!_backgroundImageNode) {
     _backgroundImageNode = [[ASImageNode alloc] init];
     [_backgroundImageNode setLayerBacked:YES];
+#if !AS_PLATFORM_MACOS
     [_backgroundImageNode setContentMode:UIViewContentModeScaleToFill];
+#endif
   }
   return _backgroundImageNode;
 }
@@ -98,7 +102,9 @@
 {
   if (self.enabled != enabled) {
     [super setEnabled:enabled];
+#if !AS_PLATFORM_MACOS
     self.accessibilityTraits = self.defaultAccessibilityTraits;
+#endif
     [self updateButtonContent];
   }
 }
@@ -141,7 +147,7 @@
   // | "The tint color to apply to the button title and image."
   // | From: https://developer.apple.com/documentation/uikit/uibutton/1624025-tintcolor
   [self lock];
-  UIColor *tintColor = self.tintColor;
+  ASColor *tintColor = self.tintColor;
   self.imageNode.tintColor = tintColor;
   self.titleNode.tintColor = tintColor;
   [self unlock];
@@ -150,9 +156,12 @@
 
 - (void)updateImage
 {
+#if AS_PLATFORM_MACOS
+  return;
+#else
   [self lock];
   
-  UIImage *newImage;
+  ASImage *newImage;
   if (self.enabled == NO && _disabledImage) {
     newImage = _disabledImage;
   } else if (self.highlighted && self.selected && _selectedHighlightedImage) {
@@ -175,10 +184,14 @@
   }
   
   [self unlock];
+#endif
 }
 
 - (void)updateTitle
 {
+#if AS_PLATFORM_MACOS
+  return;
+#else
   [self lock];
 
   NSAttributedString *newTitle;
@@ -207,13 +220,17 @@
   }
   
   [self unlock];
+#endif
 }
 
 - (void)updateBackgroundImage
 {
+#if AS_PLATFORM_MACOS
+  return;
+#else
   [self lock];
   
-  UIImage *newImage;
+  ASImage *newImage;
   if (self.enabled == NO && _disabledBackgroundImage) {
     newImage = _disabledBackgroundImage;
   } else if (self.highlighted && self.selected && _selectedHighlightedBackgroundImage) {
@@ -236,6 +253,7 @@
   }
   
   [self unlock];
+#endif
 }
 
 - (CGFloat)contentSpacing
@@ -290,13 +308,13 @@
   _contentHorizontalAlignment = contentHorizontalAlignment;
 }
 
-- (UIEdgeInsets)contentEdgeInsets
+- (ASEdgeInsets)contentEdgeInsets
 {
   ASLockScopeSelf();
   return _contentEdgeInsets;
 }
 
-- (void)setContentEdgeInsets:(UIEdgeInsets)contentEdgeInsets
+- (void)setContentEdgeInsets:(ASEdgeInsets)contentEdgeInsets
 {
   ASLockScopeSelf();
   _contentEdgeInsets = contentEdgeInsets;
@@ -315,11 +333,11 @@
 }
 
 
-#if TARGET_OS_IOS
-- (void)setTitle:(NSString *)title withFont:(UIFont *)font withColor:(UIColor *)color forState:(UIControlState)state
+#if !AS_PLATFORM_MACOS && TARGET_OS_IOS
+- (void)setTitle:(NSString *)title withFont:(ASFont *)font withColor:(ASColor *)color forState:(UIControlState)state
 {
   NSMutableDictionary *attributes = [NSMutableDictionary dictionary];
-  attributes[NSFontAttributeName] = font ? : [UIFont systemFontOfSize:[UIFont buttonFontSize]];
+  attributes[NSFontAttributeName] = font ? : [ASFont systemFontOfSize:[ASFont buttonFontSize]];
   if (color != nil) {
     // From apple's documentation: If color is not specified, NSForegroundColorAttributeName will fallback to black
     // Only set if the color is nonnull
@@ -330,6 +348,7 @@
 }
 #endif
 
+#if !AS_PLATFORM_MACOS
 - (NSAttributedString *)attributedTitleForState:(UIControlState)state
 {
   ASLockScopeSelf();
@@ -387,7 +406,7 @@
   [self updateTitle];
 }
 
-- (UIImage *)imageForState:(UIControlState)state
+- (ASImage *)imageForState:(UIControlState)state
 {
   ASLockScopeSelf();
   switch (state) {
@@ -411,7 +430,7 @@
   }
 }
 
-- (void)setImage:(UIImage *)image forState:(UIControlState)state
+- (void)setImage:(ASImage *)image forState:(UIControlState)state
 {
   {
     ASLockScopeSelf();
@@ -444,7 +463,7 @@
   [self updateImage];
 }
 
-- (UIImage *)backgroundImageForState:(UIControlState)state
+- (ASImage *)backgroundImageForState:(UIControlState)state
 {
   ASLockScopeSelf();
   switch (state) {
@@ -468,7 +487,7 @@
   }
 }
 
-- (void)setBackgroundImage:(UIImage *)image forState:(UIControlState)state
+- (void)setBackgroundImage:(ASImage *)image forState:(UIControlState)state
 {
   {
     ASLockScopeSelf();
@@ -500,6 +519,7 @@
 
   [self updateBackgroundImage];
 }
+#endif
 
 
 - (NSString *)defaultAccessibilityLabel
@@ -508,18 +528,20 @@
   return _titleNode.defaultAccessibilityLabel;
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIAccessibilityTraits)defaultAccessibilityTraits
 {
   return self.enabled ? UIAccessibilityTraitButton
                       : (UIAccessibilityTraitButton | UIAccessibilityTraitNotEnabled);
 }
+#endif
 
 #pragma mark - Layout
 
 #if !YOGA
 - (ASLayoutSpec *)layoutSpecThatFits:(ASSizeRange)constrainedSize
 {
-    UIEdgeInsets contentEdgeInsets;
+    ASEdgeInsets contentEdgeInsets;
     ASButtonNodeImageAlignment imageAlignment;
     ASLayoutSpec *spec;
     ASStackLayoutSpec *stack = [[ASStackLayoutSpec alloc] init];
@@ -551,7 +573,7 @@
     
     spec = stack;
     
-    if (UIEdgeInsetsEqualToEdgeInsets(UIEdgeInsetsZero, contentEdgeInsets) == NO) {
+    if (ASEdgeInsetsEqualToEdgeInsets(ASEdgeInsetsZero, contentEdgeInsets) == NO) {
         spec = [ASInsetLayoutSpec insetLayoutSpecWithInsets:contentEdgeInsets child:spec];
     }
     

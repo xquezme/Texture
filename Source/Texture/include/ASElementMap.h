@@ -8,11 +8,12 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class ASCollectionElement, ASSection, UICollectionViewLayoutAttributes;
+@class ASCollectionElement, ASSection;
 @protocol ASSectionContext;
 
 /**
@@ -101,7 +102,7 @@ AS_SUBCLASSING_RESTRICTED
  * NOTE: This method only regards the category, kind, and index path of the attributes object. Elements do not
  * have any concept of size/position.
  */
-- (nullable ASCollectionElement *)elementForLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes;
+- (nullable ASCollectionElement *)elementForLayoutAttributes:(ASCollectionViewLayoutAttributes *)layoutAttributes;
 
 /**
  * A very terse description e.g. { itemCounts = [ <S0: 1> <S1: 16> ] }

@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 
 /**
@@ -22,7 +22,7 @@
  */
 ASDK_EXTERN void ASCroppedImageBackingSizeAndDrawRectInBounds(CGSize sourceImageSize,
                                                          CGSize boundsSize,
-                                                         UIViewContentMode contentMode,
+                                                         NSInteger contentMode,
                                                          CGRect cropRect,
                                                          BOOL forceUpscaling,
                                                          CGSize forcedSize,

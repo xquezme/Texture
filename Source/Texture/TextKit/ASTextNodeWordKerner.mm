@@ -9,14 +9,14 @@
 
 #import "ASTextNodeWordKerner.h"
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "ASTextNodeTypes.h"
 
 @implementation ASTextNodeWordKerner
 
 #pragma mark - NSLayoutManager Delegate
-- (NSUInteger)layoutManager:(NSLayoutManager *)layoutManager shouldGenerateGlyphs:(const CGGlyph *)glyphs properties:(const NSGlyphProperty *)properties characterIndexes:(const NSUInteger *)characterIndexes font:(UIFont *)aFont forGlyphRange:(NSRange)glyphRange
+- (NSUInteger)layoutManager:(NSLayoutManager *)layoutManager shouldGenerateGlyphs:(const CGGlyph *)glyphs properties:(const NSGlyphProperty *)properties characterIndexes:(const NSUInteger *)characterIndexes font:(ASFont *)aFont forGlyphRange:(NSRange)glyphRange
 {
   NSUInteger glyphCount = glyphRange.length;
   NSGlyphProperty *newGlyphProperties = NULL;
@@ -94,7 +94,7 @@
     mapQueue = dispatch_queue_create("org.AsyncDisplayKit.wordKerningQueue", DISPATCH_QUEUE_SERIAL);
   });
   CGFloat ordinarySpaceWidth;
-  UIFont *font = [layoutManager.textStorage attribute:NSFontAttributeName atIndex:characterIndex effectiveRange:NULL];
+  ASFont *font = [layoutManager.textStorage attribute:NSFontAttributeName atIndex:characterIndex effectiveRange:NULL];
   CGFloat wordKerning = [[layoutManager.textStorage attribute:ASTextNodeWordKerningAttributeName atIndex:characterIndex effectiveRange:NULL] floatValue];
   __block NSNumber *ordinarySpaceSizeValue;
   dispatch_sync(mapQueue, ^{

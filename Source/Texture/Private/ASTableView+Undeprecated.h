@@ -8,11 +8,13 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASTableNode.h"
 #import "ASLayoutRangeType.h"
 
 NS_ASSUME_NONNULL_BEGIN
+
+#if !AS_PLATFORM_MACOS
 
 /**
  * Currently our public table API is on @c ASTableNode and the @c ASTableView
@@ -295,4 +297,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated;
 
 @end
+
+#endif
+
 NS_ASSUME_NONNULL_END

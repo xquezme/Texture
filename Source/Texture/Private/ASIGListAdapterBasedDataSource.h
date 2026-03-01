@@ -9,7 +9,7 @@
 
 #import "ASAvailability.h"
 
-#if AS_IG_LIST_KIT
+#if AS_IG_LIST_KIT && !AS_PLATFORM_MACOS
 
 #if __has_include(<IGListKit/IGListKit.h>)
 #import <IGListKit/IGListKit.h>

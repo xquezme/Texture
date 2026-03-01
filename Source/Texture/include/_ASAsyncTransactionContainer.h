@@ -9,7 +9,7 @@
 
 #pragma once 
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -75,7 +75,11 @@ typedef NS_ENUM(NSUInteger, ASAsyncTransactionContainerState) {
 
 @end
 
+#if AS_PLATFORM_MACOS
+@interface NSView (ASAsyncTransactionContainer) <ASAsyncTransactionContainer>
+#else
 @interface UIView (ASAsyncTransactionContainer) <ASAsyncTransactionContainer>
+#endif
 @end
 
 NS_ASSUME_NONNULL_END

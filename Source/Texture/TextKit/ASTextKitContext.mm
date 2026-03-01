@@ -25,7 +25,7 @@
 }
 
 - (instancetype)initWithAttributedString:(NSAttributedString *)attributedString
-                               tintColor:(UIColor *)tintColor
+                               tintColor:(ASColor *)tintColor
                            lineBreakMode:(NSLineBreakMode)lineBreakMode
                     maximumNumberOfLines:(NSUInteger)maximumNumberOfLines
                           exclusionPaths:(NSArray *)exclusionPaths
@@ -63,7 +63,7 @@
       // Apply tint color if specified and if foreground color is undefined for attributedString
       NSRange limit = NSMakeRange(0, attributedString.length);
       // Look for previous attributes that define foreground color
-      UIColor *attributeValue = (UIColor *)[attributedString attribute:NSForegroundColorAttributeName atIndex:limit.location effectiveRange:NULL];
+      ASColor *attributeValue = (ASColor *)[attributedString attribute:NSForegroundColorAttributeName atIndex:limit.location effectiveRange:NULL];
       if (attributeValue == nil) {
         // None are found, apply tint color if available. Fallback to "black" text color
         if (tintColor) {

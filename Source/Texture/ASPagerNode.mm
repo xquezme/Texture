@@ -9,27 +9,27 @@
 
 #import "ASPagerNode.h"
 
+#import "ASCellNode.h"
 #import "ASCollectionGalleryLayoutDelegate.h"
 #import "ASCollectionNode+Beta.h"
+#import "ASCollectionView+Undeprecated.h"
 #import "ASDelegateProxy.h"
 #import "ASDisplayNode+FrameworkPrivate.h"
 #import "ASDisplayNode+Subclasses.h"
 #import "ASPagerFlowLayout.h"
-#import "ASCellNode.h"
 #import "UIResponder+AsyncDisplayKit.h"
-#import "ASCollectionView+Undeprecated.h"
 
-@interface ASPagerNode () <ASCollectionDataSource, ASCollectionDelegate, ASCollectionDelegateFlowLayout, ASDelegateProxyInterceptor, ASCollectionGalleryLayoutPropertiesProviding>
-{
-  __weak id <ASPagerDataSource> _pagerDataSource;
+@interface ASPagerNode () <ASCollectionDataSource, ASCollectionDelegate, ASCollectionDelegateFlowLayout,
+                           ASDelegateProxyInterceptor, ASCollectionGalleryLayoutPropertiesProviding> {
+  __weak id<ASPagerDataSource> _pagerDataSource;
   ASPagerNodeProxy *_proxyDataSource;
   struct {
-    unsigned nodeBlockAtIndex:1;
-    unsigned nodeAtIndex:1;
+    unsigned nodeBlockAtIndex : 1;
+    unsigned nodeAtIndex : 1;
   } _pagerDataSourceFlags;
-    BOOL _allowsAutomaticInsetsAdjustment;
+  BOOL _allowsAutomaticInsetsAdjustment;
 
-  __weak id <ASPagerDelegate> _pagerDelegate;
+  __weak id<ASPagerDelegate> _pagerDelegate;
   ASPagerNodeProxy *_proxyDelegate;
 }
 
@@ -44,55 +44,75 @@
 - (instancetype)init
 {
   ASPagerFlowLayout *flowLayout = [[ASPagerFlowLayout alloc] init];
+#if AS_PLATFORM_MACOS
+  flowLayout.scrollDirection = NSCollectionViewScrollDirectionHorizontal;
+#else
   flowLayout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
+#endif
   flowLayout.minimumInteritemSpacing = 0;
   flowLayout.minimumLineSpacing = 0;
-  
+
   return [self initWithCollectionViewLayout:flowLayout];
 }
 
 - (instancetype)initWithCollectionViewLayout:(ASPagerFlowLayout *)flowLayout
 {
   ASDisplayNodeAssert([flowLayout isKindOfClass:[ASPagerFlowLayout class]], @"ASPagerNode requires a flow layout.");
+#if AS_PLATFORM_MACOS
+  ASDisplayNodeAssertTrue(flowLayout.scrollDirection == NSCollectionViewScrollDirectionHorizontal);
+#else
   ASDisplayNodeAssertTrue(flowLayout.scrollDirection == UICollectionViewScrollDirectionHorizontal);
+#endif
   self = [super initWithCollectionViewLayout:flowLayout];
   return self;
 }
 
+#if !AS_PLATFORM_MACOS
 - (instancetype)initUsingAsyncCollectionLayout
 {
-  ASCollectionGalleryLayoutDelegate *layoutDelegate = [[ASCollectionGalleryLayoutDelegate alloc] initWithScrollableDirections:ASScrollDirectionHorizontalDirections];
+  ASCollectionGalleryLayoutDelegate *layoutDelegate =
+      [[ASCollectionGalleryLayoutDelegate alloc] initWithScrollableDirections:ASScrollDirectionHorizontalDirections];
   self = [super initWithLayoutDelegate:layoutDelegate layoutFacilitator:nil];
   if (self) {
     layoutDelegate.propertiesProvider = self;
   }
   return self;
 }
+#endif
 
 #pragma mark - ASDisplayNode
 
 - (void)didLoad
 {
   [super didLoad];
-  
+
   ASCollectionView *cv = self.view;
   cv.asyncDataSource = (id<ASCollectionDataSource>)_proxyDataSource ?: self;
   cv.asyncDelegate = (id<ASCollectionDelegate>)_proxyDelegate ?: self;
-#if TARGET_OS_IOS
+#if !AS_PLATFORM_MACOS
   cv.pagingEnabled = YES;
   cv.scrollsToTop = NO;
 #endif
+#if AS_PLATFORM_MACOS
+  cv.enclosingScrollView.hasVerticalScroller = NO;
+  cv.enclosingScrollView.hasHorizontalScroller = NO;
+#else
   cv.allowsSelection = NO;
   cv.showsVerticalScrollIndicator = NO;
   cv.showsHorizontalScrollIndicator = NO;
+#endif
 
-  ASRangeTuningParameters minimumRenderParams = { .leadingBufferScreenfuls = 0.0, .trailingBufferScreenfuls = 0.0 };
-  ASRangeTuningParameters minimumPreloadParams = { .leadingBufferScreenfuls = 1.0, .trailingBufferScreenfuls = 1.0 };
-  [self setTuningParameters:minimumRenderParams forRangeMode:ASLayoutRangeModeMinimum rangeType:ASLayoutRangeTypeDisplay];
-  [self setTuningParameters:minimumPreloadParams forRangeMode:ASLayoutRangeModeMinimum rangeType:ASLayoutRangeTypePreload];
-  
-  ASRangeTuningParameters fullRenderParams = { .leadingBufferScreenfuls = 1.0, .trailingBufferScreenfuls = 1.0 };
-  ASRangeTuningParameters fullPreloadParams = { .leadingBufferScreenfuls = 2.0, .trailingBufferScreenfuls = 2.0 };
+  ASRangeTuningParameters minimumRenderParams = {.leadingBufferScreenfuls = 0.0, .trailingBufferScreenfuls = 0.0};
+  ASRangeTuningParameters minimumPreloadParams = {.leadingBufferScreenfuls = 1.0, .trailingBufferScreenfuls = 1.0};
+  [self setTuningParameters:minimumRenderParams
+               forRangeMode:ASLayoutRangeModeMinimum
+                  rangeType:ASLayoutRangeTypeDisplay];
+  [self setTuningParameters:minimumPreloadParams
+               forRangeMode:ASLayoutRangeModeMinimum
+                  rangeType:ASLayoutRangeTypePreload];
+
+  ASRangeTuningParameters fullRenderParams = {.leadingBufferScreenfuls = 1.0, .trailingBufferScreenfuls = 1.0};
+  ASRangeTuningParameters fullPreloadParams = {.leadingBufferScreenfuls = 2.0, .trailingBufferScreenfuls = 2.0};
   [self setTuningParameters:fullRenderParams forRangeMode:ASLayoutRangeModeFull rangeType:ASLayoutRangeTypeDisplay];
   [self setTuningParameters:fullPreloadParams forRangeMode:ASLayoutRangeModeFull rangeType:ASLayoutRangeTypePreload];
 }
@@ -106,7 +126,7 @@
 
 - (CGSize)pageSize
 {
-  UIEdgeInsets contentInset = self.contentInset;
+  ASEdgeInsets contentInset = self.contentInset;
   CGSize pageSize = self.bounds.size;
   pageSize.height -= (contentInset.top + contentInset.bottom);
   return pageSize;
@@ -117,7 +137,13 @@
 - (void)scrollToPageAtIndex:(NSInteger)index animated:(BOOL)animated
 {
   NSIndexPath *indexPath = [NSIndexPath indexPathForItem:index inSection:0];
+#if AS_PLATFORM_MACOS
+  [self scrollToItemAtIndexPath:indexPath
+               atScrollPosition:NSCollectionViewScrollPositionNearestHorizontalEdge
+                       animated:animated];
+#else
   [self scrollToItemAtIndexPath:indexPath atScrollPosition:UICollectionViewScrollPositionLeft animated:animated];
+#endif
 }
 
 - (ASCellNode *)nodeForPageAtIndex:(NSInteger)index
@@ -131,12 +157,13 @@
   if (!indexPath) {
     return NSNotFound;
   }
-  return indexPath.row;
+  return indexPath.item;
 }
 
 #pragma mark - ASCollectionGalleryLayoutPropertiesProviding
 
-- (CGSize)galleryLayoutDelegate:(nonnull ASCollectionGalleryLayoutDelegate *)delegate sizeForElements:(nonnull ASElementMap *)elements
+- (CGSize)galleryLayoutDelegate:(nonnull ASCollectionGalleryLayoutDelegate *)delegate
+                sizeForElements:(nonnull ASElementMap *)elements
 {
   ASDisplayNodeAssertMainThread();
   return [self pageSize];
@@ -144,15 +171,21 @@
 
 #pragma mark - ASCollectionDataSource
 
-- (ASCellNodeBlock)collectionNode:(ASCollectionNode *)collectionNode nodeBlockForItemAtIndexPath:(NSIndexPath *)indexPath
+- (ASCellNodeBlock)collectionNode:(ASCollectionNode *)collectionNode
+      nodeBlockForItemAtIndexPath:(NSIndexPath *)indexPath
 {
   if (_pagerDataSourceFlags.nodeBlockAtIndex) {
     return [_pagerDataSource pagerNode:self nodeBlockAtIndex:indexPath.item];
   } else if (_pagerDataSourceFlags.nodeAtIndex) {
     ASCellNode *node = [_pagerDataSource pagerNode:self nodeAtIndex:indexPath.item];
-    return ^{ return node; };
+    return ^{
+      return node;
+    };
   } else {
-    ASDisplayNodeFailAssert(@"Pager data source must implement either %@ or %@. Data source: %@", NSStringFromSelector(@selector(pagerNode:nodeBlockAtIndex:)), NSStringFromSelector(@selector(pagerNode:nodeAtIndex:)), _pagerDataSource);
+    ASDisplayNodeFailAssert(@"Pager data source must implement either %@ or %@. Data source: %@",
+                            NSStringFromSelector(@selector(pagerNode:nodeBlockAtIndex:)),
+                            NSStringFromSelector(@selector(pagerNode:nodeAtIndex:)),
+                            _pagerDataSource);
     return ^{
       return [[ASCellNode alloc] init];
     };
@@ -167,33 +200,35 @@
 
 #pragma mark - ASCollectionDelegate
 
-- (ASSizeRange)collectionNode:(ASCollectionNode *)collectionNode constrainedSizeForItemAtIndexPath:(NSIndexPath *)indexPath
+- (ASSizeRange)collectionNode:(ASCollectionNode *)collectionNode
+    constrainedSizeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
   return ASSizeRangeMake([self pageSize]);
 }
 
 #pragma mark - Data Source Proxy
 
-- (id <ASPagerDataSource>)dataSource
+- (id<ASPagerDataSource>)dataSource
 {
   return _pagerDataSource;
 }
 
-- (void)setDataSource:(id <ASPagerDataSource>)dataSource
+- (void)setDataSource:(id<ASPagerDataSource>)dataSource
 {
   if (dataSource != _pagerDataSource) {
     _pagerDataSource = dataSource;
-    
+
     if (dataSource == nil) {
       memset(&_pagerDataSourceFlags, 0, sizeof(_pagerDataSourceFlags));
     } else {
-      _pagerDataSourceFlags.nodeBlockAtIndex = [_pagerDataSource respondsToSelector:@selector(pagerNode:nodeBlockAtIndex:)];
+      _pagerDataSourceFlags.nodeBlockAtIndex = [_pagerDataSource respondsToSelector:@selector(pagerNode:
+                                                                                        nodeBlockAtIndex:)];
       _pagerDataSourceFlags.nodeAtIndex = [_pagerDataSource respondsToSelector:@selector(pagerNode:nodeAtIndex:)];
     }
-    
+
     _proxyDataSource = dataSource ? [[ASPagerNodeProxy alloc] initWithTarget:dataSource interceptor:self] : nil;
-    
-    super.dataSource = (id <ASCollectionDataSource>)_proxyDataSource;
+
+    super.dataSource = (id<ASCollectionDataSource>)_proxyDataSource;
   }
 }
 
@@ -202,7 +237,7 @@
   if (delegate != _pagerDelegate) {
     _pagerDelegate = delegate;
     _proxyDelegate = delegate ? [[ASPagerNodeProxy alloc] initWithTarget:delegate interceptor:self] : nil;
-    super.delegate = (id <ASCollectionDelegate>)_proxyDelegate;
+    super.delegate = (id<ASCollectionDelegate>)_proxyDelegate;
   }
 }
 
@@ -214,17 +249,22 @@
 
 - (void)didEnterHierarchy
 {
-	[super didEnterHierarchy];
+  [super didEnterHierarchy];
 
-	// Check that our view controller does not automatically set our content insets
-	// In every use case I can imagine, the pager is not hosted inside a range-managed node.
-	if (_allowsAutomaticInsetsAdjustment == NO) {
-		UIViewController *vc = [self.view asdk_associatedViewController];
-		if (vc.automaticallyAdjustsScrollViewInsets) {
-			NSLog(@"AsyncDisplayKit: ASPagerNode is setting automaticallyAdjustsScrollViewInsets=NO on its owning view controller %@. This automatic behavior will be disabled in the future. Set allowsAutomaticInsetsAdjustment=YES on the pager node to suppress this behavior.", vc);
-			vc.automaticallyAdjustsScrollViewInsets = NO;
-		}
-	}
+#if !AS_PLATFORM_MACOS
+  // Check that our view controller does not automatically set our content insets
+  // In every use case I can imagine, the pager is not hosted inside a range-managed node.
+  if (_allowsAutomaticInsetsAdjustment == NO) {
+    ASDisplayViewController *vc = [self.view asdk_associatedViewController];
+    if (vc.automaticallyAdjustsScrollViewInsets) {
+      NSLog(@"AsyncDisplayKit: ASPagerNode is setting automaticallyAdjustsScrollViewInsets=NO on its owning view "
+            @"controller %@. This automatic behavior will be disabled in the future. Set "
+            @"allowsAutomaticInsetsAdjustment=YES on the pager node to suppress this behavior.",
+            vc);
+      vc.automaticallyAdjustsScrollViewInsets = NO;
+    }
+  }
+#endif
 }
 
 @end

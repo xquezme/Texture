@@ -11,6 +11,7 @@
 #import "ASLog.h"
 #import "ASObjectDescriptionHelpers.h"
 
+#if !AS_PLATFORM_MACOS
 @implementation ASDKNavigationController
 {
   BOOL _parentManagesVisibilityDepth;
@@ -29,14 +30,14 @@ ASVisibilityDepthImplementation;
 
 - (void)visibilityDepthDidChange
 {
-  for (UIViewController *viewController in self.viewControllers) {
+  for (ASDisplayViewController *viewController in self.viewControllers) {
     if ([viewController conformsToProtocol:@protocol(ASVisibilityDepth)]) {
       [(id <ASVisibilityDepth>)viewController visibilityDepthDidChange];
     }
   }
 }
 
-- (NSInteger)visibilityDepthOfChildViewController:(UIViewController *)childViewController
+- (NSInteger)visibilityDepthOfChildViewController:(ASDisplayViewController *)childViewController
 {
   NSUInteger viewControllerIndex = [self.viewControllers indexOfObjectIdenticalTo:childViewController];
   if (viewControllerIndex == NSNotFound) {
@@ -57,7 +58,7 @@ ASVisibilityDepthImplementation;
 
 #pragma mark - UIKit overrides
 
-- (NSArray *)popToViewController:(UIViewController *)viewController animated:(BOOL)animated
+- (NSArray *)popToViewController:(ASDisplayViewController *)viewController animated:(BOOL)animated
 {
   as_activity_create_for_scope("Pop multiple from ASDKNavigationController");
   NSArray *viewControllers = [super popToViewController:viewController animated:animated];
@@ -93,7 +94,7 @@ ASVisibilityDepthImplementation;
   [self visibilityDepthDidChange];
 }
 
-- (void)pushViewController:(UIViewController *)viewController animated:(BOOL)animated
+- (void)pushViewController:(ASDisplayViewController *)viewController animated:(BOOL)animated
 {
   as_activity_create_for_scope("Push view controller on ASDKNavigationController");
   os_log_info(ASNodeLog(), "Pushing %@ onto %@", viewController, self);
@@ -101,13 +102,14 @@ ASVisibilityDepthImplementation;
   [self visibilityDepthDidChange];
 }
 
-- (UIViewController *)popViewControllerAnimated:(BOOL)animated
+- (ASDisplayViewController *)popViewControllerAnimated:(BOOL)animated
 {
   as_activity_create_for_scope("Pop view controller from ASDKNavigationController");
-  UIViewController *viewController = [super popViewControllerAnimated:animated];
+  ASDisplayViewController *viewController = [super popViewControllerAnimated:animated];
   os_log_info(ASNodeLog(), "Popped %@ from %@", viewController, self);
   [self visibilityDepthDidChange];
   return viewController;
 }
 
 @end
+#endif

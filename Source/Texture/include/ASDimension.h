@@ -8,7 +8,7 @@
 //
 
 #pragma once
-#import <UIKit/UIGeometry.h>
+#import "ASPlatformDefines.h"
 #import <QuartzCore/QuartzCore.h>
 #import "ASAvailability.h"
 #import "ASBaseDefines.h"
@@ -317,7 +317,11 @@ typedef struct {
 
 ASDK_EXTERN ASEdgeInsets const ASEdgeInsetsZero;
 
+#if AS_PLATFORM_MACOS
+ASDK_EXTERN ASEdgeInsets ASEdgeInsetsMake(NSEdgeInsets edgeInsets);
+#else
 ASDK_EXTERN ASEdgeInsets ASEdgeInsetsMake(UIEdgeInsets edgeInsets);
+#endif
 
 #endif
 

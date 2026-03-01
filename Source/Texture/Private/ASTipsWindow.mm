@@ -8,7 +8,7 @@
 //
 
 #import "ASTipsWindow.h"
-#if AS_ENABLE_TIPS
+#if AS_ENABLE_TIPS && !AS_PLATFORM_MACOS
 
 #import "ASDisplayNodeTipState.h"
 #import "ASTipNode.h"
@@ -30,7 +30,7 @@
      *
      * So we set a dummy root view controller and hide it.
      */
-    self.rootViewController = [UIViewController new];
+    self.rootViewController = [ASDisplayViewController new];
     self.rootViewController.view.hidden = YES;
 
     _node = [[ASDisplayNode alloc] init];
@@ -42,9 +42,9 @@
   return self;
 }
 
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+- (ASDisplayView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
-  UIView *result = [super hitTest:point withEvent:event];
+  ASDisplayView *result = [super hitTest:point withEvent:event];
   // Ignore touches unless they hit one of my node's subnodes
   if (result == _node.view) {
     return nil;
@@ -95,4 +95,4 @@
 
 @end
 
-#endif // AS_ENABLE_TIPS
+#endif // AS_ENABLE_TIPS && !AS_PLATFORM_MACOS

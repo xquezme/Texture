@@ -10,19 +10,25 @@
 #import "ASControlNode.h"
 #import "ASControlNode+Subclasses.h"
 #import "ASDisplayNode+Subclasses.h"
-#import "ASImageNode.h"
+#if !AS_PLATFORM_MACOS
+  #import "ASImageNode.h"
+#endif
 #import "AsyncDisplayKit+Debug.h"
 #import "ASControlTargetAction.h"
 #import "ASDisplayNode+FrameworkPrivate.h"
 #import "ASThread.h"
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
 #import "ASControlNode+Private.h"
 #endif
 
 // UIControl allows dragging some distance outside of the control itself during
 // tracking. This value depends on the device idiom (25 or 70 points), so
 // so replicate that effect with the same values here for our own controls.
-#define kASControlNodeExpandedInset (([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad) ? -25.0f : -70.0f)
+#if AS_PLATFORM_MACOS
+  #define kASControlNodeExpandedInset (-25.0f)
+#else
+  #define kASControlNodeExpandedInset (([[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPad) ? -25.0f : -70.0f)
+#endif
 
 // Initial capacities for dispatch tables.
 #define kASControlNodeEventDispatchTableInitialCapacity 4
@@ -68,12 +74,16 @@ void _ASEnumerateControlEventsIncludedInMaskWithBlock(ASControlNodeEvent mask, v
  */
 CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
 
+#if AS_PLATFORM_MACOS
+- (void)_sendActionsForControlEvents:(ASControlNodeEvent)controlEvents withEvent:(nullable NSEvent *)event;
+- (void)_cancelTrackingWithEvent:(nullable NSEvent *)event;
+#endif
 
 @end
 
 @implementation ASControlNode
 {
-  ASImageNode *_debugHighlightOverlay;
+  ASDisplayNode *_debugHighlightOverlay;
 }
 
 #pragma mark - Lifecycle
@@ -91,7 +101,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
   return self;
 }
 
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
 - (void)didLoad
 {
   [super didLoad];
@@ -114,8 +124,8 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
 - (void)__exitHierarchy
 {
   [super __exitHierarchy];
-  
-  // If a control node is exit the hierarchy and is tracking we have to cancel it
+
+  // If a control node exits the hierarchy while tracking, cancel tracking.
   if (self.tracking) {
     [self _cancelTrackingWithEvent:nil];
   }
@@ -124,6 +134,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wobjc-missing-super-calls"
 
+#if !AS_PLATFORM_MACOS
 #pragma mark - ASDisplayNode Overrides
 
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
@@ -248,7 +259,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
 
 #pragma clang diagnostic pop
 
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+- (ASDisplayView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
   ASDisplayNodeAssertMainThread();
 
@@ -260,7 +271,7 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
   return [super hitTest:point withEvent:event];
 }
 
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+- (BOOL)gestureRecognizerShouldBegin:(ASGestureRecognizer *)gestureRecognizer
 {
   // If we're interested in touches, this is a tap (the only gesture we care about) and passed -hitTest for us, then no, you may not begin. Sir.
   if (self.enabled && [gestureRecognizer isKindOfClass:[UITapGestureRecognizer class]] && gestureRecognizer.view != self.view) {
@@ -300,7 +311,11 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
       dispatch_async(dispatch_get_main_queue(), ^{
         // add a highlight overlay node with area of ASControlNode + UIEdgeInsets
         self.clipsToBounds = NO;
+#if AS_PLATFORM_MACOS
+        self->_debugHighlightOverlay = [[ASDisplayNode alloc] init];
+#else
         self->_debugHighlightOverlay = [[ASImageNode alloc] init];
+#endif
         self->_debugHighlightOverlay.zPosition = 1000;  // ensure we're over the top of any siblings
         self->_debugHighlightOverlay.layerBacked = YES;
         [self addSubnode:self->_debugHighlightOverlay];
@@ -443,7 +458,11 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode);
           // NSNull means that a nil target was set, so start at self and travel the responder chain
           if (!resolvedTargetAction.target && targetAction.createdWithNoTarget) {
             // if the target cannot perform the action, travel the responder chain to try to find something that does
+#if AS_PLATFORM_MACOS
+            resolvedTargetAction.target = [NSApp targetForAction:resolvedTargetAction.action to:nil from:self];
+#else
             resolvedTargetAction.target = [self.view targetForAction:resolvedTargetAction.action withSender:self];
+#endif
           }
           
           if (resolvedTargetAction.target) {
@@ -507,9 +526,273 @@ CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode) {
 {
   // Subclass hook
 }
+#endif
+
+#if AS_PLATFORM_MACOS
+id<NSCopying> _ASControlNodeEventKeyForControlEvent(ASControlNodeEvent controlEvent)
+{
+  return @(controlEvent);
+}
+
+void _ASEnumerateControlEventsIncludedInMaskWithBlock(ASControlNodeEvent mask, void (^block)(ASControlNodeEvent anEvent))
+{
+  if (block == nil) {
+    return;
+  }
+
+  for (ASControlNodeEvent thisEvent = ASControlNodeEventTouchDown; thisEvent <= ASControlNodeEventPrimaryActionTriggered; thisEvent <<= 1) {
+    if ((mask & thisEvent) == thisEvent) {
+      block(thisEvent);
+    }
+  }
+}
+
+CGRect _ASControlNodeGetExpandedBounds(ASControlNode *controlNode) {
+  return CGRectInset(ASRectInsetWithEdgeInsets(controlNode.view.bounds, controlNode.hitTestSlop), kASControlNodeExpandedInset, kASControlNodeExpandedInset);
+}
+
+- (void)mouseDown:(NSEvent *)event
+{
+  if (!self.enabled) {
+    return;
+  }
+
+  if (![self beginTrackingWithEvent:event]) {
+    return;
+  }
+
+  if (self.tracking) {
+    [self _cancelTrackingWithEvent:event];
+    return;
+  }
+
+  self.tracking = YES;
+  self.touchInside = YES;
+  self.highlighted = YES;
+
+  ASControlNodeEvent controlEventMask = (event.clickCount == 1) ? ASControlNodeEventTouchDown : ASControlNodeEventTouchDownRepeat;
+  [self _sendActionsForControlEvents:controlEventMask withEvent:event];
+}
+
+- (void)mouseDragged:(NSEvent *)event
+{
+  if (!self.enabled) {
+    return;
+  }
+
+  if (!self.tracking || ![self continueTrackingWithEvent:event]) {
+    self.tracking = NO;
+    return;
+  }
+
+  CGPoint location = [self.view convertPoint:event.locationInWindow fromView:nil];
+  BOOL dragIsInsideBounds = CGRectContainsPoint(self.view.bounds, location);
+  BOOL dragIsInsideExpandedBounds = CGRectContainsPoint(_ASControlNodeGetExpandedBounds(self), location);
+  self.touchInside = dragIsInsideExpandedBounds;
+  self.highlighted = dragIsInsideExpandedBounds;
+
+  [self _sendActionsForControlEvents:(dragIsInsideBounds ? ASControlNodeEventTouchDragInside : ASControlNodeEventTouchDragOutside) withEvent:event];
+}
+
+- (void)mouseUp:(NSEvent *)event
+{
+  if (!self.enabled) {
+    return;
+  }
+
+  if (!self.tracking) {
+    return;
+  }
+
+  CGPoint location = [self.view convertPoint:event.locationInWindow fromView:nil];
+  self.tracking = NO;
+  self.touchInside = NO;
+  self.highlighted = NO;
+
+  [self endTrackingWithEvent:event];
+
+  BOOL touchUpIsInsideExpandedBounds = CGRectContainsPoint(_ASControlNodeGetExpandedBounds(self), location);
+  [self _sendActionsForControlEvents:(touchUpIsInsideExpandedBounds ? ASControlNodeEventTouchUpInside : ASControlNodeEventTouchUpOutside) withEvent:event];
+}
+
+- (BOOL)supportsLayerBacking
+{
+  return super.supportsLayerBacking && !self.userInteractionEnabled;
+}
+
+- (void)addTarget:(id)target action:(SEL)action forControlEvents:(ASControlNodeEvent)controlEventMask
+{
+  NSParameterAssert(action);
+  NSParameterAssert(controlEventMask != 0);
+  ASDisplayNodeAssert(!self.isLayerBacked, @"ASControlNode is layer backed, will never be able to call target in target:action: pair.");
+
+  ASLockScopeSelf();
+
+  if (!_controlEventDispatchTable) {
+    _controlEventDispatchTable = [[NSMutableDictionary alloc] initWithCapacity:kASControlNodeEventDispatchTableInitialCapacity];
+
+    if (_debugHighlightOverlay == nil) {
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.clipsToBounds = NO;
+        self->_debugHighlightOverlay = [[ASDisplayNode alloc] init];
+        self->_debugHighlightOverlay.zPosition = 1000;
+        self->_debugHighlightOverlay.layerBacked = YES;
+        [self addSubnode:self->_debugHighlightOverlay];
+      });
+    }
+  }
+
+  ASControlTargetAction *targetAction = [[ASControlTargetAction alloc] init];
+  targetAction.action = action;
+  targetAction.target = target;
+
+  _ASEnumerateControlEventsIncludedInMaskWithBlock(controlEventMask, ^(ASControlNodeEvent controlEvent) {
+    id<NSCopying> eventKey = _ASControlNodeEventKeyForControlEvent(controlEvent);
+    NSMutableArray *eventTargetActionArray = self->_controlEventDispatchTable[eventKey];
+
+    if (!eventTargetActionArray) {
+      eventTargetActionArray = [[NSMutableArray alloc] init];
+    }
+
+    [eventTargetActionArray removeObject:targetAction];
+    [eventTargetActionArray addObject:targetAction];
+
+    if (eventKey) {
+      [self->_controlEventDispatchTable setObject:eventTargetActionArray forKey:eventKey];
+    }
+  });
+
+  self.userInteractionEnabled = YES;
+}
+
+- (NSArray *)actionsForTarget:(id)target forControlEvent:(ASControlNodeEvent)controlEvent
+{
+  NSParameterAssert(target);
+  NSParameterAssert(controlEvent != 0 && controlEvent != ASControlNodeEventAllEvents);
+
+  ASLockScopeSelf();
+  NSMutableArray *eventTargetActionArray = _controlEventDispatchTable[_ASControlNodeEventKeyForControlEvent(controlEvent)];
+  if (!eventTargetActionArray) {
+    return nil;
+  }
+
+  NSMutableArray *actions = [[NSMutableArray alloc] init];
+  for (ASControlTargetAction *targetAction in eventTargetActionArray) {
+    if ((target == nil && targetAction.createdWithNoTarget) || (target != nil && target == targetAction.target)) {
+      [actions addObject:NSStringFromSelector(targetAction.action)];
+    }
+  }
+
+  return actions;
+}
+
+- (NSSet *)allTargets
+{
+  ASLockScopeSelf();
+  NSMutableSet *targets = [[NSMutableSet alloc] init];
+  for (NSMutableArray *eventTargetActionArray in [_controlEventDispatchTable objectEnumerator]) {
+    for (ASControlTargetAction *targetAction in eventTargetActionArray) {
+      [targets addObject:targetAction.target];
+    }
+  }
+  return targets;
+}
+
+- (void)removeTarget:(id)target action:(SEL)action forControlEvents:(ASControlNodeEvent)controlEventMask
+{
+  NSParameterAssert(controlEventMask != 0);
+  ASLockScopeSelf();
+
+  _ASEnumerateControlEventsIncludedInMaskWithBlock(controlEventMask, ^(ASControlNodeEvent controlEvent) {
+    id<NSCopying> eventKey = _ASControlNodeEventKeyForControlEvent(controlEvent);
+    NSMutableArray *eventTargetActionArray = self->_controlEventDispatchTable[eventKey];
+    if (!eventTargetActionArray) {
+      return;
+    }
+
+    NSPredicate *filterPredicate = [NSPredicate predicateWithBlock:^BOOL(ASControlTargetAction *_Nullable evaluatedObject, NSDictionary<NSString *,id> * _Nullable bindings) {
+      if (!target || evaluatedObject.target == target) {
+        if (!action) {
+          return NO;
+        } else if (evaluatedObject.action == action) {
+          return NO;
+        }
+      }
+      return YES;
+    }];
+    [eventTargetActionArray filterUsingPredicate:filterPredicate];
+
+    if (eventTargetActionArray.count == 0) {
+      [self->_controlEventDispatchTable removeObjectForKey:eventKey];
+    }
+  });
+}
+
+- (void)_sendActionsForControlEvents:(ASControlNodeEvent)controlEvents withEvent:(NSEvent *)event
+{
+  ASDisplayNodeAssertMainThread();
+  NSParameterAssert(controlEvents != 0);
+
+  NSMutableArray<ASControlTargetAction *> *resolvedEventTargetActionArray = [[NSMutableArray alloc] init];
+  {
+    ASLockScopeSelf();
+    _ASEnumerateControlEventsIncludedInMaskWithBlock(controlEvents, ^(ASControlNodeEvent controlEvent) {
+      for (ASControlTargetAction *targetAction in self->_controlEventDispatchTable[_ASControlNodeEventKeyForControlEvent(controlEvent)]) {
+        ASControlTargetAction *resolvedTargetAction = [[ASControlTargetAction alloc] init];
+        resolvedTargetAction.action = targetAction.action;
+        resolvedTargetAction.target = targetAction.target;
+
+        if (!resolvedTargetAction.target && targetAction.createdWithNoTarget) {
+          resolvedTargetAction.target = [NSApp targetForAction:resolvedTargetAction.action to:nil from:self];
+        }
+
+        if (resolvedTargetAction.target) {
+          [resolvedEventTargetActionArray addObject:resolvedTargetAction];
+        }
+      }
+    });
+  }
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+  for (ASControlTargetAction *targetAction in resolvedEventTargetActionArray) {
+    [targetAction.target performSelector:targetAction.action withObject:self withObject:event];
+  }
+#pragma clang diagnostic pop
+}
+
+- (void)_cancelTrackingWithEvent:(NSEvent *)event
+{
+  self.tracking = NO;
+  self.touchInside = NO;
+  self.highlighted = NO;
+  [self cancelTrackingWithEvent:event];
+  [self _sendActionsForControlEvents:ASControlNodeEventTouchCancel withEvent:event];
+}
+
+- (BOOL)beginTrackingWithEvent:(NSEvent *)event
+{
+  return YES;
+}
+
+- (BOOL)continueTrackingWithEvent:(NSEvent *)event
+{
+  return YES;
+}
+
+- (void)cancelTrackingWithEvent:(NSEvent *)event
+{
+  // Subclass hook
+}
+
+- (void)endTrackingWithEvent:(NSEvent *)event
+{
+  // Subclass hook
+}
+#endif
 
 #pragma mark - Debug
-- (ASImageNode *)debugHighlightOverlay
+- (ASDisplayNode *)debugHighlightOverlay
 {
   return _debugHighlightOverlay;
 }

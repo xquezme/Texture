@@ -111,7 +111,7 @@
       }
       [attachments addObject:attachment];
       [attachmentRanges addObject:[NSValue valueWithRange:runRange]];
-      [attachmentRects addObject:[NSValue valueWithCGRect:runTypoBounds]];
+      [attachmentRects addObject:ASValueWithCGRect(runTypoBounds)];
     }
   }
   _attachments = attachments;

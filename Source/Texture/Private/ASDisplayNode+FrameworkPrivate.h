@@ -18,6 +18,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#if !AS_PLATFORM_MACOS
+@class UIAccessibilityCustomAction;
+#endif
 @protocol ASInterfaceStateDelegate;
 
 /**
@@ -157,7 +160,9 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
 /**
  * Represent the current custom action in representation for the node
  */
+#if !AS_PLATFORM_MACOS
 @property (nonatomic, weak) UIAccessibilityCustomAction *accessibilityCustomAction;
+#endif
 
 /**
  * @abstract Return if the node is range managed or not
@@ -237,7 +242,7 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
  * @discussion This should be set by the owning view controller based on it's layout guides.
  * If this is not a view controllet's node the value will be calculated automatically by the parent node.
  */
-@property (nonatomic) UIEdgeInsets fallbackSafeAreaInsets;
+@property (nonatomic) ASEdgeInsets fallbackSafeAreaInsets;
 
 /**
  * @abstract Indicates if this node is a view controller's root node. Defaults to NO.
@@ -316,15 +321,21 @@ __unused static NSString * _Nonnull NSStringFromASHierarchyStateChange(ASHierarc
  * Defines interactive accessibility traits which will be exposed as UIAccessibilityCustomActions
  * for nodes within nodes that have isAccessibilityContainer is YES
  */
+#if !AS_PLATFORM_MACOS
 NS_INLINE UIAccessibilityTraits ASInteractiveAccessibilityTraitsMask() {
   return UIAccessibilityTraitLink | UIAccessibilityTraitKeyboardKey | UIAccessibilityTraitButton;
 }
+#endif
 
 @interface ASDisplayNode (AccessibilityInternal)
 - (nullable NSArray *)accessibilityElements;
 @end;
 
-@interface UIView (ASDisplayNodeInternal)
+ #if AS_PLATFORM_MACOS
+  @interface NSView (ASDisplayNodeInternal)
+ #else
+  @interface UIView (ASDisplayNodeInternal)
+ #endif
 @property (nullable, weak) ASDisplayNode *asyncdisplaykit_node;
 @end
 

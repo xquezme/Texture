@@ -7,8 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
-
+#import "ASPlatformDefines.h"
 #import "ASAvailability.h"
 
 #if AS_ENABLE_TEXTNODE
@@ -30,7 +29,7 @@ AS_SUBCLASSING_RESTRICTED
  Initialization of TextKit components is a globally locking operation so be careful of bottlenecks with this class.
  */
 - (instancetype)initWithAttributedString:(NSAttributedString *)attributedString
-                               tintColor:(UIColor *)tintColor
+                               tintColor:(ASColor *)tintColor
                            lineBreakMode:(NSLineBreakMode)lineBreakMode
                     maximumNumberOfLines:(NSUInteger)maximumNumberOfLines
                           exclusionPaths:(NSArray *)exclusionPaths

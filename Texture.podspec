@@ -12,13 +12,16 @@ Pod::Spec.new do |spec|
   spec.documentation_url = 'http://texturegroup.org/appledoc/'
 
   ios_deployment_target = '14.0'
+  osx_deployment_target = '11.0'
   tvos_deployment_target = '14.0'
   spec.ios.deployment_target = ios_deployment_target
+  spec.osx.deployment_target = osx_deployment_target
   spec.tvos.deployment_target = tvos_deployment_target
 
   # Subspecs
   spec.subspec 'Core' do |core|
     core.ios.deployment_target = ios_deployment_target
+    core.osx.deployment_target = osx_deployment_target
     core.tvos.deployment_target = tvos_deployment_target
     core.compiler_flags = '-fno-exceptions'
     core.public_header_files = [
@@ -38,8 +41,11 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'PINRemoteImage' do |pin|
     pin.ios.deployment_target = ios_deployment_target
+    pin.osx.deployment_target = osx_deployment_target
     pin.tvos.deployment_target = tvos_deployment_target
-    pin.dependency 'PINRemoteImage/iOS', '~> 3.0.0'
+    pin.ios.dependency 'PINRemoteImage/iOS', '~> 3.0.0'
+    pin.osx.dependency 'PINRemoteImage/OSX', '~> 3.0.0'
+    pin.tvos.dependency 'PINRemoteImage/iOS', '~> 3.0.0'
     pin.dependency 'PINRemoteImage/PINCache'
     pin.dependency 'Texture/Core'
   end
@@ -54,6 +60,7 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'Yoga' do |yoga|
     yoga.ios.deployment_target = ios_deployment_target
+    yoga.osx.deployment_target = osx_deployment_target
     yoga.xcconfig = { 'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) YOGA=1' }
     yoga.dependency 'Yoga', '~> 3.1'
     yoga.dependency 'Texture/Core'
@@ -69,6 +76,7 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'Video' do |video|
     video.ios.deployment_target = ios_deployment_target
+    video.osx.deployment_target = osx_deployment_target
     video.tvos.deployment_target = tvos_deployment_target
     video.frameworks = ['AVFoundation', 'CoreMedia']
     video.xcconfig = { 'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) AS_USE_VIDEO=1' }
@@ -77,6 +85,7 @@ Pod::Spec.new do |spec|
 
   spec.subspec 'MapKit' do |map|
     map.ios.deployment_target = ios_deployment_target
+    map.osx.deployment_target = osx_deployment_target
     map.tvos.deployment_target = tvos_deployment_target
     map.frameworks = ['CoreLocation', 'MapKit']
     map.xcconfig = { 'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) AS_USE_MAPKIT=1' }

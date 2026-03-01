@@ -20,6 +20,46 @@
 
 #import <queue>
 
+#if AS_PLATFORM_MACOS
+
+void setUserDefinedAccessibilitySortComparator(ASSortAccessibilityElementsComparator userDefinedComparator)
+{
+  (void)userDefinedComparator;
+}
+
+@implementation _ASDisplayView (ASAccessibility)
+
+- (NSArray *)accessibilityChildren
+{
+  ASDisplayNode *viewNode = self.asyncdisplaykit_node;
+  if (viewNode == nil) { return [super accessibilityChildren]; }
+  NSMutableArray *children = [NSMutableArray array];
+  for (ASDisplayNode *subnode in viewNode.subnodes) {
+    if (subnode.isHidden || subnode.alpha == 0.0f) { continue; }
+    if (!subnode.isLayerBacked) { [children addObject:subnode.view]; }
+  }
+  return children.count > 0 ? children : [super accessibilityChildren];
+}
+
+- (NSString *)accessibilityLabel
+{
+  return self.asyncdisplaykit_node.accessibilityLabel ?: [super accessibilityLabel];
+}
+
+- (NSString *)accessibilityHelp
+{
+  return self.asyncdisplaykit_node.accessibilityHint ?: [super accessibilityHelp];
+}
+
+- (id)accessibilityValue
+{
+  return self.asyncdisplaykit_node.accessibilityValue ?: [super accessibilityValue];
+}
+
+@end
+
+#else
+
 #pragma mark - UIAccessibilityElement
 
 static ASSortAccessibilityElementsComparator currentAccessibilityComparator = nil;
@@ -74,13 +114,13 @@ static CGRect ASAccessibilityFrameForNode(ASDisplayNode *node) {
 
 @property (nonatomic) ASDisplayNode *node;
 
-+ (ASAccessibilityElement *)accessibilityElementWithContainer:(UIView *)container node:(ASDisplayNode *)node;
++ (ASAccessibilityElement *)accessibilityElementWithContainer:(ASDisplayView *)container node:(ASDisplayNode *)node;
 
 @end
 
 @implementation ASAccessibilityElement
 
-+ (ASAccessibilityElement *)accessibilityElementWithContainer:(UIView *)container node:(ASDisplayNode *)node
++ (ASAccessibilityElement *)accessibilityElementWithContainer:(ASDisplayView *)container node:(ASDisplayNode *)node
 {
   ASAccessibilityElement *accessibilityElement = [[ASAccessibilityElement alloc] initWithAccessibilityContainer:container];
   accessibilityElement.node = node;
@@ -135,7 +175,7 @@ static void CollectUIAccessibilityElementsForNode(ASDisplayNode *node, ASDisplay
   });
 }
 
-static void CollectAccessibilityElementsForContainer(ASDisplayNode *container, UIView *view,
+static void CollectAccessibilityElementsForContainer(ASDisplayNode *container, ASDisplayView *view,
                                                      NSMutableArray *elements) {
   ASDisplayNodeCAssertNotNil(view, @"Passed in view should not be nil");
   if (view == nil) {
@@ -163,7 +203,7 @@ static void CollectAccessibilityElementsForContainer(ASDisplayNode *container, U
     queue.pop();
 
     if (node != container && node.isAccessibilityContainer) {
-      UIView *containerView = node.isLayerBacked ? view : node.view;
+      ASDisplayView *containerView = node.isLayerBacked ? view : node.view;
       CollectAccessibilityElementsForContainer(node, containerView, elements);
       continue;
     }
@@ -204,12 +244,12 @@ static void CollectAccessibilityElementsForContainer(ASDisplayNode *container, U
   [elements addObject:accessiblityElement];
 }
 
-/// Check if a view is a subviews of an UIScrollView. This is used to determine whether to enforce that
+/// Check if a view is a subviews of an ASScrollView. This is used to determine whether to enforce that
 /// accessibility elements must be on screen
-static BOOL recusivelyCheckSuperviewsForScrollView(UIView *view) {
+static BOOL recusivelyCheckSuperviewsForScrollView(ASDisplayView *view) {
     if (!view) {
         return NO;
-    } else if ([view isKindOfClass:[UIScrollView class]]) {
+    } else if ([view isKindOfClass:[ASScrollView class]]) {
         return YES;
     }
     return recusivelyCheckSuperviewsForScrollView(view.superview);
@@ -235,7 +275,7 @@ static void CollectAccessibilityElements(ASDisplayNode *node, NSMutableArray *el
            ASDynamicCast(nodeToCheck, ASTableNode) != nil;
   }));
 
-  UIView *view = node.view;
+  ASDisplayView *view = node.view;
   
   // If we don't have a window, let's just bail out
   if (!view.window) {
@@ -277,7 +317,7 @@ static void CollectAccessibilityElements(ASDisplayNode *node, NSMutableArray *el
       continue;
     }
     
-    // If a subnode is outside of the view's window, exclude it UNLESS it is a subview of an UIScrollView.
+    // If a subnode is outside of the view's window, exclude it UNLESS it is a subview of an ASScrollView.
     // In this case UIKit will return the element even if it is outside of the window or the scrollView's visible rect (contentOffset + contentSize)
     CGRect nodeInWindowCoords = [node convertRect:subnode.frame toNode:nil];
     if (!CGRectIntersectsRect(view.window.frame, nodeInWindowCoords) && !recusivelyCheckSuperviewsForScrollView(view)) {
@@ -285,7 +325,7 @@ static void CollectAccessibilityElements(ASDisplayNode *node, NSMutableArray *el
     }
     
     if (subnode.isAccessibilityElement) {
-      // An accessiblityElement can either be a UIView or a UIAccessibilityElement
+      // An accessiblityElement can either be a ASDisplayView or a UIAccessibilityElement
       if (subnode.isLayerBacked) {
         // No view for layer backed nodes exist. It's necessary to create a UIAccessibilityElement that represents this node
         UIAccessibilityElement *accessiblityElement = [ASAccessibilityElement accessibilityElementWithContainer:view node:subnode];
@@ -298,7 +338,7 @@ static void CollectAccessibilityElements(ASDisplayNode *node, NSMutableArray *el
       // Go down the hierarchy of the layer backed subnode and collect all of the UIAccessibilityElement
       CollectUIAccessibilityElementsForNode(subnode, node, view, elements);
     } else if (subnode.accessibilityElementCount > 0) {
-      // UIView is itself a UIAccessibilityContainer just add it
+      // ASDisplayView is itself a UIAccessibilityContainer just add it
       [elements addObject:subnode.view];
     }
   }
@@ -387,5 +427,7 @@ static void CollectAccessibilityElements(ASDisplayNode *node, NSMutableArray *el
 }
 
 @end
+
+#endif
 
 #endif

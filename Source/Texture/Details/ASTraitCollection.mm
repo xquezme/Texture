@@ -12,6 +12,7 @@
 #import "ASTraitCollection.h"
 #import "ASObjectDescriptionHelpers.h"
 #import "ASLayoutElement.h"
+#import "ASPlatformDefines.h"
 
 #pragma mark - ASPrimitiveTraitCollection
 
@@ -27,27 +28,29 @@ void ASTraitCollectionPropagateDown(id<ASLayoutElement> element, ASPrimitiveTrai
 
 ASPrimitiveTraitCollection ASPrimitiveTraitCollectionMakeDefault() {
   ASPrimitiveTraitCollection tc = {};
+  tc.displayScale = 0.0;
+  tc.containerSize = CGSizeZero;
+#if !AS_PLATFORM_MACOS
   tc.userInterfaceIdiom = UIUserInterfaceIdiomUnspecified;
   tc.forceTouchCapability = UIForceTouchCapabilityUnknown;
-  tc.displayScale = 0.0;
   tc.horizontalSizeClass = UIUserInterfaceSizeClassUnspecified;
   tc.verticalSizeClass = UIUserInterfaceSizeClassUnspecified;
-  tc.containerSize = CGSizeZero;
   tc.displayGamut = UIDisplayGamutUnspecified;
   tc.preferredContentSizeCategory = UIContentSizeCategoryUnspecified;
   tc.layoutDirection = UITraitEnvironmentLayoutDirectionUnspecified;
   tc.userInterfaceStyle = UIUserInterfaceStyleUnspecified;
-
-#if TARGET_OS_IOS
-  tc.userInterfaceLevel = UIUserInterfaceLevelUnspecified;
-#endif
-
   tc.accessibilityContrast = UIAccessibilityContrastUnspecified;
   tc.legibilityWeight = UILegibilityWeightUnspecified;
+#endif
+
+#if AS_PLATFORM_IOS
+  tc.userInterfaceLevel = UIUserInterfaceLevelUnspecified;
+#endif
   
   return tc;
 }
 
+#if !AS_PLATFORM_MACOS
 ASPrimitiveTraitCollection ASPrimitiveTraitCollectionFromUITraitCollection(UITraitCollection *traitCollection) {
   ASPrimitiveTraitCollection environmentTraitCollection = ASPrimitiveTraitCollectionMakeDefault();
   environmentTraitCollection.horizontalSizeClass = traitCollection.horizontalSizeClass;
@@ -62,7 +65,7 @@ ASPrimitiveTraitCollection ASPrimitiveTraitCollectionFromUITraitCollection(UITra
   environmentTraitCollection.preferredContentSizeCategory = traitCollection.preferredContentSizeCategory;
   environmentTraitCollection.userInterfaceStyle = traitCollection.userInterfaceStyle;
 
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
   environmentTraitCollection.userInterfaceLevel = traitCollection.userInterfaceLevel;
 #endif
 
@@ -88,12 +91,14 @@ ASDK_EXTERN UITraitCollection * ASPrimitiveTraitCollectionToUITraitCollection(AS
   UITraitCollection *result = [UITraitCollection traitCollectionWithTraitsFromCollections:collections];
   return result;
 }
+#endif
 
 BOOL ASPrimitiveTraitCollectionIsEqualToASPrimitiveTraitCollection(ASPrimitiveTraitCollection lhs, ASPrimitiveTraitCollection rhs) {
   return !memcmp(&lhs, &rhs, sizeof(ASPrimitiveTraitCollection));
 }
 
 // Named so as not to conflict with a hidden Apple function, in case compiler decides not to inline
+#if !AS_PLATFORM_MACOS
 ASDISPLAYNODE_INLINE NSString *AS_NSStringFromUIUserInterfaceIdiom(UIUserInterfaceIdiom idiom) {
   switch (idiom) {
     case UIUserInterfaceIdiomTV:
@@ -102,8 +107,10 @@ ASDISPLAYNODE_INLINE NSString *AS_NSStringFromUIUserInterfaceIdiom(UIUserInterfa
       return @"Pad";
     case UIUserInterfaceIdiomPhone:
       return @"Phone";
+#if !AS_PLATFORM_MACOS
     case UIUserInterfaceIdiomCarPlay:
       return @"CarPlay";
+#endif
     default:
       return @"Unspecified";
   }
@@ -172,7 +179,7 @@ ASDISPLAYNODE_INLINE NSString *AS_NSStringFromUIUserInterfaceStyle(UIUserInterfa
   }
 }
 
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
 // Named so as not to conflict with a hidden Apple function, in case compiler decides not to inline
 API_AVAILABLE(ios(13))
 ASDISPLAYNODE_INLINE NSString *AS_NSStringFromUITraitEnvironmentUserInterfaceLevel(UIUserInterfaceLevel userInterfaceLevel) {
@@ -212,14 +219,15 @@ ASDISPLAYNODE_INLINE NSString *AS_NSStringFromUITraitEnvironmentLegibilityWeight
       return @"Unspecified";
   }
 }
+#endif
 
 
 
 NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection traits) {
   NSMutableArray<NSDictionary *> *props = [NSMutableArray array];
+#if !AS_PLATFORM_MACOS
   [props addObject:@{ @"verticalSizeClass": AS_NSStringFromUIUserInterfaceSizeClass(traits.verticalSizeClass) }];
   [props addObject:@{ @"horizontalSizeClass": AS_NSStringFromUIUserInterfaceSizeClass(traits.horizontalSizeClass) }];
-  [props addObject:@{ @"displayScale": [NSString stringWithFormat: @"%.0lf", (double)traits.displayScale] }];
   [props addObject:@{ @"userInterfaceIdiom": AS_NSStringFromUIUserInterfaceIdiom(traits.userInterfaceIdiom) }];
   [props addObject:@{ @"forceTouchCapability": AS_NSStringFromUIForceTouchCapability(traits.forceTouchCapability) }];
   [props addObject:@{ @"userInterfaceStyle": AS_NSStringFromUIUserInterfaceStyle(traits.userInterfaceStyle) }];
@@ -229,12 +237,14 @@ NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection trai
   }
   [props addObject:@{ @"displayGamut": AS_NSStringFromUIDisplayGamut(traits.displayGamut) }];
 
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
   [props addObject:@{ @"userInterfaceLevel": AS_NSStringFromUITraitEnvironmentUserInterfaceLevel(traits.userInterfaceLevel) }];
 #endif
 
   [props addObject:@{ @"accessibilityContrast": AS_NSStringFromUITraitEnvironmentAccessibilityContrast(traits.accessibilityContrast) }];
   [props addObject:@{ @"legibilityWeight": AS_NSStringFromUITraitEnvironmentLegibilityWeight(traits.legibilityWeight) }];
+#endif
+  [props addObject:@{ @"displayScale": [NSString stringWithFormat: @"%.0lf", (double)traits.displayScale] }];
   [props addObject:@{ @"containerSize": NSStringFromCGSize(traits.containerSize) }];
   return ASObjectDescriptionMakeWithoutObject(props);
 }
@@ -247,7 +257,9 @@ NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection trai
 
 + (ASTraitCollection *)traitCollectionWithASPrimitiveTraitCollection:(ASPrimitiveTraitCollection)traits NS_RETURNS_RETAINED {
   ASTraitCollection *tc = [[ASTraitCollection alloc] init];
+#if !AS_PLATFORM_MACOS
   ASDisplayNodeCAssertPermanent(traits.preferredContentSizeCategory);
+#endif
   tc->_prim = traits;
   return tc;
 }
@@ -255,6 +267,7 @@ NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection trai
 - (ASPrimitiveTraitCollection)primitiveTraitCollection {
   return _prim;
 }
+#if !AS_PLATFORM_MACOS
 - (UIUserInterfaceSizeClass)horizontalSizeClass
 {
   return _prim.horizontalSizeClass;
@@ -279,11 +292,13 @@ NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection trai
 {
   return _prim.layoutDirection;
 }
+#endif
 - (CGSize)containerSize
 {
   return _prim.containerSize;
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIUserInterfaceStyle)userInterfaceStyle
 {
   return _prim.userInterfaceStyle;
@@ -294,7 +309,7 @@ NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection trai
   return _prim.preferredContentSizeCategory;
 }
 
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
 - (UIUserInterfaceLevel)userInterfaceLevel
 {
   return _prim.userInterfaceLevel;
@@ -310,6 +325,7 @@ NSString *NSStringFromASPrimitiveTraitCollection(ASPrimitiveTraitCollection trai
 {
   return _prim.legibilityWeight;
 }
+#endif
 
 - (NSUInteger)hash {
   return ASHashBytes(&_prim, sizeof(ASPrimitiveTraitCollection));

@@ -13,14 +13,18 @@
 #import "ASEqualityHelpers.h"
 #import "ASInternalHelpers.h"
 
+#if AS_PLATFORM_MACOS
+#define __shouldSetNeedsDisplayForView(view) (flags.needsDisplay)
+#else
 #define __shouldSetNeedsDisplayForView(view) (flags.needsDisplay \
   || (flags.setOpaque && _flags.opaque != (view).opaque)\
   || (flags.setBackgroundColor && ![backgroundColor isEqual:(view).backgroundColor])\
   || (flags.setTintColor && ![tintColor isEqual:(view).tintColor]))
+#endif
 
 #define __shouldSetNeedsDisplayForLayer(layer) (flags.needsDisplay \
   || (flags.setOpaque && _flags.opaque != (layer).opaque)\
-  || (flags.setBackgroundColor && ![backgroundColor isEqual:[UIColor colorWithCGColor:(layer).backgroundColor]]))
+  || (flags.setBackgroundColor && ![backgroundColor isEqual:[ASColor colorWithCGColor:(layer).backgroundColor]]))
 
 typedef struct {
   // Properties
@@ -100,15 +104,19 @@ static constexpr ASPendingStateFlags kZeroFlags = {0};
 {
   @package //Expose all ivars for ASDisplayNode to bypass getters for efficiency
 
+#if !AS_PLATFORM_MACOS
   UIViewAutoresizing autoresizingMask;
+#endif
   CAEdgeAntialiasingMask edgeAntialiasingMask;
   CGRect frame;   // Frame is only to be used for synchronous views wrapped by nodes (see setFrame:)
   CGRect bounds;
-  UIColor *backgroundColor;
-  UIColor *tintColor;
+  ASColor *backgroundColor;
+  ASColor *tintColor;
   CGFloat alpha;
   CGFloat cornerRadius;
+#if !AS_PLATFORM_MACOS
   UIViewContentMode contentMode;
+#endif
   CGPoint anchorPoint;
   CGPoint position;
   CGFloat zPosition;
@@ -126,23 +134,29 @@ static constexpr ASPendingStateFlags kZeroFlags = {0};
   CGFloat shadowRadius;
   CGFloat borderWidth;
   CGColorRef borderColor;
-  UIEdgeInsets layoutMargins;
+  ASEdgeInsets layoutMargins;
   NSString *accessibilityLabel;
   NSAttributedString *accessibilityAttributedLabel;
   NSString *accessibilityHint;
   NSAttributedString *accessibilityAttributedHint;
   NSString *accessibilityValue;
   NSAttributedString *accessibilityAttributedValue;
+#if !AS_PLATFORM_MACOS
   UIAccessibilityTraits accessibilityTraits;
+#endif
   CGRect accessibilityFrame;
   NSString *accessibilityLanguage;
   NSString *accessibilityIdentifier;
+#if !AS_PLATFORM_MACOS
   UIAccessibilityNavigationStyle accessibilityNavigationStyle;
+#endif
   NSArray *accessibilityCustomActions;
   NSArray *accessibilityHeaderElements;
   CGPoint accessibilityActivationPoint;
-  UIBezierPath *accessibilityPath;
+  ASBezierPath *accessibilityPath;
+#if !AS_PLATFORM_MACOS
   UISemanticContentAttribute semanticContentAttribute API_AVAILABLE(ios(9.0), tvos(9.0));
+#endif
   NSDictionary<NSString *, id<CAAction>> *actions;
 
   ASPendingStateFlags _stateToApplyFlags;
@@ -195,11 +209,15 @@ ASDISPLAYNODE_INLINE void ASPendingStateApplyMetricsToLayer(_ASPendingState *sta
 @synthesize bounds=bounds;
 @synthesize backgroundColor=backgroundColor;
 @synthesize edgeAntialiasingMask=edgeAntialiasingMask;
+#if !AS_PLATFORM_MACOS
 @synthesize autoresizingMask=autoresizingMask;
+#endif
 @synthesize tintColor=tintColor;
 @synthesize alpha=alpha;
 @synthesize cornerRadius=cornerRadius;
+#if !AS_PLATFORM_MACOS
 @synthesize contentMode=contentMode;
+#endif
 @synthesize anchorPoint=anchorPoint;
 @synthesize position=position;
 @synthesize zPosition=zPosition;
@@ -220,7 +238,9 @@ ASDISPLAYNODE_INLINE void ASPendingStateApplyMetricsToLayer(_ASPendingState *sta
 @synthesize borderWidth=borderWidth;
 @synthesize borderColor=borderColor;
 @synthesize asyncdisplaykit_asyncTransactionContainer=asyncTransactionContainer;
+#if !AS_PLATFORM_MACOS
 @synthesize semanticContentAttribute=semanticContentAttribute;
+#endif
 @synthesize layoutMargins=layoutMargins;
 @synthesize preservesSuperviewLayoutMargins=preservesSuperviewLayoutMargins;
 @synthesize insetsLayoutMarginsFromSafeArea=insetsLayoutMarginsFromSafeArea;
@@ -244,7 +264,7 @@ static CGColorRef blackColorRef = NULL;
     CGColorSpaceRelease(colorSpace);
   });
 
-  // Set defaults, these come from the defaults specified in CALayer and UIView
+  // Set defaults, these come from the defaults specified in CALayer and ASDisplayView
   _flags.clipsToBounds = NO;
   _flags.opaque = YES;
   frame = CGRectZero;
@@ -258,7 +278,9 @@ static CGColorRef blackColorRef = NULL;
   _flags.autoresizesSubviews = YES;
   alpha = 1.0f;
   cornerRadius = 0.0f;
+#if !AS_PLATFORM_MACOS
   contentMode = UIViewContentModeScaleToFill;
+#endif
   _stateToApplyFlags.needsDisplay = NO;
   anchorPoint = CGPointMake(0.5, 0.5);
   position = CGPointZero;
@@ -278,7 +300,7 @@ static CGColorRef blackColorRef = NULL;
   shadowRadius = 3;
   borderWidth = 0;
   borderColor = blackColorRef;
-  layoutMargins = UIEdgeInsetsMake(8, 8, 8, 8);
+  layoutMargins = ASEdgeInsetsMake(8, 8, 8, 8);
   _flags.preservesSuperviewLayoutMargins = NO;
   _flags.insetsLayoutMarginsFromSafeArea = YES;
   _flags.isAccessibilityElement = NO;
@@ -288,20 +310,26 @@ static CGColorRef blackColorRef = NULL;
   accessibilityAttributedHint = nil;
   accessibilityValue = nil;
   accessibilityAttributedValue = nil;
+#if !AS_PLATFORM_MACOS
   accessibilityTraits = UIAccessibilityTraitNone;
+#endif
   accessibilityFrame = CGRectZero;
   accessibilityLanguage = nil;
   _flags.accessibilityElementsHidden = NO;
   _flags.accessibilityViewIsModal = NO;
   _flags.shouldGroupAccessibilityChildren = NO;
   accessibilityIdentifier = nil;
+#if !AS_PLATFORM_MACOS
   accessibilityNavigationStyle = UIAccessibilityNavigationStyleAutomatic;
+#endif
   accessibilityCustomActions = nil;
   accessibilityHeaderElements = nil;
   accessibilityActivationPoint = CGPointZero;
   accessibilityPath = nil;
   edgeAntialiasingMask = (kCALayerLeftEdge | kCALayerRightEdge | kCALayerTopEdge | kCALayerBottomEdge);
+#if !AS_PLATFORM_MACOS
   semanticContentAttribute = UISemanticContentAttributeUnspecified;
+#endif
 
   return self;
 }
@@ -393,11 +421,13 @@ static CGColorRef blackColorRef = NULL;
     return _flags.autoresizesSubviews;
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)setAutoresizingMask:(UIViewAutoresizing)mask
 {
   autoresizingMask = mask;
   _stateToApplyFlags.setAutoresizingMask = YES;
 }
+#endif
 
 - (void)setFrame:(CGRect)newFrame
 {
@@ -416,12 +446,12 @@ static CGColorRef blackColorRef = NULL;
   _stateToApplyFlags.setBounds = YES;
 }
 
-- (UIColor *)backgroundColor
+- (ASColor *)backgroundColor
 {
   return backgroundColor;
 }
 
-- (void)setBackgroundColor:(UIColor *)color
+- (void)setBackgroundColor:(ASColor *)color
 {
   if ([color isEqual:backgroundColor]) {
     return;
@@ -430,12 +460,12 @@ static CGColorRef blackColorRef = NULL;
   _stateToApplyFlags.setBackgroundColor = YES;
 }
 
-- (UIColor *)tintColor
+- (ASColor *)tintColor
 {
   return tintColor;
 }
 
-- (void)setTintColor:(UIColor *)newTintColor
+- (void)setTintColor:(ASColor *)newTintColor
 {
   if ([newTintColor isEqual:tintColor]) {
     return;
@@ -473,11 +503,13 @@ static CGColorRef blackColorRef = NULL;
   _stateToApplyFlags.setMaskedCorners = YES;
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)setContentMode:(UIViewContentMode)newContentMode
 {
   contentMode = newContentMode;
   _stateToApplyFlags.setContentMode = YES;
 }
+#endif
 
 - (void)setAnchorPoint:(CGPoint)newAnchorPoint
 {
@@ -641,7 +673,7 @@ static CGColorRef blackColorRef = NULL;
     return _flags.asyncTransactionContainer;
 }
 
-- (void)setLayoutMargins:(UIEdgeInsets)margins
+- (void)setLayoutMargins:(ASEdgeInsets)margins
 {
   layoutMargins = margins;
   _stateToApplyFlags.setLayoutMargins = YES;
@@ -669,10 +701,12 @@ static CGColorRef blackColorRef = NULL;
     return _flags.insetsLayoutMarginsFromSafeArea;
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)setSemanticContentAttribute:(UISemanticContentAttribute)attribute API_AVAILABLE(ios(9.0), tvos(9.0)) {
   semanticContentAttribute = attribute;
   _stateToApplyFlags.setSemanticContentAttribute = YES;
 }
+#endif
 
 - (void)setActions:(NSDictionary<NSString *,id<CAAction>> *)actionsArg
 {
@@ -781,6 +815,7 @@ static CGColorRef blackColorRef = NULL;
   _stateToApplyFlags.setAccessibilityValue = NO;
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIAccessibilityTraits)accessibilityTraits
 {
   return accessibilityTraits;
@@ -791,6 +826,7 @@ static CGColorRef blackColorRef = NULL;
   accessibilityTraits = newAccessibilityTraits;
   _stateToApplyFlags.setAccessibilityTraits = YES;
 }
+#endif
 
 - (CGRect)accessibilityFrame
 {
@@ -860,6 +896,7 @@ static CGColorRef blackColorRef = NULL;
   }
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIAccessibilityNavigationStyle)accessibilityNavigationStyle
 {
   return accessibilityNavigationStyle;
@@ -870,6 +907,7 @@ static CGColorRef blackColorRef = NULL;
   _stateToApplyFlags.setAccessibilityNavigationStyle = YES;
   accessibilityNavigationStyle = newAccessibilityNavigationStyle;
 }
+#endif
 
 - (NSArray *)accessibilityCustomActions
 {
@@ -916,12 +954,12 @@ static CGColorRef blackColorRef = NULL;
   accessibilityActivationPoint = newAccessibilityActivationPoint;
 }
 
-- (UIBezierPath *)accessibilityPath
+- (ASBezierPath *)accessibilityPath
 {
   return accessibilityPath;
 }
 
-- (void)setAccessibilityPath:(UIBezierPath *)newAccessibilityPath
+- (void)setAccessibilityPath:(ASBezierPath *)newAccessibilityPath
 {
   _stateToApplyFlags.setAccessibilityPath = YES;
   if (accessibilityPath != newAccessibilityPath) {
@@ -989,8 +1027,11 @@ static CGColorRef blackColorRef = NULL;
     layer.maskedCorners = maskedCorners;
   }
 
-  if (flags.setContentMode)
+  if (flags.setContentMode) {
+#if !AS_PLATFORM_MACOS
     layer.contentsGravity = ASDisplayNodeCAContentsGravityFromUIContentMode(contentMode);
+#endif
+  }
 
   if (flags.setShadowColor)
     layer.shadowColor = shadowColor;
@@ -1040,7 +1081,7 @@ static CGColorRef blackColorRef = NULL;
     [layer layoutIfNeeded];
 }
 
-- (void)applyToView:(UIView *)view withSpecialPropertiesHandling:(BOOL)specialPropertiesHandling
+- (void)applyToView:(ASDisplayView *)view withSpecialPropertiesHandling:(BOOL)specialPropertiesHandling
 {
   /*
    Use our convenience setters blah here instead of layer.blah
@@ -1054,7 +1095,11 @@ static CGColorRef blackColorRef = NULL;
 
   ASPendingStateFlags flags = _stateToApplyFlags;
   if (__shouldSetNeedsDisplayForView(view)) {
+#if AS_PLATFORM_MACOS
+    [view setNeedsDisplay:YES];
+#else
     [view setNeedsDisplay];
+#endif
   }
 
   if (flags.setAnchorPoint)
@@ -1100,15 +1145,21 @@ static CGColorRef blackColorRef = NULL;
     view.clipsToBounds = _flags.clipsToBounds;
 
   if (flags.setBackgroundColor) {
+#if !AS_PLATFORM_MACOS
     view.backgroundColor = backgroundColor;
+#endif
     layer.backgroundColor = backgroundColor.CGColor;
   }
 
   if (flags.setTintColor)
+#if !AS_PLATFORM_MACOS
     view.tintColor = tintColor;
+#endif
 
   if (flags.setOpaque) {
+#if !AS_PLATFORM_MACOS
     view.opaque = _flags.opaque;
+#endif
     layer.opaque = _flags.opaque;
   }
 
@@ -1116,21 +1167,30 @@ static CGColorRef blackColorRef = NULL;
     view.hidden = _flags.hidden;
 
   if (flags.setAlpha)
+#if AS_PLATFORM_MACOS
+    layer.opacity = alpha;
+#else
     view.alpha = alpha;
+#endif
 
   if (flags.setCornerRadius)
     layer.cornerRadius = cornerRadius;
 
-  if (flags.setContentMode)
+  if (flags.setContentMode) {
+#if !AS_PLATFORM_MACOS
     view.contentMode = contentMode;
+#endif
+  }
 
   if (flags.setUserInteractionEnabled)
+#if !AS_PLATFORM_MACOS
     view.userInteractionEnabled = _flags.userInteractionEnabled;
+#endif
 
-  #if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
   if (flags.setExclusiveTouch)
     view.exclusiveTouch = _flags.exclusiveTouch;
-  #endif
+#endif
     
   if (flags.setShadowColor)
     layer.shadowColor = shadowColor;
@@ -1150,8 +1210,11 @@ static CGColorRef blackColorRef = NULL;
   if (flags.setBorderColor)
     layer.borderColor = borderColor;
 
-  if (flags.setAutoresizingMask)
+  if (flags.setAutoresizingMask) {
+#if !AS_PLATFORM_MACOS
     view.autoresizingMask = autoresizingMask;
+#endif
+  }
 
   if (flags.setAutoresizesSubviews)
     view.autoresizesSubviews = _flags.autoresizesSubviews;
@@ -1175,8 +1238,11 @@ static CGColorRef blackColorRef = NULL;
     ASDisplayNodeAssert(layer.opaque == _flags.opaque, @"Didn't set opaque as desired");
 
   if (flags.setLayoutMargins)
+#if !AS_PLATFORM_MACOS
     view.layoutMargins = layoutMargins;
+#endif
 
+  #if !AS_PLATFORM_MACOS
   if (flags.setPreservesSuperviewLayoutMargins)
     view.preservesSuperviewLayoutMargins = _flags.preservesSuperviewLayoutMargins;
 
@@ -1187,22 +1253,37 @@ static CGColorRef blackColorRef = NULL;
   if (flags.setSemanticContentAttribute) {
     view.semanticContentAttribute = semanticContentAttribute;
   }
+  #endif
 
-  if (flags.setIsAccessibilityElement)
+  if (flags.setIsAccessibilityElement) {
+#if AS_PLATFORM_MACOS
+    [view setAccessibilityElement:_flags.isAccessibilityElement];
+#else
     view.isAccessibilityElement = _flags.isAccessibilityElement;
+#endif
+  }
 
   if (flags.setAccessibilityLabel)
     view.accessibilityLabel = accessibilityLabel;
 
-  if (flags.setAccessibilityHint)
+  if (flags.setAccessibilityHint) {
+#if AS_PLATFORM_MACOS
+    view.accessibilityHelp = accessibilityHint;
+#else
     view.accessibilityHint = accessibilityHint;
+#endif
+  }
 
   if (flags.setAccessibilityValue)
     view.accessibilityValue = accessibilityValue;
 
+  #if !AS_PLATFORM_MACOS
   if (flags.setAccessibilityAttributedLabel) {
     view.accessibilityAttributedLabel = accessibilityAttributedLabel;
   }
+  #endif
+
+  #if !AS_PLATFORM_MACOS
   if (flags.setAccessibilityAttributedHint) {
     view.accessibilityAttributedHint = accessibilityAttributedHint;
   }
@@ -1212,33 +1293,45 @@ static CGColorRef blackColorRef = NULL;
 
   if (flags.setAccessibilityTraits)
     view.accessibilityTraits = accessibilityTraits;
+  #endif
 
   if (flags.setAccessibilityFrame)
     view.accessibilityFrame = accessibilityFrame;
 
+  #if !AS_PLATFORM_MACOS
   if (flags.setAccessibilityLanguage)
     view.accessibilityLanguage = accessibilityLanguage;
+  #endif
 
-  if (flags.setAccessibilityElementsHidden)
+  if (flags.setAccessibilityElementsHidden) {
+#if AS_PLATFORM_MACOS
+    view.accessibilityHidden = _flags.accessibilityElementsHidden;
+#else
     view.accessibilityElementsHidden = _flags.accessibilityElementsHidden;
+#endif
+  }
 
+  #if !AS_PLATFORM_MACOS
   if (flags.setAccessibilityViewIsModal)
     view.accessibilityViewIsModal = _flags.accessibilityViewIsModal;
 
   if (flags.setShouldGroupAccessibilityChildren)
     view.shouldGroupAccessibilityChildren = _flags.shouldGroupAccessibilityChildren;
+  #endif
 
   if (flags.setAccessibilityIdentifier)
     view.accessibilityIdentifier = accessibilityIdentifier;
-  
+
+  #if !AS_PLATFORM_MACOS
   if (flags.setAccessibilityNavigationStyle)
     view.accessibilityNavigationStyle = accessibilityNavigationStyle;
+  #endif
 
   if (flags.setAccessibilityCustomActions) {
     view.accessibilityCustomActions = accessibilityCustomActions;
   }
 
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
   if (flags.setAccessibilityHeaderElements)
     view.accessibilityHeaderElements = accessibilityHeaderElements;
 #endif
@@ -1246,14 +1339,16 @@ static CGColorRef blackColorRef = NULL;
   if (flags.setAccessibilityActivationPoint)
     view.accessibilityActivationPoint = accessibilityActivationPoint;
   
+  #if !AS_PLATFORM_MACOS
   if (flags.setAccessibilityPath)
     view.accessibilityPath = accessibilityPath;
+  #endif
 
   if (flags.setFrame && specialPropertiesHandling) {
     // Frame is only defined when transform is identity because we explicitly diverge from CALayer behavior and define frame without transform
 //#if DEBUG
 //    // Checking if the transform is identity is expensive, so disable when unnecessary. We have assertions on in Release, so DEBUG is the only way I know of.
-//    ASDisplayNodeAssert(CATransform3DIsIdentity(layer.transform), @"-[ASDisplayNode setFrame:] - self.transform must be identity in order to set the frame property.  (From Apple's UIView documentation: If the transform property is not the identity transform, the value of this property is undefined and therefore should be ignored.)");
+//    ASDisplayNodeAssert(CATransform3DIsIdentity(layer.transform), @"-[ASDisplayNode setFrame:] - self.transform must be identity in order to set the frame property.  (From Apple's ASDisplayView documentation: If the transform property is not the identity transform, the value of this property is undefined and therefore should be ignored.)");
 //#endif
     view.frame = frame;
   } else {
@@ -1261,10 +1356,17 @@ static CGColorRef blackColorRef = NULL;
   }
   
   if (flags.needsLayout)
+#if AS_PLATFORM_MACOS
+    [view setNeedsLayout:YES];
+#else
     [view setNeedsLayout];
+#endif
   
-  if (flags.layoutIfNeeded)
+  if (flags.layoutIfNeeded) {
+#if !AS_PLATFORM_MACOS
     [view layoutIfNeeded];
+#endif
+  }
 }
 
 // FIXME: Make this more efficient by tracking which properties are set rather than reading everything.
@@ -1287,12 +1389,14 @@ static CGColorRef blackColorRef = NULL;
   pendingState.contentsScale = layer.contentsScale;
   pendingState.rasterizationScale = layer.rasterizationScale;
   pendingState.clipsToBounds = layer.masksToBounds;
-  pendingState.backgroundColor = [UIColor colorWithCGColor:layer.backgroundColor];
+  pendingState.backgroundColor = [ASColor colorWithCGColor:layer.backgroundColor];
   pendingState.opaque = layer.opaque;
   pendingState.hidden = layer.hidden;
   pendingState.alpha = layer.opacity;
   pendingState.cornerRadius = layer.cornerRadius;
+#if !AS_PLATFORM_MACOS
   pendingState.contentMode = ASDisplayNodeUIContentModeFromCAContentsGravity(layer.contentsGravity);
+#endif
   pendingState.shadowColor = layer.shadowColor;
   pendingState.shadowOpacity = layer.shadowOpacity;
   pendingState.shadowOffset = layer.shadowOffset;
@@ -1307,7 +1411,7 @@ static CGColorRef blackColorRef = NULL;
 }
 
 // FIXME: Make this more efficient by tracking which properties are set rather than reading everything.
-+ (_ASPendingState *)pendingViewStateFromView:(UIView *)view
++ (_ASPendingState *)pendingViewStateFromView:(ASDisplayView *)view
 {
   if (!view) {
     return nil;
@@ -1328,15 +1432,21 @@ static CGColorRef blackColorRef = NULL;
   pendingState.contentsScale = layer.contentsScale;
   pendingState.rasterizationScale = layer.rasterizationScale;
   pendingState.clipsToBounds = view.clipsToBounds;
-  pendingState.backgroundColor = view.backgroundColor;
+  pendingState.backgroundColor = [ASColor colorWithCGColor:layer.backgroundColor];
+#if !AS_PLATFORM_MACOS
   pendingState.tintColor = view.tintColor;
+#endif
   pendingState.opaque = layer.opaque;
   pendingState.hidden = view.hidden;
-  pendingState.alpha = view.alpha;
+  pendingState.alpha = layer.opacity;
   pendingState.cornerRadius = layer.cornerRadius;
+#if !AS_PLATFORM_MACOS
   pendingState.contentMode = view.contentMode;
+#endif
+#if !AS_PLATFORM_MACOS
   pendingState.userInteractionEnabled = view.userInteractionEnabled;
-#if TARGET_OS_IOS
+#endif
+#if AS_PLATFORM_IOS
   pendingState.exclusiveTouch = view.exclusiveTouch;
 #endif
   pendingState.shadowColor = layer.shadowColor;
@@ -1345,37 +1455,48 @@ static CGColorRef blackColorRef = NULL;
   pendingState.shadowRadius = layer.shadowRadius;
   pendingState.borderWidth = layer.borderWidth;
   pendingState.borderColor = layer.borderColor;
+#if !AS_PLATFORM_MACOS
   pendingState.autoresizingMask = view.autoresizingMask;
+#endif
   pendingState.autoresizesSubviews = view.autoresizesSubviews;
   pendingState.needsDisplayOnBoundsChange = layer.needsDisplayOnBoundsChange;
   pendingState.allowsGroupOpacity = layer.allowsGroupOpacity;
   pendingState.allowsEdgeAntialiasing = layer.allowsEdgeAntialiasing;
   pendingState.edgeAntialiasingMask = layer.edgeAntialiasingMask;
-  pendingState.semanticContentAttribute = view.semanticContentAttribute;
+#if !AS_PLATFORM_MACOS
   pendingState.layoutMargins = view.layoutMargins;
+#endif
+  pendingState.accessibilityLabel = view.accessibilityLabel;
+  pendingState.accessibilityValue = view.accessibilityValue;
+  pendingState.accessibilityFrame = view.accessibilityFrame;
+  pendingState.accessibilityIdentifier = view.accessibilityIdentifier;
+  pendingState.accessibilityCustomActions = view.accessibilityCustomActions;
+  pendingState.accessibilityActivationPoint = view.accessibilityActivationPoint;
+  pendingState.isAccessibilityElement = view.isAccessibilityElement;
+#if AS_PLATFORM_MACOS
+  pendingState.accessibilityHint = view.accessibilityHelp;
+  pendingState.accessibilityElementsHidden = view.isAccessibilityHidden;
+#else
+  pendingState.accessibilityHint = view.accessibilityHint;
+  pendingState.accessibilityElementsHidden = view.accessibilityElementsHidden;
+#endif
+#if !AS_PLATFORM_MACOS
+  pendingState.accessibilityAttributedLabel = view.accessibilityAttributedLabel;
+  pendingState.accessibilityLanguage = view.accessibilityLanguage;
+  pendingState.accessibilityPath = view.accessibilityPath;
+  pendingState.semanticContentAttribute = view.semanticContentAttribute;
   pendingState.preservesSuperviewLayoutMargins = view.preservesSuperviewLayoutMargins;
   pendingState.insetsLayoutMarginsFromSafeArea = view.insetsLayoutMarginsFromSafeArea;
-  pendingState.isAccessibilityElement = view.isAccessibilityElement;
-  pendingState.accessibilityLabel = view.accessibilityLabel;
-  pendingState.accessibilityHint = view.accessibilityHint;
-  pendingState.accessibilityValue = view.accessibilityValue;
-  pendingState.accessibilityAttributedLabel = view.accessibilityAttributedLabel;
   pendingState.accessibilityAttributedHint = view.accessibilityAttributedHint;
   pendingState.accessibilityAttributedValue = view.accessibilityAttributedValue;
   pendingState.accessibilityTraits = view.accessibilityTraits;
-  pendingState.accessibilityFrame = view.accessibilityFrame;
-  pendingState.accessibilityLanguage = view.accessibilityLanguage;
-  pendingState.accessibilityElementsHidden = view.accessibilityElementsHidden;
   pendingState.accessibilityViewIsModal = view.accessibilityViewIsModal;
   pendingState.shouldGroupAccessibilityChildren = view.shouldGroupAccessibilityChildren;
-  pendingState.accessibilityIdentifier = view.accessibilityIdentifier;
   pendingState.accessibilityNavigationStyle = view.accessibilityNavigationStyle;
-  pendingState.accessibilityCustomActions = view.accessibilityCustomActions;
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
   pendingState.accessibilityHeaderElements = view.accessibilityHeaderElements;
 #endif
-  pendingState.accessibilityActivationPoint = view.accessibilityActivationPoint;
-  pendingState.accessibilityPath = view.accessibilityPath;
+#endif
   return pendingState;
 }
 

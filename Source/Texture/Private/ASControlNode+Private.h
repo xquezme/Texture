@@ -11,7 +11,7 @@
 
 @interface ASControlNode (Private)
 
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
 - (void)_pressDown;
 #endif
 

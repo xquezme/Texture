@@ -39,17 +39,17 @@ NS_ASSUME_NONNULL_BEGIN
 /*
  * Back-pointer to the containing scrollView instance, set only for visible cells.  Used for Cell Visibility Event callbacks.
  */
-@property (nonatomic, weak) UIScrollView *scrollView;
+@property (nonatomic, weak) ASScrollView *scrollView;
 
 - (void)__setSelectedFromUIKit:(BOOL)selected;
 - (void)__setHighlightedFromUIKit:(BOOL)highlighted;
 
 /**
  * @note This could be declared @c copy, but since this is only settable internally, we can ensure
- *   that it's always safe simply to retain it, and copy if needed. Since @c UICollectionViewLayoutAttributes
+ *   that it's always safe simply to retain it, and copy if needed. Since @c ASCollectionViewLayoutAttributes
  *   is always mutable, @c copy is never "free" like it is for e.g. NSString.
  */
-@property (nullable, nonatomic) UICollectionViewLayoutAttributes *layoutAttributes;
+@property (nullable, nonatomic) ASCollectionViewLayoutAttributes *layoutAttributes;
 
 @property (weak, nullable) ASCollectionElement *collectionElement;
 
@@ -60,14 +60,18 @@ NS_ASSUME_NONNULL_BEGIN
 @class ASWrapperCellNode;
 
 typedef CGSize (^ASSizeForItemBlock)(ASWrapperCellNode *node, CGSize collectionSize);
+#if !AS_PLATFORM_MACOS
 typedef UICollectionViewCell * _Nonnull(^ASCellForItemBlock)(ASWrapperCellNode *node);
 typedef UICollectionReusableView * _Nonnull(^ASViewForSupplementaryBlock)(ASWrapperCellNode *node);
+#endif // !AS_PLATFORM_MACOS
 
 @interface ASWrapperCellNode : ASCellNode
 
 @property (nonatomic, readonly) ASSizeForItemBlock sizeForItemBlock;
+#if !AS_PLATFORM_MACOS
 @property (nonatomic, readonly) ASCellForItemBlock cellForItemBlock;
 @property (nonatomic, readonly) ASViewForSupplementaryBlock viewForSupplementaryBlock;
+#endif
 
 @end
 

@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol ASImageContainerProtocol <NSObject>
 
-- (nullable UIImage *)asdk_image;
+- (nullable ASImage *)asdk_image;
 - (nullable NSData *)asdk_animatedImageData;
 
 @end
@@ -77,7 +77,7 @@ typedef void(^ASImageDownloaderCompletion)(id <ASImageContainerProtocol> _Nullab
  @param progress The progress of the download, in the range of (0.0, 1.0), inclusive.
  */
 typedef void(^ASImageDownloaderProgress)(CGFloat progress) NS_SWIFT_SENDABLE;
-typedef void(^ASImageDownloaderProgressImage)(UIImage *progressImage, CGFloat progress, id _Nullable downloadIdentifier);
+typedef void(^ASImageDownloaderProgressImage)(ASImage *progressImage, CGFloat progress, id _Nullable downloadIdentifier);
 
 typedef NS_ENUM(NSUInteger, ASImageDownloaderPriority) {
   ASImageDownloaderPriorityPreload = 0,
@@ -183,7 +183,7 @@ withDownloadIdentifier:(id)downloadIdentifier;
 /**
  @abstract A block which receives the cover image. Should be called when the objects cover image is ready.
  */
-@property (nonatomic) void (^coverImageReadyCallback)(UIImage *coverImage);
+@property (nonatomic) void (^coverImageReadyCallback)(ASImage *coverImage);
 
 /**
  @abstract Returns whether the supplied data contains a supported animated image format.
@@ -197,7 +197,7 @@ withDownloadIdentifier:(id)downloadIdentifier;
 /**
  @abstract Return the objects's cover image.
  */
-@property (nonatomic, readonly, nullable) UIImage *coverImage;
+@property (nonatomic, readonly, nullable) ASImage *coverImage;
 /**
  @abstract Return a boolean to indicate that the cover image is ready.
  */

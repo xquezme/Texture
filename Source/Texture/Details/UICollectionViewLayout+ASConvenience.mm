@@ -9,15 +9,19 @@
 
 #import "UICollectionViewLayout+ASConvenience.h"
 
-#import <UIKit/UICollectionViewFlowLayout.h>
+#import "ASPlatformDefines.h"
 
 #import "ASCollectionViewFlowLayoutInspector.h"
 
-@implementation UICollectionViewLayout (ASLayoutInspectorProviding)
+#if AS_PLATFORM_MACOS
+ @implementation NSCollectionViewLayout (ASLayoutInspectorProviding)
+#else
+ @implementation UICollectionViewLayout (ASLayoutInspectorProviding)
+#endif
 
 - (id<ASCollectionViewLayoutInspecting>)asdk_layoutInspector
 {
-  UICollectionViewFlowLayout *flow = ASDynamicCast(self, UICollectionViewFlowLayout);
+  ASCollectionViewFlowLayout *flow = ASDynamicCast(self, ASCollectionViewFlowLayout);
   if (flow != nil) {
     return [[ASCollectionViewFlowLayoutInspector alloc] initWithFlowLayout:flow];
   } else {

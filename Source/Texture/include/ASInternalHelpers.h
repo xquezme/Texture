@@ -7,8 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
-
+#import "ASPlatformDefines.h"
 #import "ASAvailability.h"
 #import "ASBaseDefines.h"
 #import "ASDisplayNodeExtras.h"
@@ -66,17 +65,21 @@ ASDISPLAYNODE_INLINE BOOL ASImageAlphaInfoIsOpaque(CGImageAlphaInfo info) {
 }
 
 /**
- @summary Conditionally performs UIView geometry changes in the given block without animation.
+ @summary Conditionally performs ASDisplayView geometry changes in the given block without animation.
  
- Used primarily to circumvent UITableView forcing insertion animations when explicitly told not to via
- `UITableViewRowAnimationNone`. More info: https://github.com/facebook/AsyncDisplayKit/pull/445
+ Used primarily to suppress implicit view-geometry animations in call sites that require deterministic updates.
+ More info: https://github.com/facebook/AsyncDisplayKit/pull/445
  
  @param withoutAnimation Set to `YES` to perform given block without animation
- @param block Perform UIView geometry changes within the passed block
+ @param block Perform ASDisplayView geometry changes within the passed block
  */
 ASDISPLAYNODE_INLINE void ASPerformBlockWithoutAnimation(BOOL withoutAnimation, void (^block)(void)) {
   if (withoutAnimation) {
-    [UIView performWithoutAnimation:block];
+#if AS_PLATFORM_MACOS
+    block();
+#else
+    [ASDisplayView performWithoutAnimation:block];
+#endif
   } else {
     block();
   }
@@ -89,7 +92,7 @@ ASDISPLAYNODE_INLINE void ASBoundsAndPositionForFrame(CGRect rect, CGPoint origi
                           rect.origin.y + rect.size.height * anchorPoint.y);
 }
 
-ASDISPLAYNODE_INLINE UIEdgeInsets ASConcatInsets(UIEdgeInsets insetsA, UIEdgeInsets insetsB)
+ASDISPLAYNODE_INLINE ASEdgeInsets ASConcatInsets(ASEdgeInsets insetsA, ASEdgeInsets insetsB)
 {
   insetsA.top += insetsB.top;
   insetsA.left += insetsB.left;

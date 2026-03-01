@@ -8,6 +8,7 @@
 
 #import "NSParagraphStyle+ASText.h"
 #import "ASTextAttribute.h"
+#import "ASTextUtilities.h"
 #import <CoreText/CoreText.h>
 
 // Dummy class for category
@@ -22,7 +23,7 @@
   
   NSMutableParagraphStyle *style = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
   
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS || AS_PLATFORM_MACOS
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
   CGFloat lineSpacing;
@@ -31,7 +32,7 @@
   }
 #pragma clang diagnostic pop
 #endif
-  
+
   CGFloat paragraphSpacing;
   if (CTParagraphStyleGetValueForSpecifier(CTStyle, kCTParagraphStyleSpecifierParagraphSpacing, sizeof(CGFloat), &paragraphSpacing)) {
     style.paragraphSpacing = paragraphSpacing;
@@ -39,7 +40,7 @@
   
   CTTextAlignment alignment;
   if (CTParagraphStyleGetValueForSpecifier(CTStyle, kCTParagraphStyleSpecifierAlignment, sizeof(CTTextAlignment), &alignment)) {
-    style.alignment = NSTextAlignmentFromCTTextAlignment(alignment);
+    style.alignment = ASTextAlignmentFromCTTextAlignment(alignment);
   }
   
   CGFloat firstLineHeadIndent;
@@ -93,7 +94,7 @@
     [((__bridge NSArray *)(tabStops))enumerateObjectsUsingBlock : ^(id obj, NSUInteger idx, BOOL *stop) {
       CTTextTabRef ctTab = (__bridge CTTextTabRef)obj;
       
-      NSTextTab *tab = [[NSTextTab alloc] initWithTextAlignment:NSTextAlignmentFromCTTextAlignment(CTTextTabGetAlignment(ctTab)) location:CTTextTabGetLocation(ctTab) options:(__bridge id)CTTextTabGetOptions(ctTab)];
+      NSTextTab *tab = [[NSTextTab alloc] initWithTextAlignment:ASTextAlignmentFromCTTextAlignment(CTTextTabGetAlignment(ctTab)) location:CTTextTabGetLocation(ctTab) options:(__bridge id)CTTextTabGetOptions(ctTab)];
       [tabs addObject:tab];
     }];
     if (tabs.count) {
@@ -113,7 +114,7 @@
   CTParagraphStyleSetting set[kCTParagraphStyleSpecifierCount] = { };
   int count = 0;
   
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS || AS_PLATFORM_MACOS
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
   CGFloat lineSpacing = self.lineSpacing;
@@ -130,7 +131,7 @@
   set[count].value = &paragraphSpacing;
   count++;
   
-  CTTextAlignment alignment = NSTextAlignmentToCTTextAlignment(self.alignment);
+  CTTextAlignment alignment = ASTextAlignmentToCTTextAlignment(self.alignment);
   set[count].spec = kCTParagraphStyleSpecifierAlignment;
   set[count].valueSize = sizeof(CTTextAlignment);
   set[count].value = &alignment;
@@ -194,7 +195,7 @@
   NSInteger numTabs = self.tabStops.count;
   if (numTabs) {
     [self.tabStops enumerateObjectsUsingBlock: ^(NSTextTab *tab, NSUInteger idx, BOOL *stop) {
-      CTTextTabRef ctTab = CTTextTabCreate(NSTextAlignmentToCTTextAlignment(tab.alignment), tab.location, (__bridge CFDictionaryRef)tab.options);
+      CTTextTabRef ctTab = CTTextTabCreate(ASTextAlignmentToCTTextAlignment(tab.alignment), tab.location, (__bridge CFDictionaryRef)tab.options);
       [tabs addObject:(__bridge id)ctTab];
       CFRelease(ctTab);
     }];

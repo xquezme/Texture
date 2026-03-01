@@ -18,7 +18,6 @@
 #import "ASTextNode.h"
 #import "ASRangeController.h"
 
-
 #pragma mark - ASImageNode (Debugging)
 
 static BOOL __shouldShowImageScalingOverlay = NO;
@@ -36,6 +35,8 @@ static BOOL __shouldShowImageScalingOverlay = NO;
 }
 
 @end
+
+#if !AS_PLATFORM_MACOS
 
 #pragma mark - ASControlNode (DebuggingInternal)
 
@@ -84,7 +85,7 @@ static BOOL __enableHitTestDebug = NO;
     CALayer *intersectLayer      = layer;
     CALayer *intersectSuperlayer = layer.superlayer;
     
-    // FIXED: Stop climbing hierarchy if UIScrollView is encountered (its offset bounds origin may make it seem like our events
+    // FIXED: Stop climbing hierarchy if ASScrollView is encountered (its offset bounds origin may make it seem like our events
     // will be clipped when scrolling will actually reveal them (because this process will not re-run due to scrolling))
     while (intersectSuperlayer && ![intersectSuperlayer.delegate respondsToSelector:@selector(contentOffset)]) {
       
@@ -98,7 +99,7 @@ static BOOL __enableHitTestDebug = NO;
         UIEdgeInsets parentSlop = [parentNode hitTestSlop];
         
         // If parent has hitTestSlop, expand tappable area (if parent doesn't clipToBounds)
-        if (!UIEdgeInsetsEqualToEdgeInsets(UIEdgeInsetsZero, parentSlop)) {
+        if (!ASEdgeInsetsEqualToEdgeInsets(ASEdgeInsetsZero, parentSlop)) {
           parentClipsToBounds = parentNode.clipsToBounds;
           if (!parentClipsToBounds) {
             parentHitRect = UIEdgeInsetsInsetRect(parentHitRect, [parentNode hitTestSlop]);
@@ -127,7 +128,7 @@ static BOOL __enableHitTestDebug = NO;
     
     // produce final overlay image (or fill background if edges aren't restricted)
     CGRect finalRect   = [intersectLayer convertRect:intersectRect toLayer:layer];
-    UIColor *fillColor = [[UIColor greenColor] colorWithAlphaComponent:0.4];
+    ASColor *fillColor = [[ASColor greenColor] colorWithAlphaComponent:0.4];
     
     ASImageNode *debugOverlay = [self debugHighlightOverlay];
     
@@ -136,11 +137,11 @@ static BOOL __enableHitTestDebug = NO;
       debugOverlay.backgroundColor = fillColor;
     } else {
       const CGFloat borderWidth = 2.0;
-      UIColor *borderColor      = [[UIColor orangeColor] colorWithAlphaComponent:0.8];
-      UIColor *clipsBorderColor = [UIColor colorWithRed:30/255.0 green:90/255.0 blue:50/255.0 alpha:0.7];
+      ASColor *borderColor      = [[ASColor orangeColor] colorWithAlphaComponent:0.8];
+      ASColor *clipsBorderColor = [ASColor colorWithRed:30/255.0 green:90/255.0 blue:50/255.0 alpha:0.7];
       CGRect imgRect            = CGRectMake(0, 0, 2.0 * borderWidth + 1.0, 2.0 * borderWidth + 1.0);
 
-      UIImage *debugHighlightImage = ASGraphicsCreateImage(self.primitiveTraitCollection, imgRect.size, NO, 1, nil, nil, ^{
+      ASImage *debugHighlightImage = ASGraphicsCreateImage(self.primitiveTraitCollection, imgRect.size, NO, 1, nil, nil, ^{
         [fillColor setFill];
         UIRectFill(imgRect);
 
@@ -176,7 +177,7 @@ static BOOL __enableHitTestDebug = NO;
   return rectEdge;
 }
 
-- (void)drawEdgeIfClippedWithEdges:(UIRectEdge)rectEdge color:(UIColor *)color borderWidth:(CGFloat)borderWidth imgRect:(CGRect)imgRect
+- (void)drawEdgeIfClippedWithEdges:(UIRectEdge)rectEdge color:(ASColor *)color borderWidth:(CGFloat)borderWidth imgRect:(CGRect)imgRect
 {
   [color setFill];
   
@@ -198,9 +199,13 @@ static BOOL __enableHitTestDebug = NO;
 
 @end
 
+#endif
+
 #pragma mark - ASRangeController (Debugging)
 
-@interface _ASRangeDebugOverlayView : UIView
+#if !AS_PLATFORM_MACOS
+
+@interface _ASRangeDebugOverlayView : ASDisplayView
 
 + (instancetype)sharedInstance NS_RETURNS_RETAINED;
 
@@ -216,7 +221,7 @@ static BOOL __enableHitTestDebug = NO;
 
 @end
 
-@interface _ASRangeDebugBarView : UIView
+@interface _ASRangeDebugBarView : ASDisplayView
 
 @property (nonatomic, weak) ASRangeController *rangeController;
 @property (nonatomic) BOOL destroyOnLayout;
@@ -233,6 +238,8 @@ static BOOL __enableHitTestDebug = NO;
 
 @end
 
+#endif
+
 static BOOL __shouldShowRangeDebugOverlay = NO;
 
 @implementation ASDisplayNode (RangeDebugging)
@@ -248,6 +255,8 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
 }
 
 @end
+
+#if !AS_PLATFORM_MACOS
 
 @implementation ASRangeController (DebugInternal)
 
@@ -331,7 +340,7 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
   
   if (self) {
     _rangeControllerViews = [[NSMutableArray alloc] init];
-    self.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.4];
+    self.backgroundColor = [[ASColor blackColor] colorWithAlphaComponent:0.4];
     self.layer.zPosition = 1000;
     self.clipsToBounds = YES;
     
@@ -351,7 +360,7 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
 - (void)layoutSubviews
 {
   [super layoutSubviews];
-  [UIView animateWithDuration:0.2 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+  [ASDisplayView animateWithDuration:0.2 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
     [self layoutToFitAllBarsExcept:0];
   } completion:^(BOOL finished) {
     
@@ -405,14 +414,14 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
   }
 }
 
-- (void)setOrigin:(CGPoint)origin forView:(UIView *)view
+- (void)setOrigin:(CGPoint)origin forView:(ASDisplayView *)view
 {
   CGRect newFrame = view.frame;
   newFrame.origin = origin;
   view.frame      = newFrame;
 }
 
-- (void)offsetYOrigin:(CGFloat)offset forView:(UIView *)view
+- (void)offsetYOrigin:(CGFloat)offset forView:(ASDisplayView *)view
 {
   CGRect newFrame = view.frame;
   newFrame.origin = CGPointMake(newFrame.origin.x, newFrame.origin.y + offset);
@@ -434,7 +443,7 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
     [self layoutToFitAllBarsExcept:1];
   }
   
-  [UIView animateWithDuration:0.2 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+  [ASDisplayView animateWithDuration:0.2 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
     self->_animating = YES;
     [self layoutToFitAllBarsExcept:0];
   } completion:^(BOOL finished) {
@@ -602,9 +611,9 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
     _debugText          = [self createDebugTextNode];
     _leftDebugText      = [self createDebugTextNode];
     _rightDebugText     = [self createDebugTextNode];
-    _preloadRect        = [self createRangeNodeWithColor:[UIColor orangeColor]];
-    _displayRect        = [self createRangeNodeWithColor:[UIColor yellowColor]];
-    _visibleRect        = [self createRangeNodeWithColor:[UIColor greenColor]];
+    _preloadRect        = [self createRangeNodeWithColor:[ASColor orangeColor]];
+    _displayRect        = [self createRangeNodeWithColor:[ASColor yellowColor]];
+    _visibleRect        = [self createRangeNodeWithColor:[ASColor greenColor]];
   }
   
   return self;
@@ -663,7 +672,7 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
   }
   
   BOOL animate = !_firstLayoutOfRects;
-  [UIView animateWithDuration:animate ? 0.3 : 0.0 delay:0.0 options:UIViewAnimationOptionLayoutSubviews animations:^{
+  [ASDisplayView animateWithDuration:animate ? 0.3 : 0.0 delay:0.0 options:UIViewAnimationOptionLayoutSubviews animations:^{
     self->_visibleRect.frame    = CGRectMake(HORIZONTAL_INSET + visiblePoint,    rect.origin.y, visibleDimension,    subCellHeight);
     self->_displayRect.frame    = CGRectMake(HORIZONTAL_INSET + displayPoint,    rect.origin.y, displayDimension,    subCellHeight);
     self->_preloadRect.frame    = CGRectMake(HORIZONTAL_INSET + preloadPoint,  rect.origin.y, preloadDimension,  subCellHeight);
@@ -671,7 +680,7 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
   
   if (!animate) {
     _visibleRect.alpha = _displayRect.alpha = _preloadRect.alpha = 0;
-    [UIView animateWithDuration:0.3 animations:^{
+    [ASDisplayView animateWithDuration:0.3 animations:^{
       self->_visibleRect.alpha = self->_displayRect.alpha = self->_preloadRect.alpha = 1;
     }];
   }
@@ -737,14 +746,14 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
 
 #define RANGE_BAR_CORNER_RADIUS 3
 #define RANGE_BAR_BORDER_WIDTH 1
-- (ASImageNode *)createRangeNodeWithColor:(UIColor *)color
+- (ASImageNode *)createRangeNodeWithColor:(ASColor *)color
 {
     ASImageNode *rangeBarImageNode = [[ASImageNode alloc] init];
     ASPrimitiveTraitCollection primitiveTraitCollection = ASPrimitiveTraitCollectionFromUITraitCollection(self.traitCollection);
-    rangeBarImageNode.image = [UIImage as_resizableRoundedImageWithCornerRadius:RANGE_BAR_CORNER_RADIUS
-                                                                    cornerColor:[UIColor clearColor]
+    rangeBarImageNode.image = [ASImage as_resizableRoundedImageWithCornerRadius:RANGE_BAR_CORNER_RADIUS
+                                                                    cornerColor:[ASColor clearColor]
                                                                       fillColor:[color colorWithAlphaComponent:0.5]
-                                                                    borderColor:[[UIColor blackColor] colorWithAlphaComponent:0.9]
+                                                                    borderColor:[[ASColor blackColor] colorWithAlphaComponent:0.9]
                                                                     borderWidth:RANGE_BAR_BORDER_WIDTH
                                                                  roundedCorners:UIRectCornerAllCorners
                                                                           scale:[[UIScreen mainScreen] scale]
@@ -756,9 +765,11 @@ static BOOL __shouldShowRangeDebugOverlay = NO;
 
 + (NSAttributedString *)whiteAttributedStringFromString:(NSString *)string withSize:(CGFloat)size NS_RETURNS_RETAINED
 {
-  NSDictionary *attributes = @{NSForegroundColorAttributeName : [UIColor whiteColor],
-                               NSFontAttributeName            : [UIFont systemFontOfSize:size]};
+  NSDictionary *attributes = @{NSForegroundColorAttributeName : [ASColor whiteColor],
+                               NSFontAttributeName            : [ASFont systemFontOfSize:size]};
   return [[NSAttributedString alloc] initWithString:string attributes:attributes];
 }
 
 @end
+
+#endif

@@ -7,8 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "ASBaseDefines.h"
 
@@ -31,28 +30,29 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma clang diagnostic push
 #pragma clang diagnostic warning "-Wpadded"
 typedef struct {
+#if !AS_PLATFORM_MACOS
   UIUserInterfaceSizeClass horizontalSizeClass;
   UIUserInterfaceSizeClass verticalSizeClass;
-
-  CGFloat displayScale;
   UIDisplayGamut displayGamut API_AVAILABLE(ios(10.0));
-
   UIUserInterfaceIdiom userInterfaceIdiom;
   UIForceTouchCapability forceTouchCapability;
   UITraitEnvironmentLayoutDirection layoutDirection API_AVAILABLE(ios(10.0));
   UIUserInterfaceStyle userInterfaceStyle API_AVAILABLE(tvos(10.0), ios(12.0));
-
-
   // NOTE: This must be a constant. We will assert.
   unowned UIContentSizeCategory preferredContentSizeCategory API_AVAILABLE(ios(10.0));
+#endif
+
+  CGFloat displayScale;
 
   CGSize containerSize;
 
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
   UIUserInterfaceLevel userInterfaceLevel API_AVAILABLE(ios(13.0)) API_UNAVAILABLE(tvos);
 #endif
+#if !AS_PLATFORM_MACOS
   UIAccessibilityContrast accessibilityContrast API_AVAILABLE(ios(13.0));
   UILegibilityWeight legibilityWeight API_AVAILABLE(ios(13.0));
+#endif
 } ASPrimitiveTraitCollection;
 #pragma clang diagnostic pop
 
@@ -61,6 +61,7 @@ typedef struct {
  */
 ASDK_EXTERN ASPrimitiveTraitCollection ASPrimitiveTraitCollectionMakeDefault(void);
 
+#if !AS_PLATFORM_MACOS
 /**
  * Creates a ASPrimitiveTraitCollection from a given UITraitCollection.
  */
@@ -70,6 +71,7 @@ ASDK_EXTERN ASPrimitiveTraitCollection ASPrimitiveTraitCollectionFromUITraitColl
  * Creates a UITraitCollection from a given ASPrimitiveTraitCollection.
  */
 ASDK_EXTERN UITraitCollection * ASPrimitiveTraitCollectionToUITraitCollection(ASPrimitiveTraitCollection traitCollection);
+#endif
 
 
 /**
@@ -140,26 +142,28 @@ ASDK_EXTERN void ASTraitCollectionPropagateDown(id<ASLayoutElement> element, ASP
 AS_SUBCLASSING_RESTRICTED
 @interface ASTraitCollection : NSObject
 
+#if !AS_PLATFORM_MACOS
 @property (readonly) UIUserInterfaceSizeClass horizontalSizeClass;
 @property (readonly) UIUserInterfaceSizeClass verticalSizeClass;
-
-@property (readonly) CGFloat displayScale;
 @property (readonly) UIDisplayGamut displayGamut API_AVAILABLE(ios(10.0));
-
 @property (readonly) UIUserInterfaceIdiom userInterfaceIdiom;
 @property (readonly) UIForceTouchCapability forceTouchCapability;
 @property (readonly) UITraitEnvironmentLayoutDirection layoutDirection API_AVAILABLE(ios(10.0));
 @property (readonly) UIUserInterfaceStyle userInterfaceStyle API_AVAILABLE(tvos(10.0), ios(12.0));
 @property (readonly) UIContentSizeCategory preferredContentSizeCategory  API_AVAILABLE(ios(10.0));
+#endif
+
+@property (readonly) CGFloat displayScale;
 
 @property (readonly) CGSize containerSize;
 
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
 @property (readonly) UIUserInterfaceLevel userInterfaceLevel API_AVAILABLE(ios(13.0)) API_UNAVAILABLE(tvos);
 #endif
-
+#if !AS_PLATFORM_MACOS
 @property (readonly) UIAccessibilityContrast accessibilityContrast API_AVAILABLE(ios(13.0));
 @property (readonly) UILegibilityWeight legibilityWeight API_AVAILABLE(ios(13.0));
+#endif
 
 - (BOOL)isEqualToTraitCollection:(ASTraitCollection *)traitCollection;
 

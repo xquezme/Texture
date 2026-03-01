@@ -15,8 +15,13 @@
 #import "ASDisplayNode+Subclasses.h"
 #import "ASPendingStateController.h"
 
+@interface _ASPendingState (ASAccessibilityBridgePrivate)
+@property (nonatomic) BOOL isAccessibilityElement;
+@property (nonatomic, copy) NSString *accessibilityLabel;
+@end
+
 /**
- * The following macros are conveniences to help in the common tasks related to the bridging that ASDisplayNode does to UIView and CALayer.
+ * The following macros are conveniences to help in the common tasks related to the bridging that ASDisplayNode does to ASDisplayView and CALayer.
  * In general, a property can either be:
  *   - Always sent to the layer or view's layer
  *       use _getFromLayer / _setToLayer
@@ -78,14 +83,14 @@ if (shouldApply) { _view.viewAndPendingViewStateProperty = (viewAndPendingViewSt
 if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNodeGetPendingState(self).layerProperty = (layerValueExpr); }
 
 /**
- * This category implements certain frequently-used properties and methods of UIView and CALayer so that ASDisplayNode clients can just call the view/layer methods on the node,
- * with minimal loss in performance.  Unlike UIView and CALayer methods, these can be called from a non-main thread until the view or layer is created.
+ * This category implements certain frequently-used properties and methods of ASDisplayView and CALayer so that ASDisplayNode clients can just call the view/layer methods on the node,
+ * with minimal loss in performance.  Unlike ASDisplayView and CALayer methods, these can be called from a non-main thread until the view or layer is created.
  * This allows text sizing in -calculateSizeThatFits: (essentially a simplified layout) to happen off the main thread
- * without any CALayer or UIView actually existing while still being able to set and read properties from ASDisplayNode instances.
+ * without any CALayer or ASDisplayView actually existing while still being able to set and read properties from ASDisplayNode instances.
  */
 @implementation ASDisplayNode (UIViewBridge)
 
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
 // Focus Engine
 - (BOOL)canBecomeFocused
 {
@@ -114,7 +119,7 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   
 }
 
-- (UIView *)preferredFocusedView
+- (ASDisplayView *)preferredFocusedView
 {
   if (self.nodeLoaded) {
     return _view;
@@ -127,17 +132,27 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
 
 - (BOOL)canBecomeFirstResponder
 {
+#if AS_PLATFORM_MACOS
+  return !self.layerBacked && [[self view] acceptsFirstResponder];
+#else
   if (_view == nil) {
     // By default we return NO if not view is created yet
     return NO;
   }
   return [_view canBecomeFirstResponder];
+#endif
 }
 
 - (BOOL)becomeFirstResponder
 {
   ASDisplayNodeAssertMainThread();
 
+#if AS_PLATFORM_MACOS
+  if (self.layerBacked) {
+    return NO;
+  }
+  return [[[self view] window] makeFirstResponder:[self view]];
+#else
   // Note: This implicitly loads the view if it hasn't been loaded yet.
   [self view];
 
@@ -145,23 +160,34 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
     return NO;
   }
   return [_view becomeFirstResponder];
+#endif
 }
 
 - (BOOL)canResignFirstResponder
 {
   ASDisplayNodeAssertMainThread();
 
+#if AS_PLATFORM_MACOS
+  return YES;
+#else
   if (_view == nil) {
     // By default we return YES if no view is created yet
     return YES;
   }
   return [_view canResignFirstResponder];
+#endif
 }
 
 - (BOOL)resignFirstResponder
 {
   ASDisplayNodeAssertMainThread();
 
+#if AS_PLATFORM_MACOS
+  if (self.layerBacked) {
+    return NO;
+  }
+  return [[[self view] window] makeFirstResponder:nil];
+#else
   // Note: This implicitly loads the view if it hasn't been loaded yet.
   [self view];
 
@@ -169,24 +195,34 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
     return NO;
   }
   return [_view resignFirstResponder];
+#endif
 }
 
 - (BOOL)isFirstResponder
 {
   ASDisplayNodeAssertMainThread();
+#if AS_PLATFORM_MACOS
+  return !self.layerBacked && [self.view.window firstResponder] == self.view;
+#else
   if (_view == nil) {
     // If no view is created yet we can just return NO as it's unlikely it's the first responder
     return NO;
   }
   return [_view isFirstResponder];
+#endif
 }
 
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
 {
   ASDisplayNodeAssertMainThread();
+#if AS_PLATFORM_MACOS
+  return NO;
+#else
   return !self.layerBacked && [self.view canPerformAction:action withSender:sender];
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
 - (CGFloat)alpha
 {
   _bridge_prologue_read;
@@ -198,6 +234,7 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   _bridge_prologue_write;
   _setToViewOrLayer(opacity, newAlpha, alpha, newAlpha);
 }
+#endif
 
 - (CGFloat)cornerRadius
 {
@@ -316,7 +353,7 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   // Frame is only defined when transform is identity.
 //#if DEBUG
 //  // Checking if the transform is identity is expensive, so disable when unnecessary. We have assertions on in Release, so DEBUG is the only way I know of.
-//  ASDisplayNodeAssert(CATransform3DIsIdentity(self.transform), @"-[ASDisplayNode frame] - self.transform must be identity in order to use the frame property.  (From Apple's UIView documentation: If the transform property is not the identity transform, the value of this property is undefined and therefore should be ignored.)");
+//  ASDisplayNodeAssert(CATransform3DIsIdentity(self.transform), @"-[ASDisplayNode frame] - self.transform must be identity in order to use the frame property.  (From Apple's ASDisplayView documentation: If the transform property is not the identity transform, the value of this property is undefined and therefore should be ignored.)");
 //#endif
 
   CGPoint position = self.position;
@@ -338,7 +375,7 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   {
     _bridge_prologue_write;
 
-    // For classes like ASTableNode, ASCollectionNode, ASScrollNode and similar - make sure UIView gets setFrame:
+    // For classes like ASTableNode, ASCollectionNode, ASScrollNode and similar - make sure ASDisplayView gets setFrame:
     struct ASDisplayNodeFlags flags = _flags;
     BOOL specialPropertiesHandling = ASDisplayNodeNeedsSpecialPropertiesHandling(checkFlag(Synchronous), flags.layerBacked);
 
@@ -525,7 +562,7 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
 
      In debugging on Xcode 11 I saw the following in lldb:
      - Initially for a new ASDisplayNode layer.isOpaque and _view.isOpaque are true
-     - Set the backgroundColor of the node to a valid UIColor
+     - Set the backgroundColor of the node to a valid ASColor
      Expected: layer.isOpaque and view.isOpaque would be equal and true
      Actual: view.isOpaque is true and layer.isOpaque is now false
 
@@ -534,7 +571,9 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
     BOOL oldOpaque = _layer.opaque;
     if (!_flags.layerBacked) {
       oldOpaque = _view.opaque;
+#if !AS_PLATFORM_MACOS
       _view.opaque = newOpaque;
+#endif
     }
     _layer.opaque = newOpaque;
     if (oldOpaque != newOpaque) {
@@ -552,15 +591,74 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
 {
   _bridge_prologue_read;
   if (_flags.layerBacked) return NO;
+  
+#if AS_PLATFORM_MACOS
+  return ASDisplayNodeGetPendingState(self).userInteractionEnabled;
+#else
   return _getFromViewOnly(userInteractionEnabled);
+#endif
 }
 
 - (void)setUserInteractionEnabled:(BOOL)enabled
 {
   _bridge_prologue_write;
+  
+#if AS_PLATFORM_MACOS
+  ASDisplayNodeGetPendingState(self).userInteractionEnabled = enabled;
+#else
   _setToViewOnly(userInteractionEnabled, enabled);
+#endif
 }
-#if TARGET_OS_IOS
+
+#if AS_PLATFORM_MACOS
+- (BOOL)isAccessibilityElement
+{
+  _bridge_prologue_read;
+  if (_flags.layerBacked) {
+    return _flags.isAccessibilityElement;
+  }
+  if (_loaded(self)) {
+    return _view.isAccessibilityElement;
+  }
+  return ASDisplayNodeGetPendingState(self).isAccessibilityElement;
+}
+
+- (void)setIsAccessibilityElement:(BOOL)isAccessibilityElement
+{
+  _bridge_prologue_write;
+  if (_flags.layerBacked) {
+    _flags.isAccessibilityElement = isAccessibilityElement;
+  } else {
+    BOOL shouldApply = ASDisplayNodeShouldApplyBridgedWriteToView(self);
+    if (shouldApply) {
+      [_view setAccessibilityElement:isAccessibilityElement];
+    } else {
+      ASDisplayNodeGetPendingState(self).isAccessibilityElement = isAccessibilityElement;
+    }
+  }
+}
+
+- (NSString *)accessibilityLabel
+{
+  _bridge_prologue_read;
+  if (_flags.layerBacked) {
+    return _accessibilityLabel;
+  }
+  return _getFromViewOnly(accessibilityLabel);
+}
+
+- (void)setAccessibilityLabel:(NSString *)accessibilityLabel
+{
+  _bridge_prologue_write;
+  if (_flags.layerBacked) {
+    _accessibilityLabel = [accessibilityLabel copy];
+  } else {
+    _setToViewOnly(accessibilityLabel, accessibilityLabel);
+  }
+}
+#endif
+
+#if AS_PLATFORM_IOS
 - (BOOL)isExclusiveTouch
 {
   _bridge_prologue_read;
@@ -695,6 +793,7 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   _setToViewOnly(autoresizesSubviews, flag);
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIViewAutoresizing)autoresizingMask
 {
   _bridge_prologue_read;
@@ -737,8 +836,9 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
     ASDisplayNodeGetPendingState(self).contentMode = contentMode;
   }
 }
+#endif
 
-- (UIColor *)backgroundColor
+- (ASColor *)backgroundColor
 {
   _bridge_prologue_read;
   if (_loaded(self)) {
@@ -749,33 +849,41 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
     if (_flags.layerBacked) {
       return _backgroundColor;
     } else {
+#if !AS_PLATFORM_MACOS
       return _view.backgroundColor;
+#else
+      return _backgroundColor;
+#endif
     }
   }
   return ASDisplayNodeGetPendingState(self).backgroundColor;
 }
 
-- (void)setBackgroundColor:(UIColor *)newBackgroundColor
+- (void)setBackgroundColor:(ASColor *)newBackgroundColor
 {
   _bridge_prologue_write;
   BOOL shouldApply = ASDisplayNodeShouldApplyBridgedWriteToView(self);
   if (shouldApply) {
-    UIColor *oldBackgroundColor = _backgroundColor;
+    ASColor *oldBackgroundColor = _backgroundColor;
     _backgroundColor = newBackgroundColor;
     if (_flags.layerBacked) {
       _layer.backgroundColor = _backgroundColor.CGColor;
     } else {
+#if !AS_PLATFORM_MACOS
       /*
        NOTE: Setting to the view and layer individually is necessary.
 
        As observed in lldb, the view does not appear to immediately propagate background color to the layer and actually clears it's value (`nil`) initially. This was caught by our snapshot tests.
 
-       Given that UIColor / UIView has dynamic capabilties now, we should set directly to the view and make sure that the layers value is consistent here.
+       Given that ASColor / ASDisplayView has dynamic capabilties now, we should set directly to the view and make sure that the layers value is consistent here.
 
        */
       _view.backgroundColor = _backgroundColor;
       // Gather the CGColorRef from the view incase there are any changes it might apply to which CGColorRef is returned for dynamic colors
       _layer.backgroundColor = _view.backgroundColor.CGColor;
+#else
+      _layer.backgroundColor = _backgroundColor.CGColor;
+#endif
     }
 
     if (![oldBackgroundColor isEqual:newBackgroundColor]) {
@@ -790,24 +898,28 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   }
 }
 
-- (UIColor *)tintColor
+- (ASColor *)tintColor
 {
   __instanceLock__.lock();
-  UIColor *retVal = nil;
+  ASColor *retVal = nil;
   BOOL shouldAscend = NO;
   if (_flags.layerBacked) {
     retVal = _tintColor;
     // The first nondefault tint color value in the node’s hierarchy, ascending from and starting with the node itself.
     shouldAscend = (retVal == nil);
   } else {
+#if !AS_PLATFORM_MACOS
     ASDisplayNodeAssertThreadAffinity(self);
     retVal = _getFromViewOnly(tintColor);
+#else
+    retVal = _tintColor;
+#endif
   }
   __instanceLock__.unlock();
   return shouldAscend ? self.supernode.tintColor : retVal;
 }
 
-- (void)setTintColor:(UIColor *)color
+- (void)setTintColor:(ASColor *)color
 {
   // Handle locking manually since we unlock to notify subclasses when tint color changes
   __instanceLock__.lock();
@@ -824,7 +936,9 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
     }
   } else {
     _tintColor = color;
+#if !AS_PLATFORM_MACOS
     _setToViewOnly(tintColor, color);
+#endif
   }
   __instanceLock__.unlock();
 }
@@ -942,6 +1056,7 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   _setToLayer(edgeAntialiasingMask, edgeAntialiasingMask);
 }
 
+#if !AS_PLATFORM_MACOS
 - (UISemanticContentAttribute)semanticContentAttribute
 {
   AS::MutexLocker l(__instanceLock__);
@@ -951,41 +1066,52 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
 - (void)setSemanticContentAttribute:(UISemanticContentAttribute)semanticContentAttribute
 {
   AS::MutexLocker l(__instanceLock__);
+#if !AS_PLATFORM_MACOS
   _setToViewOnly(semanticContentAttribute, semanticContentAttribute);
+#endif
   _semanticContentAttribute = semanticContentAttribute;
 #if YOGA
   [self semanticContentAttributeDidChange:semanticContentAttribute];
 #endif
 }
+#endif
 
-- (UIEdgeInsets)layoutMargins
+#if !AS_PLATFORM_MACOS
+- (ASEdgeInsets)layoutMargins
 {
   _bridge_prologue_read;
   ASDisplayNodeAssert(!_flags.layerBacked, @"Danger: this property is undefined on layer-backed nodes.");
-  UIEdgeInsets margins = _getFromViewOnly(layoutMargins);
+  ASEdgeInsets margins = _getFromViewOnly(layoutMargins);
 
   return margins;
 }
 
-- (void)setLayoutMargins:(UIEdgeInsets)layoutMargins
+- (void)setLayoutMargins:(ASEdgeInsets)layoutMargins
 {
   _bridge_prologue_write;
   ASDisplayNodeAssert(!_flags.layerBacked, @"Danger: this property is undefined on layer-backed nodes.");
   _setToViewOnly(layoutMargins, layoutMargins);
 }
+#endif
 
 - (BOOL)preservesSuperviewLayoutMargins
 {
+#if AS_PLATFORM_MACOS
+  return NO;
+#else
   _bridge_prologue_read;
   ASDisplayNodeAssert(!_flags.layerBacked, @"Danger: this property is undefined on layer-backed nodes.");
   return _getFromViewOnly(preservesSuperviewLayoutMargins);
+#endif
 }
 
 - (void)setPreservesSuperviewLayoutMargins:(BOOL)preservesSuperviewLayoutMargins
 {
+#if !AS_PLATFORM_MACOS
   _bridge_prologue_write;
   ASDisplayNodeAssert(!_flags.layerBacked, @"Danger: this property is undefined on layer-backed nodes.");
   _setToViewOnly(preservesSuperviewLayoutMargins, preservesSuperviewLayoutMargins);
+#endif
 }
 
 - (void)layoutMarginsDidChange
@@ -997,13 +1123,15 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
   }
 }
 
-- (UIEdgeInsets)safeAreaInsets
+- (ASEdgeInsets)safeAreaInsets
 {
   _bridge_prologue_read;
 
+#if !AS_PLATFORM_MACOS
   if (!_flags.layerBacked && _loaded(self)) {
     return self.view.safeAreaInsets;
   }
+#endif
 
   return _fallbackSafeAreaInsets;
 }
@@ -1025,7 +1153,9 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
     _flags.fallbackInsetsLayoutMarginsFromSafeArea = insetsLayoutMarginsFromSafeArea;
 
     if (!_flags.layerBacked) {
+#if !AS_PLATFORM_MACOS
       _setToViewOnly(insetsLayoutMarginsFromSafeArea, insetsLayoutMarginsFromSafeArea);
+#endif
     }
 
     shouldNotifyAboutUpdate = _loaded(self) && _flags.layerBacked;
@@ -1091,7 +1221,9 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
 {
   DISABLED_ASAssertLocked(__instanceLock__);
   if (!_flags.layerBacked) {
+#if !AS_PLATFORM_MACOS
     return _getFromViewOnly(insetsLayoutMarginsFromSafeArea);
+#endif
   }
   return _flags.fallbackInsetsLayoutMarginsFromSafeArea;
 }
@@ -1117,7 +1249,13 @@ if (shouldApply) { _layer.layerProperty = (layerValueExpr); } else { ASDisplayNo
 #define _setAccessibilityToViewAndProperty(nodeProperty, nodeValueExpr, viewAndPendingViewStateProperty, viewAndPendingViewStateExpr) \
 nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, viewAndPendingViewStateExpr)
 
+#if !AS_PLATFORM_MACOS
 @implementation ASDisplayNode (UIViewBridgeAccessibility)
+
+// Properties that exist with the same name on both UIKit (UIAccessibility) and AppKit
+// (NSAccessibilityProtocol, available since macOS 10.10). These are unconditionally compiled
+// on all platforms. Properties with different view-side names, or with no AppKit equivalent,
+// are guarded individually below.
 
 - (BOOL)isAccessibilityElement
 {
@@ -1151,12 +1289,13 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   // in which one action results in a name change in the next action. In that case the UIAccessibility
   // will hold the old action strongly until a11y jumps out of the list of custom actions.
   // Thus we can only update name in place to have the change take effect.
+#if !AS_PLATFORM_MACOS
   BOOL needsUpdateActionName = self.isNodeLoaded && ![oldAccessibilityLabel isEqualToString:accessibilityLabel] && (0 != (_accessibilityTraits & ASInteractiveAccessibilityTraitsMask()));
   if (needsUpdateActionName) {
     self.accessibilityCustomAction.name = accessibilityLabel;
   }
+#endif
 }
-
 
 - (NSAttributedString *)accessibilityAttributedLabel
 {
@@ -1171,22 +1310,34 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   { _setAccessibilityToViewAndProperty(_accessibilityLabel, accessibilityAttributedLabel.string, accessibilityLabel, accessibilityAttributedLabel.string); }
 }
 
+// accessibilityHint (UIKit) maps to accessibilityHelp (AppKit).
+// The node always stores the value as _accessibilityHint; only the view-side property name differs.
 - (NSString *)accessibilityHint
 {
   _bridge_prologue_read;
+#if AS_PLATFORM_MACOS
+  return _getAccessibilityFromViewOrProperty(_accessibilityHint, accessibilityHelp);
+#else
   return _getAccessibilityFromViewOrProperty(_accessibilityHint, accessibilityHint);
+#endif
 }
 
 - (void)setAccessibilityHint:(NSString *)accessibilityHint
 {
   _bridge_prologue_write;
+#if AS_PLATFORM_MACOS
+  _setAccessibilityToViewAndProperty(_accessibilityHint, accessibilityHint, accessibilityHelp, accessibilityHint);
+#else
   _setAccessibilityToViewAndProperty(_accessibilityHint, accessibilityHint, accessibilityHint, accessibilityHint);
   {
     NSAttributedString *accessibilityAttributedHint = accessibilityHint ? [[NSAttributedString alloc] initWithString:accessibilityHint] : nil;
     _setAccessibilityToViewAndProperty(_accessibilityAttributedHint, accessibilityAttributedHint, accessibilityAttributedHint, accessibilityAttributedHint);
   }
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
+// UIKit only: attributed variant of hint. AppKit uses non-attributed accessibilityHelp.
 - (NSAttributedString *)accessibilityAttributedHint
 {
   _bridge_prologue_read;
@@ -1197,9 +1348,9 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
 {
   _bridge_prologue_write;
   { _setAccessibilityToViewAndProperty(_accessibilityAttributedHint, accessibilityAttributedHint, accessibilityAttributedHint, accessibilityAttributedHint); }
-
   { _setAccessibilityToViewAndProperty(_accessibilityHint, accessibilityAttributedHint.string, accessibilityHint, accessibilityAttributedHint.string); }
 }
+#endif
 
 - (NSString *)accessibilityValue
 {
@@ -1211,12 +1362,16 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
 {
   _bridge_prologue_write;
   _setAccessibilityToViewAndProperty(_accessibilityValue, accessibilityValue, accessibilityValue, accessibilityValue);
+#if !AS_PLATFORM_MACOS
   {
     NSAttributedString *accessibilityAttributedValue = accessibilityValue ? [[NSAttributedString alloc] initWithString:accessibilityValue] : nil;
     _setAccessibilityToViewAndProperty(_accessibilityAttributedValue, accessibilityAttributedValue, accessibilityAttributedValue, accessibilityAttributedValue);
   }
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
+// UIKit only: attributed value. AppKit's accessibilityValue is id, not NSAttributedString.
 - (NSAttributedString *)accessibilityAttributedValue
 {
   _bridge_prologue_read;
@@ -1230,6 +1385,7 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   { _setAccessibilityToViewAndProperty(_accessibilityValue, accessibilityAttributedValue.string, accessibilityValue, accessibilityAttributedValue.string); }
 }
 
+// UIKit only: UIAccessibilityTraits has no AppKit equivalent; AppKit uses role/subrole.
 - (UIAccessibilityTraits)accessibilityTraits
 {
   _bridge_prologue_read;
@@ -1241,6 +1397,7 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   _bridge_prologue_write;
   _setAccessibilityToViewAndProperty(_accessibilityTraits, accessibilityTraits, accessibilityTraits, accessibilityTraits);
 }
+#endif
 
 - (CGRect)accessibilityFrame
 {
@@ -1266,18 +1423,29 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   _setAccessibilityToViewAndProperty(_accessibilityLanguage, accessibilityLanguage, accessibilityLanguage, accessibilityLanguage);
 }
 
+// accessibilityElementsHidden (UIKit) maps to accessibilityHidden (AppKit).
 - (BOOL)accessibilityElementsHidden
 {
   _bridge_prologue_read;
+#if AS_PLATFORM_MACOS
+  return _getAccessibilityFromViewOrProperty(_flags.accessibilityElementsHidden, isAccessibilityHidden);
+#else
   return _getAccessibilityFromViewOrProperty(_flags.accessibilityElementsHidden, accessibilityElementsHidden);
+#endif
 }
 
 - (void)setAccessibilityElementsHidden:(BOOL)accessibilityElementsHidden
 {
   _bridge_prologue_write;
+#if AS_PLATFORM_MACOS
+  _setAccessibilityToViewAndProperty(_flags.accessibilityElementsHidden, accessibilityElementsHidden, accessibilityHidden, accessibilityElementsHidden);
+#else
   _setAccessibilityToViewAndProperty(_flags.accessibilityElementsHidden, accessibilityElementsHidden, accessibilityElementsHidden, accessibilityElementsHidden);
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
+// UIKit only: no AppKit equivalent.
 - (BOOL)accessibilityViewIsModal
 {
   _bridge_prologue_read;
@@ -1290,6 +1458,7 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   _setAccessibilityToViewAndProperty(_flags.accessibilityViewIsModal, accessibilityViewIsModal, accessibilityViewIsModal, accessibilityViewIsModal);
 }
 
+// UIKit only: no AppKit equivalent.
 - (BOOL)shouldGroupAccessibilityChildren
 {
   _bridge_prologue_read;
@@ -1301,6 +1470,7 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   _bridge_prologue_write;
   _setAccessibilityToViewAndProperty(_flags.shouldGroupAccessibilityChildren, shouldGroupAccessibilityChildren, shouldGroupAccessibilityChildren, shouldGroupAccessibilityChildren);
 }
+#endif
 
 - (NSString *)accessibilityIdentifier
 {
@@ -1314,6 +1484,8 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   _setAccessibilityToViewAndProperty(_accessibilityIdentifier, accessibilityIdentifier, accessibilityIdentifier, accessibilityIdentifier);
 }
 
+#if !AS_PLATFORM_MACOS
+// UIKit only: UIAccessibilityNavigationStyle has no AppKit equivalent.
 - (void)setAccessibilityNavigationStyle:(UIAccessibilityNavigationStyle)accessibilityNavigationStyle
 {
   _bridge_prologue_write;
@@ -1325,6 +1497,7 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   _bridge_prologue_read;
   return _getAccessibilityFromViewOrProperty(_accessibilityNavigationStyle, accessibilityNavigationStyle);
 }
+#endif
 
 - (void)setAccessibilityCustomActions:(NSArray *)accessibilityCustomActions
 {
@@ -1364,25 +1537,29 @@ nodeProperty = nodeValueExpr; _setToViewOnly(viewAndPendingViewStateProperty, vi
   return _getAccessibilityFromViewOrProperty(_accessibilityActivationPoint, accessibilityActivationPoint);
 }
 
-- (void)setAccessibilityPath:(UIBezierPath *)accessibilityPath
+- (void)setAccessibilityPath:(ASBezierPath *)accessibilityPath
 {
   _bridge_prologue_write;
   _setAccessibilityToViewAndProperty(_accessibilityPath, accessibilityPath, accessibilityPath, accessibilityPath);
 }
 
-- (UIBezierPath *)accessibilityPath
+- (ASBezierPath *)accessibilityPath
 {
   _bridge_prologue_read;
   return _getAccessibilityFromViewOrProperty(_accessibilityPath, accessibilityPath);
 }
 
+#if !AS_PLATFORM_MACOS
+// UIKit only: NSView does not expose an accessibilityElementCount property.
 - (NSInteger)accessibilityElementCount
 {
   _bridge_prologue_read;
   return _getFromViewOnly(accessibilityElementCount);
 }
+#endif
 
 @end
+#endif
 
 
 #pragma mark - ASAsyncTransactionContainer

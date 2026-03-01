@@ -7,8 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
-
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 #import "ASDisplayNode.h"
 
@@ -34,8 +33,9 @@
  @param obj ASDisplayNode, CALayer or object that conforms to `ASResizableContents` protocol
  @param image Image you would like to resize
  */
-ASDK_EXTERN void ASDisplayNodeSetResizableContents(id<ASResizableContents> obj, UIImage *image);
+ASDK_EXTERN void ASDisplayNodeSetResizableContents(id<ASResizableContents> obj, ASImage *image);
 
+#if !AS_PLATFORM_MACOS
 /**
  Turns a value of UIViewContentMode to a string for debugging or serialization
  @param contentMode Any of the UIViewContentMode constants
@@ -62,16 +62,17 @@ ASDK_EXTERN NSString *const ASDisplayNodeCAContentsGravityFromUIContentMode(UIVi
  Maps a value of contentsGravity to a corresponding UIViewContentMode
  It is worth noting that UIKit and CA have inverse definitions of "top" and "bottom" on iOS, so the corresponding contentMode for kCAContentsGravityBottomLeft is UIViewContentModeTopLeft
  @param contentsGravity A contents gravity
- @return A UIViewContentMode constant from UIView.h, eg UIViewContentModeCenter...,  or UIViewContentModeScaleToFill if contentsGravity is not one of the CA constants. Will assert if the contentsGravity is unknown.
+ @return A UIViewContentMode constant from ASDisplayView.h, eg UIViewContentModeCenter...,  or UIViewContentModeScaleToFill if contentsGravity is not one of the CA constants. Will assert if the contentsGravity is unknown.
  */
 ASDK_EXTERN UIViewContentMode ASDisplayNodeUIContentModeFromCAContentsGravity(NSString *const contentsGravity);
+#endif
 
 /**
  Use this to create a stretchable appropriate to approximate a filled rectangle, but with antialiasing on the edges when not pixel-aligned. It's best to keep the layer this image is added to with contentsScale equal to the scale of the final transform to screen space so it is able to antialias appropriately even when you shrink or grow the layer.
  @param color the fill color to use in the center of the image
  @param innerSize Unfortunately, 4 seems to be the smallest inner size that works if you're applying this stretchable to a larger box, whereas it does not display correctly for larger boxes. Thus some adjustment is necessary for the size of box you're displaying. If you're showing a 1px horizontal line, pass 1 height and at least 4 width. 2px vertical line: 2px wide, 4px high. Passing an innerSize greater that you desire is wasteful
  */
-ASDK_EXTERN UIImage *ASDisplayNodeStretchableBoxContentsWithColor(UIColor *color, CGSize innerSize);
+ASDK_EXTERN ASImage *ASDisplayNodeStretchableBoxContentsWithColor(ASColor *color, CGSize innerSize);
 
 /**
  Checks whether a layer has ongoing animations
@@ -81,4 +82,4 @@ ASDK_EXTERN UIImage *ASDisplayNodeStretchableBoxContentsWithColor(UIColor *color
 ASDK_EXTERN BOOL ASDisplayNodeLayerHasAnimations(CALayer *layer);
 
 // This function is a less generalized version of ASDisplayNodeSetResizableContents.
-ASDK_EXTERN void ASDisplayNodeSetupLayerContentsWithResizableImage(CALayer *layer, UIImage *image) ASDISPLAYNODE_DEPRECATED;
+ASDK_EXTERN void ASDisplayNodeSetupLayerContentsWithResizableImage(CALayer *layer, ASImage *image) ASDISPLAYNODE_DEPRECATED;

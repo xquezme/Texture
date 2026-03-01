@@ -118,7 +118,7 @@ typedef NS_ENUM(unsigned char, ASLayoutElementType) {
  * 1. First, it uses the parentSize parameter to resolve the nodes's size (the one assigned to the size property).
  * 2. Then, it intersects the resolved size with the constrainedSize parameter. If the two don't intersect,
  *    constrainedSize wins. This allows a component to always override its children's sizes when computing its layout.
- *    (The analogy for UIView: you might return a certain size from -sizeThatFits:, but a parent view can always override
+ *    (The analogy for ASDisplayView: you might return a certain size from -sizeThatFits:, but a parent view can always override
  *    that size and set your frame to any size.)
  * 3. It caches it result for reuse
  *

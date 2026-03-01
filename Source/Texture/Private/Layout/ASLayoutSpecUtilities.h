@@ -80,22 +80,22 @@ inline CGSize operator-(const CGSize &s1, const CGSize &s2)
   return { s1.width - s2.width, s1.height - s2.height };
 }
 
-inline UIEdgeInsets operator+(const UIEdgeInsets &e1, const UIEdgeInsets &e2)
+inline ASEdgeInsets operator+(const ASEdgeInsets &e1, const ASEdgeInsets &e2)
 {
   return { e1.top + e2.top, e1.left + e2.left, e1.bottom + e2.bottom, e1.right + e2.right };
 }
 
-inline UIEdgeInsets operator-(const UIEdgeInsets &e1, const UIEdgeInsets &e2)
+inline ASEdgeInsets operator-(const ASEdgeInsets &e1, const ASEdgeInsets &e2)
 {
   return { e1.top - e2.top, e1.left - e2.left, e1.bottom - e2.bottom, e1.right - e2.right };
 }
 
-inline UIEdgeInsets operator*(const UIEdgeInsets &e1, const UIEdgeInsets &e2)
+inline ASEdgeInsets operator*(const ASEdgeInsets &e1, const ASEdgeInsets &e2)
 {
   return { e1.top * e2.top, e1.left * e2.left, e1.bottom * e2.bottom, e1.right * e2.right };
 }
 
-inline UIEdgeInsets operator-(const UIEdgeInsets &e)
+inline ASEdgeInsets operator-(const ASEdgeInsets &e)
 {
   return { -e.top, -e.left, -e.bottom, -e.right };
 }

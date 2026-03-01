@@ -21,7 +21,9 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @default [ASCollectionView class] is used whenever this property is unset or nil.
  */
+#if !AS_PLATFORM_MACOS
 @property (nullable, nonatomic) Class collectionViewClass;
+#endif
 
 /**
  * The elements that are currently displayed. The "UIKit index space". Must be accessed on main thread.
@@ -49,12 +51,16 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @default defaults to ASCellLayoutModeNone.
  */
+#if !AS_PLATFORM_MACOS
 @property (nonatomic) ASCellLayoutMode cellLayoutMode;
+#endif
 
 /**
  *  Returns YES if the ASCollectionNode contents are completely synchronized with the underlying collection-view layout.
  */
+#if !AS_PLATFORM_MACOS
 @property (nonatomic, readonly, getter=isSynchronized) BOOL synchronized;
+#endif
 
 /**
  *  Schedules a block to be performed (on the main thread) as soon as the completion block is called
@@ -62,11 +68,15 @@ NS_ASSUME_NONNULL_BEGIN
  *
  *  When isSynchronized == YES, the block is run block immediately (before the method returns).
  */
+#if !AS_PLATFORM_MACOS
 - (void)onDidFinishSynchronizing:(NS_SWIFT_UI_ACTOR void (^)(void))didFinishSynchronizing;
+#endif
 
-- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(UICollectionViewLayout *)layout layoutFacilitator:(nullable id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator;
+#if !AS_PLATFORM_MACOS
+- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout layoutFacilitator:(nullable id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator;
 
 - (instancetype)initWithLayoutDelegate:(id<ASCollectionLayoutDelegate>)layoutDelegate layoutFacilitator:(nullable id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator;
+#endif
 
 - (void)beginUpdates ASDISPLAYNODE_DEPRECATED_MSG("Use -performBatchUpdates:completion: instead.");
 

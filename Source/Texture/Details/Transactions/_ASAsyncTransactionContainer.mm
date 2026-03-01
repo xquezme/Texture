@@ -86,7 +86,11 @@
 
 @end
 
+#if AS_PLATFORM_MACOS
+@implementation NSView (ASAsyncTransactionContainer)
+#else
 @implementation UIView (ASAsyncTransactionContainer)
+#endif
 
 - (BOOL)asyncdisplaykit_isAsyncTransactionContainer
 {

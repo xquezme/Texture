@@ -9,7 +9,7 @@
 
 #import "ASAvailability.h"
 
-#if AS_IG_LIST_KIT
+#if AS_IG_LIST_KIT && !AS_PLATFORM_MACOS
 
 #if __has_include(<IGListKit/IGListKit.h>)
 #import <IGListKit/IGListKit.h>
@@ -29,7 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param collectionNode The collection node to drive with this list adapter.
  *
  * @note This method may only be called once per list adapter, 
- *   and it must be called on the main thread. -[UIViewController init]
+ *   and it must be called on the main thread. -[ASDisplayViewController init]
  *   is a good place to call it. This method does not retain the collection node.
  */
 - (void)setASDKCollectionNode:(ASCollectionNode *)collectionNode;
@@ -38,4 +38,4 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-#endif // AS_IG_LIST_KIT
+#endif // AS_IG_LIST_KIT && !AS_PLATFORM_MACOS

@@ -16,7 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /**
  A singleton that is responsible for applying changes to
- UIView/CALayer properties of display nodes when they
+ ASDisplayView/CALayer properties of display nodes when they
  have been set on background threads.
  
  This controller will enqueue run-loop events to flush changes
@@ -30,7 +30,7 @@ AS_SUBCLASSING_RESTRICTED
 @property (nonatomic, readonly) BOOL hasChanges;
 
 /**
- Flush all pending states for nodes now. Any UIView/CALayer properties
+ Flush all pending states for nodes now. Any ASDisplayView/CALayer properties
  that have been set in the background will be applied to their
  corresponding views/layers before this method returns.
  

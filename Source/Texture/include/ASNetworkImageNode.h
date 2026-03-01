@@ -62,14 +62,14 @@ NS_ASSUME_NONNULL_BEGIN
  * (<defaultImage>) image while loading and the final image after the new image data was downloaded and processed.
  * If you want to use a placholder image functionality use the defaultImage property instead.
  */
-@property (nullable) UIImage *image;
+@property (nullable) ASImage *image;
 
 /**
  * A placeholder image to display while the URL is loading. This is slightly different than placeholderImage in the
  * ASDisplayNode superclass as defaultImage will *not* be displayed synchronously. If you wish to have the image
  * displayed synchronously, use @c placeholderImage.
  */
-@property (nullable) UIImage *defaultImage;
+@property (nullable) ASImage *defaultImage;
 
 /**
  * The URL of a new image to download and display.
@@ -105,7 +105,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setURL:(nullable NSURL *)URL resetToDefault:(BOOL)reset;
 
 /**
- * If <URL> is a local file, set this property to YES to take advantage of UIKit's image caching.  Defaults to YES.
+ * If <URL> is a local file, set this property to YES to take advantage of the platform image cache. Defaults to YES.
  */
 @property BOOL shouldCacheImage;
 
@@ -222,7 +222,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @discussion Called on the main thread if useMainThreadDelegateCallbacks=YES (the default), otherwise on a background thread.
  */
-- (void)imageNode:(ASNetworkImageNode *)imageNode didLoadImage:(UIImage *)image info:(ASNetworkImageLoadInfo *)info;
+- (void)imageNode:(ASNetworkImageNode *)imageNode didLoadImage:(ASImage *)image info:(ASNetworkImageLoadInfo *)info;
 
 /**
  * Notification that the image node finished downloading an image.
@@ -232,7 +232,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @discussion Called on the main thread if useMainThreadDelegateCallbacks=YES (the default), otherwise on a background thread.
  */
-- (void)imageNode:(ASNetworkImageNode *)imageNode didLoadImage:(UIImage *)image;
+- (void)imageNode:(ASNetworkImageNode *)imageNode didLoadImage:(ASImage *)image;
 
 /**
  * Notification that the image node failed to download the image.

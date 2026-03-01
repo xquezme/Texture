@@ -123,13 +123,15 @@
 
 #pragma mark - Subclass Hooks
 
+#if !AS_PLATFORM_MACOS
 - (void)semanticContentAttributeDidChange:(UISemanticContentAttribute)attribute
 {
   UIUserInterfaceLayoutDirection layoutDirection =
-  [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:attribute];
+  [ASDisplayView userInterfaceLayoutDirectionForSemanticContentAttribute:attribute];
   self.style.direction = (layoutDirection == UIUserInterfaceLayoutDirectionLeftToRight
                           ? YGDirectionLTR : YGDirectionRTL);
 }
+#endif
 
 - (void)setYogaParent:(ASDisplayNode *)yogaParent
 {

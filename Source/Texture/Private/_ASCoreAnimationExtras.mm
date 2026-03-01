@@ -10,20 +10,33 @@
 #import "_ASCoreAnimationExtras.h"
 #import "ASEqualityHelpers.h"
 
-void ASDisplayNodeSetupLayerContentsWithResizableImage(CALayer *layer, UIImage *image)
+void ASDisplayNodeSetupLayerContentsWithResizableImage(CALayer *layer, ASImage *image)
 {
   ASDisplayNodeSetResizableContents(layer, image);
 }
 
-void ASDisplayNodeSetResizableContents(id<ASResizableContents> obj, UIImage *image)
+void ASDisplayNodeSetResizableContents(id<ASResizableContents> obj, ASImage *image)
 {
+#if AS_PLATFORM_MACOS
+  if (image) {
+    CGImageRef cgImage = [image CGImageForProposedRect:NULL context:nil hints:nil];
+    obj.contents = (__bridge id)cgImage;
+    obj.contentsScale = 1.0;
+    obj.rasterizationScale = 1.0;
+    obj.contentsGravity = kCAGravityResize;
+    obj.contentsCenter = CGRectMake(0.0f, 0.0f, 1.0f, 1.0f);
+  } else {
+    obj.contents = nil;
+  }
+  return;
+#else
   // FIXME (https://github.com/TextureGroup/Texture/issues/1046): This method does not currently handle UIImageResizingModeTile, which is the default.
   // See also https://developer.apple.com/documentation/uikit/uiimage/1624157-resizingmode?language=objc
   // I'm not sure of a way to use CALayer directly to perform such tiling on the GPU, though the stretch is handled by the GPU,
   // and CALayer.h documents the fact that contentsCenter is used to stretch the pixels.
 
   if (image) {
-    ASDisplayNodeCAssert(image.resizingMode == UIImageResizingModeStretch || UIEdgeInsetsEqualToEdgeInsets(image.capInsets, UIEdgeInsetsZero),
+    ASDisplayNodeCAssert(image.resizingMode == UIImageResizingModeStretch || ASEdgeInsetsEqualToEdgeInsets(image.capInsets, ASEdgeInsetsZero),
                          @"Image insets must be all-zero or resizingMode has to be UIImageResizingModeStretch. XCode assets default value is UIImageResizingModeTile which is not supported by Texture because of GPU-accelerated CALayer features.");
     
     // Image may not actually be stretchable in one or both dimensions; this is handled
@@ -32,7 +45,7 @@ void ASDisplayNodeSetResizableContents(id<ASResizableContents> obj, UIImage *ima
     obj.rasterizationScale = [image scale];
     CGSize imageSize = [image size];
 
-    UIEdgeInsets insets = [image capInsets];
+    ASEdgeInsets insets = [image capInsets];
 
     // These are lifted from what UIImageView does by experimentation. Without these exact values, the stretching is slightly off.
     const CGFloat halfPixelFudge = 0.49f;
@@ -53,19 +66,20 @@ void ASDisplayNodeSetResizableContents(id<ASResizableContents> obj, UIImage *ima
   } else {
     obj.contents = nil;
   }
+#endif
 }
 
-
-struct _UIContentModeStringLUTEntry {
+#if !AS_PLATFORM_MACOS
+struct _ASContentModeStringLUTEntry {
   UIViewContentMode contentMode;
   NSString *const string;
 };
 
-static const _UIContentModeStringLUTEntry *UIContentModeCAGravityLUT(size_t *count)
+static const _ASContentModeStringLUTEntry *ASContentModeCAGravityLUT(size_t *count)
 {
   // Initialize this in a function (instead of at file level) to avoid
   // startup initialization time.
-  static const _UIContentModeStringLUTEntry sUIContentModeCAGravityLUT[] = {
+  static const _ASContentModeStringLUTEntry sASContentModeCAGravityLUT[] = {
     {UIViewContentModeScaleToFill,     kCAGravityResize},
     {UIViewContentModeScaleAspectFit,  kCAGravityResizeAspect},
     {UIViewContentModeScaleAspectFill, kCAGravityResizeAspectFill},
@@ -79,15 +93,15 @@ static const _UIContentModeStringLUTEntry *UIContentModeCAGravityLUT(size_t *cou
     {UIViewContentModeBottomLeft,      kCAGravityTopLeft},
     {UIViewContentModeBottomRight,     kCAGravityTopRight},
   };
-  *count = AS_ARRAY_SIZE(sUIContentModeCAGravityLUT);
-  return sUIContentModeCAGravityLUT;
+  *count = AS_ARRAY_SIZE(sASContentModeCAGravityLUT);
+  return sASContentModeCAGravityLUT;
 }
 
-static const _UIContentModeStringLUTEntry *UIContentModeDescriptionLUT(size_t *count)
+static const _ASContentModeStringLUTEntry *ASContentModeDescriptionLUT(size_t *count)
 {
   // Initialize this in a function (instead of at file level) to avoid
   // startup initialization time.
-  static const _UIContentModeStringLUTEntry sUIContentModeDescriptionLUT[] = {
+  static const _ASContentModeStringLUTEntry sASContentModeDescriptionLUT[] = {
     {UIViewContentModeScaleToFill,     @"scaleToFill"},
     {UIViewContentModeScaleAspectFit,  @"aspectFit"},
     {UIViewContentModeScaleAspectFill, @"aspectFill"},
@@ -102,14 +116,14 @@ static const _UIContentModeStringLUTEntry *UIContentModeDescriptionLUT(size_t *c
     {UIViewContentModeBottomLeft,      @"bottomLeft"},
     {UIViewContentModeBottomRight,     @"bottomRight"},
   };
-  *count = AS_ARRAY_SIZE(sUIContentModeDescriptionLUT);
-  return sUIContentModeDescriptionLUT;
+  *count = AS_ARRAY_SIZE(sASContentModeDescriptionLUT);
+  return sASContentModeDescriptionLUT;
 }
 
 NSString *ASDisplayNodeNSStringFromUIContentMode(UIViewContentMode contentMode)
 {
   size_t lutSize;
-  const _UIContentModeStringLUTEntry *lut = UIContentModeDescriptionLUT(&lutSize);
+  const _ASContentModeStringLUTEntry *lut = ASContentModeDescriptionLUT(&lutSize);
   for (size_t i = 0; i < lutSize; ++i) {
     if (lut[i].contentMode == contentMode) {
       return lut[i].string;
@@ -121,7 +135,7 @@ NSString *ASDisplayNodeNSStringFromUIContentMode(UIViewContentMode contentMode)
 UIViewContentMode ASDisplayNodeUIContentModeFromNSString(NSString *string)
 {
   size_t lutSize;
-  const _UIContentModeStringLUTEntry *lut = UIContentModeDescriptionLUT(&lutSize);
+  const _ASContentModeStringLUTEntry *lut = ASContentModeDescriptionLUT(&lutSize);
   for (size_t i = 0; i < lutSize; ++i) {
     if (ASObjectIsEqual(lut[i].string, string)) {
       return lut[i].contentMode;
@@ -133,7 +147,7 @@ UIViewContentMode ASDisplayNodeUIContentModeFromNSString(NSString *string)
 NSString *const ASDisplayNodeCAContentsGravityFromUIContentMode(UIViewContentMode contentMode)
 {
   size_t lutSize;
-  const _UIContentModeStringLUTEntry *lut = UIContentModeCAGravityLUT(&lutSize);
+  const _ASContentModeStringLUTEntry *lut = ASContentModeCAGravityLUT(&lutSize);
   for (size_t i = 0; i < lutSize; ++i) {
     if (lut[i].contentMode == contentMode) {
       return lut[i].string;
@@ -157,7 +171,7 @@ UIViewContentMode ASDisplayNodeUIContentModeFromCAContentsGravity(NSString *cons
   }
   
     size_t lutSize;
-    const _UIContentModeStringLUTEntry *lut = UIContentModeCAGravityLUT(&lutSize);
+    const _ASContentModeStringLUTEntry *lut = ASContentModeCAGravityLUT(&lutSize);
     for (size_t i = 0; i < lutSize; ++i) {
     if (ASObjectIsEqual(lut[i].string, contentsGravity)) {
       UIViewContentMode foundContentMode = lut[i].contentMode;
@@ -179,6 +193,7 @@ UIViewContentMode ASDisplayNodeUIContentModeFromCAContentsGravity(NSString *cons
   // If asserts disabled, fall back to this
   return UIViewContentModeScaleToFill;
 }
+#endif
 
 BOOL ASDisplayNodeLayerHasAnimations(CALayer *layer)
 {

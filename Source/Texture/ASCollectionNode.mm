@@ -8,23 +8,28 @@
 //
 
 #import "ASCollectionNode.h"
-#import "ASCollectionNode+Beta.h"
-
-#import "ASCollectionElement.h"
 #import "ASElementMap.h"
 #import "ASCollectionInternal.h"
+#import "ASCellNode+Internal.h"
+#import "ASCellNode.h"
+#import "ASCollectionNode+Beta.h"
+#import "ASCollectionElement.h"
 #import "ASCollectionLayout.h"
+#import "_ASHierarchyChangeSet.h"
+#import "ASRangeController.h"
+
+#if !AS_PLATFORM_MACOS
 #import "ASCollectionViewLayoutFacilitatorProtocol.h"
 #import "ASDisplayNode+Beta.h"
 #import "ASDisplayNode+Subclasses.h"
 #import "ASDisplayNode+FrameworkPrivate.h"
-#import "ASCellNode+Internal.h"
-#import "_ASHierarchyChangeSet.h"
 #import "ASSectionContext.h"
 #import "ASCollectionView+Undeprecated.h"
 #import "ASThread.h"
-#import "ASRangeController.h"
 #import "ASAbstractLayoutController+FrameworkPrivate.h"
+#endif
+
+#if !AS_PLATFORM_MACOS
 
 #pragma mark - _ASCollectionPendingState
 
@@ -49,7 +54,7 @@
 }
 @property (nonatomic, weak) id <ASCollectionDelegate>   delegate;
 @property (nonatomic, weak) id <ASCollectionDataSource> dataSource;
-@property (nonatomic) UICollectionViewLayout *collectionViewLayout;
+@property (nonatomic) ASCollectionViewLayout *collectionViewLayout;
 @property (nonatomic) ASLayoutRangeMode rangeMode;
 @property (nonatomic) BOOL allowsSelection; // default is YES
 @property (nonatomic) BOOL allowsMultipleSelection; // default is NO
@@ -59,7 +64,7 @@
 @property (nonatomic, weak) id <ASCollectionViewLayoutInspecting> layoutInspector;
 @property (nonatomic) BOOL alwaysBounceVertical;
 @property (nonatomic) BOOL alwaysBounceHorizontal;
-@property (nonatomic) UIEdgeInsets contentInset;
+@property (nonatomic) ASEdgeInsets contentInset;
 @property (nonatomic) CGPoint contentOffset;
 @property (nonatomic) BOOL animatesContentOffset;
 @property (nonatomic) BOOL showsVerticalScrollIndicator;
@@ -80,7 +85,7 @@
     _flags.allowsSelection = YES;
     _flags.allowsMultipleSelection = NO;
     _flags.inverted = NO;
-    _contentInset = UIEdgeInsetsZero;
+    _contentInset = ASEdgeInsetsZero;
     _contentOffset = CGPointZero;
     _leadingScreensForBatching = 2.0;
     _flags.animatesContentOffset = NO;
@@ -229,22 +234,43 @@
 
 @end
 
+#endif
+
 #pragma mark - ASCollectionNode
 
 @interface ASCollectionNode ()
 {
+#if !AS_PLATFORM_MACOS
   AS::RecursiveMutex _environmentStateLock;
+#endif
+#if !AS_PLATFORM_MACOS
   Class _collectionViewClass;
   id<ASBatchFetchingDelegate> _batchFetchingDelegate;
+#else
+  __weak id<ASCollectionDelegate> _delegate;
+  __weak id<ASCollectionDataSource> _dataSource;
+  __weak id<ASCollectionViewLayoutInspecting> _layoutInspector;
+  __weak id<ASBatchFetchingDelegate> _batchFetchingDelegate;
+  ASCollectionViewLayout *_collectionViewLayout;
+  CGFloat _leadingScreensForBatching;
+  BOOL _inverted;
+  BOOL _allowsSelection;
+  BOOL _allowsMultipleSelection;
+  ASEdgeInsets _contentInset;
+  CGPoint _contentOffset;
+#endif
 }
+#if !AS_PLATFORM_MACOS
 @property (nonatomic) _ASCollectionPendingState *pendingState;
 @property (nonatomic, weak) ASRangeController *rangeController;
+#endif
 @end
 
 @implementation ASCollectionNode
 
 #pragma mark Lifecycle
 
+#if !AS_PLATFORM_MACOS
 - (Class)collectionViewClass
 {
   return _collectionViewClass ? : [ASCollectionView class];
@@ -258,23 +284,53 @@
     _collectionViewClass = collectionViewClass;
   }
 }
+#endif
 
-- (instancetype)initWithCollectionViewLayout:(UICollectionViewLayout *)layout
+- (instancetype)initWithCollectionViewLayout:(ASCollectionViewLayout *)layout
 {
+#if AS_PLATFORM_MACOS
+  return [self initWithFrame:CGRectZero collectionViewLayout:layout];
+#else
   return [self initWithFrame:CGRectZero collectionViewLayout:layout layoutFacilitator:nil];
+#endif
 }
 
-- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(UICollectionViewLayout *)layout
+- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout
 {
+#if AS_PLATFORM_MACOS
+  ASCollectionViewLayout *resolvedLayout = layout ?: [[ASCollectionViewFlowLayout alloc] init];
+  self = [super init];
+  if (self) {
+    _collectionViewLayout = resolvedLayout;
+    _leadingScreensForBatching = 2.0;
+    _inverted = NO;
+    _allowsSelection = YES;
+    _allowsMultipleSelection = NO;
+    _contentInset = ASEdgeInsetsZero;
+    _contentOffset = CGPointZero;
+
+    __weak __typeof__(self) weakSelf = self;
+    [self setViewBlock:^ASDisplayView *{
+      __typeof__(self) strongSelf = weakSelf;
+      return [[ASCollectionView alloc] _initWithFrame:frame
+                                 collectionViewLayout:strongSelf->_collectionViewLayout
+                                     layoutFacilitator:nil
+                                            owningNode:strongSelf];
+    }];
+  }
+  return self;
+#else
   return [self initWithFrame:frame collectionViewLayout:layout layoutFacilitator:nil];
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
 - (instancetype)initWithLayoutDelegate:(id<ASCollectionLayoutDelegate>)layoutDelegate layoutFacilitator:(id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator
 {
   return [self initWithFrame:CGRectZero collectionViewLayout:[[ASCollectionLayout alloc] initWithLayoutDelegate:layoutDelegate] layoutFacilitator:layoutFacilitator];
 }
 
-- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(UICollectionViewLayout *)layout layoutFacilitator:(id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator
+- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout layoutFacilitator:(id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator
 {
   if (self = [super init]) {
     // Must call the setter here to make sure pendingState is created and the layout is configured.
@@ -288,30 +344,33 @@
   }
   return self;
 }
+#endif
 
 #if ASDISPLAYNODE_ASSERTIONS_ENABLED
+#if !AS_PLATFORM_MACOS
 - (void)dealloc
 {
   if (self.nodeLoaded) {
-    __weak UIView *view = self.view;
+    __weak ASDisplayView *view = self.view;
     ASPerformBlockOnMainThread(^{
       ASDisplayNodeCAssertNil(view.superview, @"Node's view should be removed from hierarchy.");
     });
   }
 }
 #endif
+#endif
 
 #pragma mark ASDisplayNode
 
+#if !AS_PLATFORM_MACOS
 - (void)didLoad
 {
   [super didLoad];
-  
+
   ASCollectionView *view = self.view;
-  view.collectionNode    = self;
- 
+  view.collectionNode = self;
   _rangeController = view.rangeController;
-  
+
   if (_pendingState) {
     _ASCollectionPendingState *pendingState = _pendingState;
     self.pendingState                   = nil;
@@ -325,7 +384,7 @@
     view.showsVerticalScrollIndicator   = pendingState.showsVerticalScrollIndicator;
     view.showsHorizontalScrollIndicator = pendingState.showsHorizontalScrollIndicator;
     view.leadingScreensForBatching      = pendingState.leadingScreensForBatching;
-#if !TARGET_OS_TV
+#if !AS_PLATFORM_TVOS
     view.pagingEnabled                  = pendingState.pagingEnabled;
 #endif
 
@@ -337,8 +396,8 @@
       view.alwaysBounceHorizontal = YES;
     }
 
-    UIEdgeInsets contentInset = pendingState.contentInset;
-    if (!UIEdgeInsetsEqualToEdgeInsets(contentInset, UIEdgeInsetsZero)) {
+    ASEdgeInsets contentInset = pendingState.contentInset;
+    if (!ASEdgeInsetsEqualToEdgeInsets(contentInset, ASEdgeInsetsZero)) {
       view.contentInset = contentInset;
     }
 
@@ -367,12 +426,30 @@
     // Don't need to set collectionViewLayout to the view as the layout was already used to init the view in view block.
   }
 }
+#endif
 
 - (ASCollectionView *)view
 {
-  return (ASCollectionView *)[super view];
+  ASCollectionView *view = (ASCollectionView *)[super view];
+#if AS_PLATFORM_MACOS
+  if (view.collectionNode != self) {
+    view.collectionNode = self;
+  }
+  view.asyncDelegate = _delegate;
+  view.asyncDataSource = _dataSource;
+  view.layoutInspector = _layoutInspector;
+  view.leadingScreensForBatching = _leadingScreensForBatching;
+  view.inverted = _inverted;
+  view.selectable = _allowsSelection;
+  view.allowsMultipleSelection = _allowsMultipleSelection;
+  view.collectionViewLayout = _collectionViewLayout;
+  view.contentInset = _contentInset;
+  [view setContentOffset:_contentOffset animated:NO];
+#endif
+  return view;
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)clearContents
 {
   [super clearContents];
@@ -416,6 +493,7 @@
   [super didExitPreloadState];
   [self.rangeController clearPreloadedData];
 }
+#endif
 
 #pragma mark Setter / Getter
 
@@ -425,6 +503,7 @@
   return self.view.dataController;
 }
 
+#if !AS_PLATFORM_MACOS
 - (_ASCollectionPendingState *)pendingState
 {
   if (!_pendingState && ![self isNodeLoaded]) {
@@ -433,67 +512,107 @@
   ASDisplayNodeAssert(![self isNodeLoaded] || !_pendingState, @"ASCollectionNode should not have a pendingState once it is loaded");
   return _pendingState;
 }
+#endif
 
 - (void)setInverted:(BOOL)inverted
 {
   self.transform = inverted ? CATransform3DMakeScale(1, -1, 1)  : CATransform3DIdentity;
+#if AS_PLATFORM_MACOS
+  _inverted = inverted;
+  if (self.isNodeLoaded) {
+    self.view.inverted = inverted;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.inverted = inverted;
   } else {
     ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
     self.view.inverted = inverted;
   }
+#endif
 }
 
 - (BOOL)inverted
 {
+#if AS_PLATFORM_MACOS
+  return _inverted;
+#else
   if ([self pendingState]) {
     return _pendingState.inverted;
   } else {
     return self.view.inverted;
   }
+#endif
 }
 
 - (void)setLayoutInspector:(id<ASCollectionViewLayoutInspecting>)layoutInspector
 {
+#if AS_PLATFORM_MACOS
+  _layoutInspector = layoutInspector;
+  if (self.isNodeLoaded) {
+    self.view.layoutInspector = layoutInspector;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.layoutInspector = layoutInspector;
   } else {
     ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
     self.view.layoutInspector = layoutInspector;
   }
+#endif
 }
 
 - (id<ASCollectionViewLayoutInspecting>)layoutInspector
 {
+#if AS_PLATFORM_MACOS
+  return _layoutInspector;
+#else
   if ([self pendingState]) {
     return _pendingState.layoutInspector;
   } else {
     return self.view.layoutInspector;
   }
+#endif
 }
 
 - (void)setLeadingScreensForBatching:(CGFloat)leadingScreensForBatching
 {
+#if AS_PLATFORM_MACOS
+  _leadingScreensForBatching = leadingScreensForBatching;
+  if (self.isNodeLoaded) {
+    self.view.leadingScreensForBatching = leadingScreensForBatching;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.leadingScreensForBatching = leadingScreensForBatching;
   } else {
     ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
     self.view.leadingScreensForBatching = leadingScreensForBatching;
   }
+#endif
 }
 
 - (CGFloat)leadingScreensForBatching
 {
+#if AS_PLATFORM_MACOS
+  return _leadingScreensForBatching;
+#else
   if ([self pendingState]) {
     return _pendingState.leadingScreensForBatching;
   } else {
     return self.view.leadingScreensForBatching;
   }
+#endif
 }
 
 - (void)setDelegate:(id <ASCollectionDelegate>)delegate
 {
+#if AS_PLATFORM_MACOS
+  _delegate = delegate;
+  if (self.isNodeLoaded) {
+    self.view.asyncDelegate = delegate;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.delegate = delegate;
   } else {
@@ -508,19 +627,30 @@
       view.asyncDelegate = delegate;
     });
   }
+#endif
 }
 
 - (id <ASCollectionDelegate>)delegate
 {
+#if AS_PLATFORM_MACOS
+  return _delegate;
+#else
   if ([self pendingState]) {
     return _pendingState.delegate;
   } else {
     return self.view.asyncDelegate;
   }
+#endif
 }
 
 - (void)setDataSource:(id <ASCollectionDataSource>)dataSource
 {
+#if AS_PLATFORM_MACOS
+  _dataSource = dataSource;
+  if (self.isNodeLoaded) {
+    self.view.asyncDataSource = dataSource;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.dataSource = dataSource;
   } else {
@@ -534,55 +664,83 @@
       view.asyncDataSource = dataSource;
     });
   }
+#endif
 }
 
 - (id <ASCollectionDataSource>)dataSource
 {
+#if AS_PLATFORM_MACOS
+  return _dataSource;
+#else
   if ([self pendingState]) {
     return _pendingState.dataSource;
   } else {
     return self.view.asyncDataSource;
   }
+#endif
 }
 
 - (void)setAllowsSelection:(BOOL)allowsSelection
 {
+#if AS_PLATFORM_MACOS
+  _allowsSelection = allowsSelection;
+  if (self.isNodeLoaded) {
+    self.view.selectable = allowsSelection;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.allowsSelection = allowsSelection;
   } else {
     ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
     self.view.allowsSelection = allowsSelection;
   }
+#endif
 }
 
 - (BOOL)allowsSelection
 {
+#if AS_PLATFORM_MACOS
+  return _allowsSelection;
+#else
   if ([self pendingState]) {
     return _pendingState.allowsSelection;
   } else {
     return self.view.allowsSelection;
   }
+#endif
 }
 
 - (void)setAllowsMultipleSelection:(BOOL)allowsMultipleSelection
 {
+#if AS_PLATFORM_MACOS
+  _allowsMultipleSelection = allowsMultipleSelection;
+  if (self.isNodeLoaded) {
+    self.view.allowsMultipleSelection = allowsMultipleSelection;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.allowsMultipleSelection = allowsMultipleSelection;
   } else {
     ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
     self.view.allowsMultipleSelection = allowsMultipleSelection;
   }
+#endif
 }
 
 - (BOOL)allowsMultipleSelection
 {
+#if AS_PLATFORM_MACOS
+  return _allowsMultipleSelection;
+#else
   if ([self pendingState]) {
     return _pendingState.allowsMultipleSelection;
   } else {
     return self.view.allowsMultipleSelection;
   }
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)setAlwaysBounceVertical:(BOOL)alwaysBounceVertical
 {
   if ([self pendingState]) {
@@ -659,7 +817,7 @@
   }
 }
 
-#if !TARGET_OS_TV
+#if !AS_PLATFORM_TVOS
 - (void)setPagingEnabled:(BOOL)pagingEnabled
 {
   if ([self pendingState]) {
@@ -680,9 +838,18 @@
   }
 }
 #endif
+#endif
 
-- (void)setCollectionViewLayout:(UICollectionViewLayout *)layout
+- (void)setCollectionViewLayout:(ASCollectionViewLayout *)layout
 {
+#if AS_PLATFORM_MACOS
+  ASCollectionViewLayout *resolvedLayout = layout ?: [[ASCollectionViewFlowLayout alloc] init];
+  [self _configureCollectionViewLayout:resolvedLayout];
+  _collectionViewLayout = resolvedLayout;
+  if (self.isNodeLoaded) {
+    self.view.collectionViewLayout = resolvedLayout;
+  }
+#else
   if ([self pendingState]) {
     [self _configureCollectionViewLayout:layout];
     _pendingState.collectionViewLayout = layout;
@@ -690,34 +857,50 @@
     [self _configureCollectionViewLayout:layout];
     self.view.collectionViewLayout = layout;
   }
+#endif
 }
 
-- (UICollectionViewLayout *)collectionViewLayout
+- (ASCollectionViewLayout *)collectionViewLayout
 {
+#if AS_PLATFORM_MACOS
+  return _collectionViewLayout;
+#else
   if ([self pendingState]) {
     return _pendingState.collectionViewLayout;
   } else {
     return self.view.collectionViewLayout;
   }
+#endif
 }
 
-- (void)setContentInset:(UIEdgeInsets)contentInset
+- (void)setContentInset:(ASEdgeInsets)contentInset
 {
+#if AS_PLATFORM_MACOS
+  _contentInset = contentInset;
+  if (self.isNodeLoaded) {
+    self.view.contentInset = contentInset;
+  }
+#else
   if ([self pendingState]) {
     _pendingState.contentInset = contentInset;
   } else {
     ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
     self.view.contentInset = contentInset;
   }
+#endif
 }
 
-- (UIEdgeInsets)contentInset
+- (ASEdgeInsets)contentInset
 {
+#if AS_PLATFORM_MACOS
+  return _contentInset;
+#else
   if ([self pendingState]) {
     return _pendingState.contentInset;
   } else {
     return self.view.contentInset;
   }
+#endif
 }
 
 - (void)setContentOffset:(CGPoint)contentOffset
@@ -727,6 +910,12 @@
 
 - (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated
 {
+#if AS_PLATFORM_MACOS
+  _contentOffset = contentOffset;
+  if (self.isNodeLoaded) {
+    [self.view setContentOffset:contentOffset animated:animated];
+  }
+#else
   if ([self pendingState]) {
     _pendingState.contentOffset = contentOffset;
     _pendingState.animatesContentOffset = animated;
@@ -734,15 +923,26 @@
     ASDisplayNodeAssert([self isNodeLoaded], @"ASCollectionNode should be loaded if pendingState doesn't exist");
     [self.view setContentOffset:contentOffset animated:animated];
   }
+#endif
 }
 
 - (CGPoint)contentOffset
 {
+#if AS_PLATFORM_MACOS
+  if (self.isNodeLoaded) {
+    NSScrollView *scrollView = self.view.enclosingScrollView;
+    if (scrollView != nil) {
+      return scrollView.contentView.bounds.origin;
+    }
+  }
+  return _contentOffset;
+#else
   if ([self pendingState]) {
     return _pendingState.contentOffset;
   } else {
     return self.view.contentOffset;
   }
+#endif
 }
 
 - (ASScrollDirection)scrollDirection
@@ -764,7 +964,7 @@
 
 - (id<ASCollectionLayoutDelegate>)layoutDelegate
 {
-  UICollectionViewLayout *layout = self.collectionViewLayout;
+  ASCollectionViewLayout *layout = self.collectionViewLayout;
   if ([layout isKindOfClass:[ASCollectionLayout class]]) {
     return ((ASCollectionLayout *)layout).layoutDelegate;
   }
@@ -781,6 +981,7 @@
   return _batchFetchingDelegate;
 }
 
+#if !AS_PLATFORM_MACOS
 - (ASCellLayoutMode)cellLayoutMode
 {
   if ([self pendingState]) {
@@ -798,6 +999,7 @@
     self.view.cellLayoutMode = cellLayoutMode;
   }
 }
+#endif
 
 #pragma mark - Range Tuning
 
@@ -813,20 +1015,34 @@
 
 - (ASRangeTuningParameters)tuningParametersForRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType
 {
+#if AS_PLATFORM_MACOS
+  if (!self.isNodeLoaded) {
+    [self view];
+  }
+  return [self.view tuningParametersForRangeMode:rangeMode rangeType:rangeType];
+#else
   if ([self pendingState]) {
     return [_pendingState tuningParametersForRangeMode:rangeMode rangeType:rangeType];
   } else {
     return [self.rangeController tuningParametersForRangeMode:rangeMode rangeType:rangeType];
   }
+#endif
 }
 
 - (void)setTuningParameters:(ASRangeTuningParameters)tuningParameters forRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType
 {
+#if AS_PLATFORM_MACOS
+  if (!self.isNodeLoaded) {
+    [self view];
+  }
+  [self.view setTuningParameters:tuningParameters forRangeMode:rangeMode rangeType:rangeType];
+#else
   if ([self pendingState]) {
     [_pendingState setTuningParameters:tuningParameters forRangeMode:rangeMode rangeType:rangeType];
   } else {
     return [self.rangeController setTuningParameters:tuningParameters forRangeMode:rangeMode rangeType:rangeType];
   }
+#endif
 }
 
 #pragma mark - Selection
@@ -838,10 +1054,14 @@
   return [view convertIndexPathsToCollectionNode:view.indexPathsForSelectedItems];
 }
 
-- (void)selectItemAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(UICollectionViewScrollPosition)scrollPosition
+- (void)selectItemAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASCollectionViewScrollPosition)scrollPosition
 {
   ASDisplayNodeAssertMainThread();
   ASCollectionView *collectionView = self.view;
+  if (indexPath == nil) {
+    [collectionView selectItemAtIndexPath:nil animated:animated scrollPosition:scrollPosition];
+    return;
+  }
 
   indexPath = [collectionView convertIndexPathFromCollectionNode:indexPath waitingIfNeeded:YES];
 
@@ -856,6 +1076,9 @@
 {
   ASDisplayNodeAssertMainThread();
   ASCollectionView *collectionView = self.view;
+  if (indexPath == nil) {
+    return;
+  }
 
   indexPath = [collectionView convertIndexPathFromCollectionNode:indexPath waitingIfNeeded:YES];
 
@@ -866,10 +1089,13 @@
   }
 }
 
-- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(UICollectionViewScrollPosition)scrollPosition animated:(BOOL)animated
+- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASCollectionViewScrollPosition)scrollPosition animated:(BOOL)animated
 {
   ASDisplayNodeAssertMainThread();
   ASCollectionView *collectionView = self.view;
+  if (indexPath == nil) {
+    return;
+  }
 
   indexPath = [collectionView convertIndexPathFromCollectionNode:indexPath waitingIfNeeded:YES];
 
@@ -949,6 +1175,7 @@
   return indexPath;
 }
 
+#if !AS_PLATFORM_MACOS
 - (nullable UICollectionViewCell *)cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
   ASDisplayNodeAssertMainThread();
@@ -960,6 +1187,7 @@
   }
   return [collectionView cellForItemAtIndexPath:indexPath];
 }
+#endif
 
 - (id<ASSectionContext>)contextForSection:(NSInteger)section
 {
@@ -991,7 +1219,11 @@
 
 - (void)performBatchUpdates:(NS_NOESCAPE void (^)())updates completion:(void (^)(BOOL))completion
 {
+#if AS_PLATFORM_MACOS
+  [self performBatchAnimated:YES updates:updates completion:completion];
+#else
   [self performBatchAnimated:UIView.areAnimationsEnabled updates:updates completion:completion];
+#endif
 }
 
 - (BOOL)isProcessingUpdates
@@ -1048,6 +1280,9 @@
 {
   ASDisplayNodeAssertMainThread();
   if (!self.nodeLoaded) {
+    if (completion) {
+      completion();
+    }
     return;
   }
   
@@ -1172,19 +1407,28 @@
 
 - (void)updateCurrentRangeWithMode:(ASLayoutRangeMode)rangeMode
 {
+#if AS_PLATFORM_MACOS
+  if (self.nodeLoaded) {
+    [self.view.rangeController updateCurrentRangeWithMode:rangeMode];
+  }
+#else
   if ([self pendingState]) {
     _pendingState.rangeMode = rangeMode;
   } else {
     [self.rangeController updateCurrentRangeWithMode:rangeMode];
   }
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
 #pragma mark - ASPrimitiveTraitCollection
 
 ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
+#endif
 
 #pragma mark - Debugging (Private)
 
+#if !AS_PLATFORM_MACOS
 - (NSMutableArray<NSDictionary *> *)propertiesForDebugDescription
 {
   NSMutableArray<NSDictionary *> *result = [super propertiesForDebugDescription];
@@ -1192,42 +1436,45 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   [result addObject:@{ @"delegate" : ASObjectDescriptionMakeTiny(self.delegate) }];
   return result;
 }
+#endif
 
+#if !AS_PLATFORM_MACOS
 #pragma mark - UIGestureRecognizerDelegate Methods
 // The value returned below are default implementation of UIKit's UIGestureRecognizerDelegate
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+- (BOOL)gestureRecognizerShouldBegin:(ASGestureRecognizer *)gestureRecognizer
 {
     return YES;
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+- (BOOL)gestureRecognizer:(ASGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
 {
     return YES;
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceivePress:(UIPress *)press
+- (BOOL)gestureRecognizer:(ASGestureRecognizer *)gestureRecognizer shouldReceivePress:(UIPress *)press
 {
     return YES;
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+- (BOOL)gestureRecognizer:(ASGestureRecognizer *)gestureRecognizer shouldRecognizeSimultaneouslyWithGestureRecognizer:(ASGestureRecognizer *)otherGestureRecognizer
 {
     return NO;
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldRequireFailureOfGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+- (BOOL)gestureRecognizer:(ASGestureRecognizer *)gestureRecognizer shouldRequireFailureOfGestureRecognizer:(ASGestureRecognizer *)otherGestureRecognizer
 {
     return NO;
 }
 
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldBeRequiredToFailByGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+- (BOOL)gestureRecognizer:(ASGestureRecognizer *)gestureRecognizer shouldBeRequiredToFailByGestureRecognizer:(ASGestureRecognizer *)otherGestureRecognizer
 {
     return NO;
 }
+#endif
 
 #pragma mark - Private methods
 
-- (void)_configureCollectionViewLayout:(UICollectionViewLayout *)layout
+- (void)_configureCollectionViewLayout:(ASCollectionViewLayout *)layout
 {
   if ([layout isKindOfClass:[ASCollectionLayout class]]) {
     ASCollectionLayout *collectionLayout = (ASCollectionLayout *)layout;

@@ -10,7 +10,7 @@
 #import <Foundation/Foundation.h>
 #import "ASBaseDefines.h"
 
-#if AS_ENABLE_TIPS
+#if AS_ENABLE_TIPS && !AS_PLATFORM_MACOS
 
 @class ASDisplayNode;
 
@@ -37,4 +37,4 @@ AS_SUBCLASSING_RESTRICTED
 
 NS_ASSUME_NONNULL_END
 
-#endif // AS_ENABLE_TIPS
+#endif // AS_ENABLE_TIPS && !AS_PLATFORM_MACOS

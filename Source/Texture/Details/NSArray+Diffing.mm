@@ -8,7 +8,7 @@
 //
 
 #import "NSArray+Diffing.h"
-#import <UIKit/NSIndexPath+UIKitAdditions.h>
+#import "ASPlatformDefines.h"
 #import "ASAssert.h"
 #import <unordered_map>
 
@@ -79,7 +79,7 @@ typedef BOOL (^compareBlock)(id _Nonnull lhs, id _Nonnull rhs);
       if (moveFound != potentialMoves.end() && moveFound->second != j) {
         movedFrom = moveFound->second;
         potentialMoves.erase(moveFound);
-        [moveIndexPaths addObject:[NSIndexPath indexPathForItem:j inSection:movedFrom]];
+        [moveIndexPaths addObject:[NSIndexPath as_indexPathForItem:j inSection:movedFrom]];
       }
       if (i < commonObjects.count && j < array.count && comparison(commonObjects[i], array[j])) {
         i++;

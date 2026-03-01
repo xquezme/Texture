@@ -13,30 +13,79 @@
 #import "ASAvailability.h"
 
 
-#define ASPerformBlockWithTraitCollection(work, traitCollection) \
-      UITraitCollection *uiTraitCollection = ASPrimitiveTraitCollectionToUITraitCollection(traitCollection); \
-      [uiTraitCollection performAsCurrentTraitCollection:^{ \
-        work(); \
-      }];
+#if AS_PLATFORM_MACOS
+  #define ASPerformBlockWithTraitCollection(work, traitCollection) \
+    do { \
+      (void)(traitCollection); \
+      work(); \
+    } while (0)
+#else
+  #define ASPerformBlockWithTraitCollection(work, traitCollection) \
+        UITraitCollection *uiTraitCollection = ASPrimitiveTraitCollectionToUITraitCollection(traitCollection); \
+        [uiTraitCollection performAsCurrentTraitCollection:^{ \
+          work(); \
+        }];
 
+  NS_INLINE void ASConfigureExtendedRange(UIGraphicsImageRendererFormat *format)
+  {
+      // nop. We always use automatic range on iOS >= 12.
+  }
+#endif
 
-NS_INLINE void ASConfigureExtendedRange(UIGraphicsImageRendererFormat *format)
-{
-    // nop. We always use automatic range on iOS >= 12.
-}
-
-UIImage *ASGraphicsCreateImageWithOptions(CGSize size, BOOL opaque, CGFloat scale, UIImage *sourceImage,
+ASImage *ASGraphicsCreateImageWithOptions(CGSize size, BOOL opaque, CGFloat scale, ASImage *sourceImage,
                                           asdisplaynode_iscancelled_block_t NS_NOESCAPE isCancelled,
                                           void (^NS_NOESCAPE work)())
 {
   return ASGraphicsCreateImage(ASPrimitiveTraitCollectionMakeDefault(), size, opaque, scale, sourceImage, isCancelled, work);
 }
 
-UIImage *ASGraphicsCreateImage(ASPrimitiveTraitCollection traitCollection, CGSize size, BOOL opaque, CGFloat scale, UIImage * sourceImage, asdisplaynode_iscancelled_block_t NS_NOESCAPE isCancelled, void (NS_NOESCAPE ^work)()) {
+ASImage *ASGraphicsCreateImage(ASPrimitiveTraitCollection traitCollection, CGSize size, BOOL opaque, CGFloat scale, ASImage * sourceImage, asdisplaynode_iscancelled_block_t NS_NOESCAPE isCancelled, void (NS_NOESCAPE ^work)()) {
   if (size.width <= 0 || size.height <= 0) {
     return nil;
   }
   
+#if AS_PLATFORM_MACOS
+  (void)opaque;
+  (void)sourceImage;
+
+  CGFloat effectiveScale = scale > 0.0 ? scale : 1.0;
+  NSInteger pixelsWide = MAX((NSInteger)(size.width * effectiveScale), 1);
+  NSInteger pixelsHigh = MAX((NSInteger)(size.height * effectiveScale), 1);
+  NSBitmapImageRep *imageRep = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
+                                                                        pixelsWide:pixelsWide
+                                                                        pixelsHigh:pixelsHigh
+                                                                     bitsPerSample:8
+                                                                   samplesPerPixel:4
+                                                                          hasAlpha:YES
+                                                                          isPlanar:NO
+                                                                    colorSpaceName:NSDeviceRGBColorSpace
+                                                                       bytesPerRow:0
+                                                                      bitsPerPixel:0];
+  if (imageRep == nil) {
+    return nil;
+  }
+
+  imageRep.size = NSSizeFromCGSize(size);
+  NSGraphicsContext *graphicsContext = [NSGraphicsContext graphicsContextWithBitmapImageRep:imageRep];
+  [NSGraphicsContext saveGraphicsState];
+  [NSGraphicsContext setCurrentContext:graphicsContext];
+
+  CGContextRef currentContext = graphicsContext.CGContext;
+  if (currentContext != NULL) {
+    CGContextScaleCTM(currentContext, effectiveScale, effectiveScale);
+  }
+
+  ASPerformBlockWithTraitCollection(work, traitCollection);
+  [NSGraphicsContext restoreGraphicsState];
+
+  if (isCancelled != nil && isCancelled()) {
+    return nil;
+  }
+
+  NSImage *image = [[NSImage alloc] initWithSize:NSSizeFromCGSize(size)];
+  [image addRepresentation:imageRep];
+  return image;
+#else
   if (ASActivateExperimentalFeature(ASExperimentalDrawingGlobal)) {
     // If they used default scale, reuse one of two preferred formats.
     static UIGraphicsImageRendererFormat *defaultFormat;
@@ -76,7 +125,7 @@ UIImage *ASGraphicsCreateImage(ASPrimitiveTraitCollection traitCollection, CGSiz
     
     // Avoid using the imageWithActions: method because it does not support cancellation at the
     // last moment i.e. before actually creating the resulting image.
-    __block UIImage *image;
+    __block ASImage *image;
     NSError *error;
     [[[UIGraphicsImageRenderer alloc] initWithSize:size format:format]
         runDrawingActions:^(UIGraphicsImageRendererContext *rendererContext) {
@@ -98,14 +147,15 @@ UIImage *ASGraphicsCreateImage(ASPrimitiveTraitCollection traitCollection, CGSiz
   // Bad OS or experiment flag. Use UIGraphics* API.
   UIGraphicsBeginImageContextWithOptions(size, opaque, scale);
   ASPerformBlockWithTraitCollection(work, traitCollection)
-  UIImage *image = nil;
+  ASImage *image = nil;
   if (isCancelled == nil || !isCancelled()) {
     image = UIGraphicsGetImageFromCurrentImageContext();
   }
   UIGraphicsEndImageContext();
   return image;
+#endif
 }
 
-UIImage *ASGraphicsCreateImageWithTraitCollectionAndOptions(ASPrimitiveTraitCollection traitCollection, CGSize size, BOOL opaque, CGFloat scale, UIImage * sourceImage, void (NS_NOESCAPE ^work)()) {
+ASImage *ASGraphicsCreateImageWithTraitCollectionAndOptions(ASPrimitiveTraitCollection traitCollection, CGSize size, BOOL opaque, CGFloat scale, ASImage * sourceImage, void (NS_NOESCAPE ^work)()) {
   return ASGraphicsCreateImage(traitCollection, size, opaque, scale, sourceImage, nil, work);
 }

@@ -12,14 +12,18 @@
 #import "ASAssert.h"
 #import "ASResponderChainEnumerator.h"
 
-@implementation UIResponder (AsyncDisplayKit)
+#if AS_PLATFORM_MACOS
+ @implementation NSResponder (AsyncDisplayKit)
+#else
+ @implementation UIResponder (AsyncDisplayKit)
+#endif
 
-- (__kindof UIViewController *)asdk_associatedViewController
+- (__kindof ASDisplayViewController *)asdk_associatedViewController
 {
   ASDisplayNodeAssertMainThread();
-  
-  for (UIResponder *responder in [self asdk_responderChainEnumerator]) {
-    UIViewController *vc = ASDynamicCast(responder, UIViewController);
+
+  for (ASResponder *responder in [self asdk_responderChainEnumerator]) {
+    ASDisplayViewController *vc = ASDynamicCast(responder, ASDisplayViewController);
     if (vc) {
       return vc;
     }
@@ -28,4 +32,3 @@
 }
 
 @end
-

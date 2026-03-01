@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "ASCollectionViewProtocols.h"
 #import "ASBaseDefines.h"
@@ -26,12 +26,98 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- * Asynchronous UICollectionView with Intelligent Preloading capabilities.
+ * ASCollectionView backed by AppKit/UIKit depending on platform.
  *
- * @note ASCollectionNode is strongly recommended over ASCollectionView.  This class exists for adoption convenience.
+ * @discussion The macOS implementation preserves ASCollectionNode/ASCollectionView data source and delegate entry points
+ * with AppKit-native collection runtime behavior.
  */
+#if AS_PLATFORM_MACOS
+@interface ASCollectionView : NSCollectionView
+#else
 @interface ASCollectionView : UICollectionView <UIGestureRecognizerDelegate>
+#endif
 
+#if AS_PLATFORM_MACOS
+
+@property (nonatomic, weak, readonly) ASCollectionNode *collectionNode;
+@property (nonatomic, weak) id<ASCollectionDelegate> asyncDelegate;
+@property (nonatomic, weak) id<ASCollectionDataSource> asyncDataSource;
+@property (nonatomic, weak) id<ASCollectionViewLayoutInspecting> layoutInspector;
+@property (nonatomic) CGFloat leadingScreensForBatching;
+@property (nonatomic) BOOL inverted;
+@property (nonatomic, readonly) ASScrollDirection scrollDirection;
+@property (nonatomic, readonly) ASScrollDirection scrollableDirections;
+@property (nonatomic) ASEdgeInsets contentInset;
+@property (nonatomic) CGPoint contentOffset;
+@property (nonatomic, copy, readonly) NSArray<NSIndexPath *> *indexPathsForVisibleItems;
+@property (nullable, nonatomic, copy, readonly) NSArray<NSIndexPath *> *indexPathsForSelectedItems;
+@property (nonatomic, readonly) BOOL isProcessingUpdates;
+@property (nonatomic, readonly, getter=isSynchronized) BOOL synchronized;
+
+- (nullable ASCellNode *)nodeForItemAtIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT;
+- (nullable id)nodeModelForItemAtIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT;
+- (nullable NSIndexPath *)indexPathForNode:(ASCellNode *)node AS_WARN_UNUSED_RESULT;
+- (nullable ASCellNode *)supplementaryNodeForElementKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT;
+- (nullable id<ASSectionContext>)contextForSection:(NSInteger)section AS_WARN_UNUSED_RESULT NS_SWIFT_UI_ACTOR;
+- (nullable NSIndexPath *)indexPathForItemAtPoint:(CGPoint)point AS_WARN_UNUSED_RESULT NS_SWIFT_UI_ACTOR;
+
+- (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated;
+- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASCollectionViewScrollPosition)scrollPosition animated:(BOOL)animated;
+- (void)selectItemAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASCollectionViewScrollPosition)scrollPosition;
+- (void)deselectItemAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated;
+
+- (ASRangeTuningParameters)tuningParametersForRangeType:(ASLayoutRangeType)rangeType AS_WARN_UNUSED_RESULT;
+- (void)setTuningParameters:(ASRangeTuningParameters)tuningParameters forRangeType:(ASLayoutRangeType)rangeType;
+- (ASRangeTuningParameters)tuningParametersForRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType AS_WARN_UNUSED_RESULT;
+- (void)setTuningParameters:(ASRangeTuningParameters)tuningParameters forRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType;
+
+- (void)performBatchAnimated:(BOOL)animated updates:(nullable AS_NOESCAPE void (^)(void))updates completion:(nullable void (^)(BOOL finished))completion;
+- (void)performBatchUpdates:(nullable AS_NOESCAPE void (^)(void))updates completion:(nullable void (^)(BOOL finished))completion;
+- (void)reloadDataWithCompletion:(nullable void (^)(void))completion;
+- (void)onDidFinishProcessingUpdates:(void (^)(void))completion;
+- (void)waitUntilAllUpdatesAreCommitted;
+- (void)onDidFinishSynchronizing:(void (^)(void))completion;
+
+- (void)registerSupplementaryNodeOfKind:(NSString *)elementKind;
+- (void)relayoutItems;
+- (void)invalidateFlowLayoutDelegateMetrics;
+
+- (void)insertSections:(NSIndexSet *)sections;
+- (void)deleteSections:(NSIndexSet *)sections;
+- (void)reloadSections:(NSIndexSet *)sections;
+- (void)moveSection:(NSInteger)section toSection:(NSInteger)newSection;
+- (void)insertItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
+- (void)deleteItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
+- (void)reloadItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
+- (void)moveItemAtIndexPath:(NSIndexPath *)indexPath toIndexPath:(NSIndexPath *)newIndexPath;
+
+- (NSArray<__kindof ASCellNode *> *)visibleNodes AS_WARN_UNUSED_RESULT;
+
+@end
+
+@protocol ASCollectionDelegateFlowLayout <ASCollectionDelegate>
+
+@optional
+
+- (ASEdgeInsets)collectionView:(ASCollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section;
+- (CGFloat)collectionView:(ASCollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section;
+- (CGFloat)collectionView:(ASCollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section;
+- (ASSizeRange)collectionNode:(ASCollectionNode *)collectionNode sizeRangeForHeaderInSection:(NSInteger)section;
+- (ASSizeRange)collectionNode:(ASCollectionNode *)collectionNode sizeRangeForFooterInSection:(NSInteger)section;
+- (CGSize)collectionView:(ASCollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section;
+- (CGSize)collectionView:(ASCollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout referenceSizeForFooterInSection:(NSInteger)section;
+
+@end
+
+ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASCollectionDataSource.")
+@protocol ASCollectionViewDataSource <ASCollectionDataSource>
+@end
+
+ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASCollectionDelegate.")
+@protocol ASCollectionViewDelegate <ASCollectionDelegate>
+@end
+
+#else
 /**
  * Returns the corresponding ASCollectionNode
  *
@@ -102,7 +188,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @discussion Since supplementary and decoration views are controlled by the collection view's layout, this object
  * is used as a bridge to provide information to the internal data controller about the existence of these views and
- * their associated index paths. For collection views using `UICollectionViewFlowLayout`, a default inspector
+ * their associated index paths. For collection views using `ASCollectionViewFlowLayout`, a default inspector
  * implementation `ASCollectionViewFlowLayoutInspector` is created and set on this property by default. Custom
  * collection view layout subclasses will need to provide their own implementation of an inspector object for their
  * supplementary views to be compatible with `ASCollectionView`'s supplementary node support.
@@ -124,19 +210,19 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) ASScrollDirection scrollableDirections ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode property instead.");
 
 /**
- * Forces the .contentInset to be UIEdgeInsetsZero.
+ * Forces the .contentInset to be ASEdgeInsetsZero.
  *
  * @discussion By default, UIKit sets the top inset to the navigation bar height, even for horizontally
- * scrolling views.  This can only be disabled by setting a property on the containing UIViewController,
+ * scrolling views.  This can only be disabled by setting a property on the containing ASDisplayViewController,
  * automaticallyAdjustsScrollViewInsets, which may not be accessible.  ASPagerNode uses this to ensure
  * its flow layout behaves predictably and does not log undefined layout warnings.
  */
 @property (nonatomic) BOOL zeroContentInsets ASDISPLAYNODE_DEPRECATED_MSG("Set automaticallyAdjustsScrollViewInsets=NO on your view controller instead.");
 
 /**
- * The distance that the content view is inset from the collection view edges. Defaults to UIEdgeInsetsZero.
+ * The distance that the content view is inset from the collection view edges. Defaults to ASEdgeInsetsZero.
  */
-@property (nonatomic) UIEdgeInsets contentInset ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode property instead");
+@property (nonatomic) ASEdgeInsets contentInset ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode property instead");
 
 /**
  * The point at which the origin of the content view is offset from the origin of the collection view.
@@ -168,7 +254,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param layout The layout object to use for organizing items. The collection view stores a strong reference to the specified object. Must not be nil.
  */
-- (instancetype)initWithCollectionViewLayout:(UICollectionViewLayout *)layout ASDISPLAYNODE_DEPRECATED_MSG("Please use ASCollectionNode instead of ASCollectionView.");
+- (instancetype)initWithCollectionViewLayout:(ASCollectionViewLayout *)layout ASDISPLAYNODE_DEPRECATED_MSG("Please use ASCollectionNode instead of ASCollectionView.");
 
 /**
  * Initializes an ASCollectionView
@@ -178,7 +264,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param frame The frame rectangle for the collection view, measured in points. The origin of the frame is relative to the superview in which you plan to add it. This frame is passed to the superclass during initialization.
  * @param layout The layout object to use for organizing items. The collection view stores a strong reference to the specified object. Must not be nil.
  */
-- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(UICollectionViewLayout *)layout ASDISPLAYNODE_DEPRECATED_MSG("Please use ASCollectionNode instead of ASCollectionView.");
+- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout ASDISPLAYNODE_DEPRECATED_MSG("Please use ASCollectionNode instead of ASCollectionView.");
 
 /**
  * Tuning parameters for a range type in full mode.
@@ -230,9 +316,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (nullable __kindof UICollectionViewCell *)cellForItemAtIndexPath:(NSIndexPath *)indexPath ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode method instead.");
 
-- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(UICollectionViewScrollPosition)scrollPosition animated:(BOOL)animated ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode method instead.");
+- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASCollectionViewScrollPosition)scrollPosition animated:(BOOL)animated ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode method instead.");
 
-- (void)selectItemAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(UICollectionViewScrollPosition)scrollPosition ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode method instead.");
+- (void)selectItemAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASCollectionViewScrollPosition)scrollPosition ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode method instead.");
 
 @property (nonatomic, copy, readonly) NSArray<NSIndexPath *> *indexPathsForVisibleItems ASDISPLAYNODE_DEPRECATED_MSG("Use ASCollectionNode property instead.");
 
@@ -422,7 +508,7 @@ ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASCollectionDelegate.")
 @end
 
 /**
- * Defines methods that let you coordinate a `UICollectionViewFlowLayout` in combination with an `ASCollectionNode`.
+ * Defines methods that let you coordinate a `ASCollectionViewFlowLayout` in combination with an `ASCollectionNode`.
  */
 @protocol ASCollectionDelegateFlowLayout <ASCollectionDelegate>
 
@@ -433,7 +519,7 @@ ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASCollectionDelegate.")
  *
  * @see the same method in UICollectionViewDelegate. 
  */
-- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section;
+- (ASEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section;
 
 /**
  * Asks the delegate for the size range that should be used to measure the header in the given flow layout section.
@@ -476,17 +562,19 @@ ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASCollectionDelegate.")
 /**
  * Asks the delegate for the size of the header in the specified section.
  */
-- (CGSize)collectionView:(ASCollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section ASDISPLAYNODE_DEPRECATED_MSG("Implement collectionNode:sizeRangeForHeaderInSection: instead.");
+- (CGSize)collectionView:(ASCollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout referenceSizeForHeaderInSection:(NSInteger)section ASDISPLAYNODE_DEPRECATED_MSG("Implement collectionNode:sizeRangeForHeaderInSection: instead.");
 
 /**
  * Asks the delegate for the size of the footer in the specified section.
  */
-- (CGSize)collectionView:(ASCollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout referenceSizeForFooterInSection:(NSInteger)section ASDISPLAYNODE_DEPRECATED_MSG("Implement collectionNode:sizeRangeForFooterInSection: instead.");
+- (CGSize)collectionView:(ASCollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout referenceSizeForFooterInSection:(NSInteger)section ASDISPLAYNODE_DEPRECATED_MSG("Implement collectionNode:sizeRangeForFooterInSection: instead.");
 
 @end
 
 ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASCollectionDelegateFlowLayout.")
 @protocol ASCollectionViewDelegateFlowLayout <ASCollectionDelegateFlowLayout>
 @end
+
+#endif
 
 NS_ASSUME_NONNULL_END

@@ -10,6 +10,7 @@
 #import "ASTabBarController.h"
 #import "ASLog.h"
 
+#if !AS_PLATFORM_MACOS
 @implementation ASTabBarController
 {
   BOOL _parentManagesVisibilityDepth;
@@ -28,14 +29,14 @@ ASVisibilityDepthImplementation;
 
 - (void)visibilityDepthDidChange
 {
-  for (UIViewController *viewController in self.viewControllers) {
+  for (ASDisplayViewController *viewController in self.viewControllers) {
     if ([viewController conformsToProtocol:@protocol(ASVisibilityDepth)]) {
       [(id <ASVisibilityDepth>)viewController visibilityDepthDidChange];
     }
   }
 }
 
-- (NSInteger)visibilityDepthOfChildViewController:(UIViewController *)childViewController
+- (NSInteger)visibilityDepthOfChildViewController:(ASDisplayViewController *)childViewController
 {
   NSUInteger viewControllerIndex = [self.viewControllers indexOfObjectIdenticalTo:childViewController];
   if (viewControllerIndex == NSNotFound) {
@@ -51,13 +52,13 @@ ASVisibilityDepthImplementation;
 
 #pragma mark - UIKit overrides
 
-- (void)setViewControllers:(NSArray<__kindof UIViewController *> *)viewControllers
+- (void)setViewControllers:(NSArray<__kindof ASDisplayViewController *> *)viewControllers
 {
   [super setViewControllers:viewControllers];
   [self visibilityDepthDidChange];
 }
 
-- (void)setViewControllers:(NSArray<__kindof UIViewController *> *)viewControllers animated:(BOOL)animated
+- (void)setViewControllers:(NSArray<__kindof ASDisplayViewController *> *)viewControllers animated:(BOOL)animated
 {
   [super setViewControllers:viewControllers animated:animated];
   [self visibilityDepthDidChange];
@@ -72,7 +73,7 @@ ASVisibilityDepthImplementation;
   [self visibilityDepthDidChange];
 }
 
-- (void)setSelectedViewController:(__kindof UIViewController *)selectedViewController
+- (void)setSelectedViewController:(__kindof ASDisplayViewController *)selectedViewController
 {
   as_activity_create_for_scope("Set selected view controller of ASTabBarController");
   os_log_info(ASNodeLog(), "Selected view controller %@ of %@", selectedViewController, self);
@@ -82,3 +83,4 @@ ASVisibilityDepthImplementation;
 }
 
 @end
+#endif

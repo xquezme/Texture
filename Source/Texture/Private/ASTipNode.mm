@@ -16,7 +16,7 @@
 - (instancetype)initWithTip:(ASTip *)tip
 {
   if (self = [super init]) {
-    self.backgroundColor = [UIColor colorWithRed:0 green:0.7 blue:0.2 alpha:0.3];
+    self.backgroundColor = [ASColor colorWithRed:0 green:0.7 blue:0.2 alpha:0.3];
     _tip = tip;
     [self addTarget:nil action:@selector(didTapTipNode:) forControlEvents:ASControlNodeEventTouchUpInside];
   }

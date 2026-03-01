@@ -9,7 +9,7 @@
 
 #import "ASTipsController.h"
 
-#if AS_ENABLE_TIPS
+#if AS_ENABLE_TIPS && !AS_PLATFORM_MACOS
 
 #import "ASDisplayNodeTipState.h"
 #import "AsyncDisplayKit+Tips.h"
@@ -182,4 +182,4 @@ __attribute__((constructor)) static void ASLoadTipsControllerNotification(void)
 
 @end
 
-#endif // AS_ENABLE_TIPS
+#endif // AS_ENABLE_TIPS && !AS_PLATFORM_MACOS

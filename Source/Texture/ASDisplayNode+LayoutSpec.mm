@@ -6,7 +6,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "_ASScopeTimer.h"
 #import "ASDisplayNodeInternal.h"
@@ -108,9 +108,17 @@
   layout = [layout filteredNodeLayoutTree];
 
   // Flip layout if layout should be rendered right-to-left
-  BOOL shouldRenderRTLLayout = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:_semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft;
+  BOOL shouldRenderRTLLayout = NO;
+#if AS_PLATFORM_MACOS
+  if (self.nodeLoaded) {
+    shouldRenderRTLLayout = (self.view.userInterfaceLayoutDirection == NSUserInterfaceLayoutDirectionRightToLeft);
+  }
+#else
+  shouldRenderRTLLayout = [ASDisplayView userInterfaceLayoutDirectionForSemanticContentAttribute:_semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft;
+#endif
   if (shouldRenderRTLLayout) {
       for (ASLayout *sublayout in layout.sublayouts) {
+#if !AS_PLATFORM_MACOS
           switch (_semanticContentAttribute) {
               case UISemanticContentAttributeUnspecified:
               case UISemanticContentAttributeForceRightToLeft: {
@@ -124,6 +132,10 @@
                   // Don't flip
                   break;
           }
+#else
+        CGPoint flippedPosition = CGPointMake(layout.size.width - CGRectGetWidth(sublayout.frame) - sublayout.position.x, sublayout.position.y);
+        sublayout.position = flippedPosition;
+#endif
       }
   }
 

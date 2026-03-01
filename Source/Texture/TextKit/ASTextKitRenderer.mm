@@ -200,7 +200,12 @@ static NSCharacterSet *_defaultAvoidTruncationCharacterSet()
 
   CGContextSaveGState(context);
   [[self shadower] setShadowInContext:context];
+#if AS_PLATFORM_MACOS
+  [NSGraphicsContext saveGraphicsState];
+  [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithCGContext:context flipped:NO]];
+#else
   UIGraphicsPushContext(context);
+#endif
 
   LOG(@"%@, shadowInsetBounds = %@",self, NSStringFromCGRect(shadowInsetBounds));
 
@@ -241,7 +246,11 @@ static NSCharacterSet *_defaultAvoidTruncationCharacterSet()
     }];
   }
 
+#if AS_PLATFORM_MACOS
+  [NSGraphicsContext restoreGraphicsState];
+#else
   UIGraphicsPopContext();
+#endif
   CGContextRestoreGState(context);
 }
 

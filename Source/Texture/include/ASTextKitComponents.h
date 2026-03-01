@@ -7,13 +7,16 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
-
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
+#if AS_PLATFORM_MACOS
+@interface ASTextKitComponentsTextView : NSTextView
+#else
 @interface ASTextKitComponentsTextView : UITextView
+#endif
 - (instancetype)initWithFrame:(CGRect)frame textContainer:(nullable NSTextContainer *)textContainer NS_DESIGNATED_INITIALIZER;
 - (nullable instancetype)initWithCoder:(NSCoder *)aDecoder __unavailable;
 - (instancetype)init __unavailable;

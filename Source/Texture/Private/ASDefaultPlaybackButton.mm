@@ -49,30 +49,55 @@
 + (void)drawRect:(CGRect)bounds withParameters:(NSDictionary *)parameters isCancelled:(asdisplaynode_iscancelled_block_t)isCancelledBlock isRasterizing:(BOOL)isRasterizing
 {
   ASDefaultPlaybackButtonType buttonType = (ASDefaultPlaybackButtonType)[parameters[@"buttonType"] intValue];
-  UIColor *color = parameters[@"color"];
+  ASColor *color = parameters[@"color"];
 
-  CGContextRef context = UIGraphicsGetCurrentContext();
+  CGContextRef context = nil;
+#if AS_PLATFORM_MACOS
+  context = NSGraphicsContext.currentContext.CGContext;
+#else
+  context = UIGraphicsGetCurrentContext();
+#endif
   CGContextSaveGState(context);
-  UIBezierPath* bezierPath = [UIBezierPath bezierPath];
+  ASBezierPath* bezierPath = [ASBezierPath bezierPath];
   if (buttonType == ASDefaultPlaybackButtonTypePlay) {
     [bezierPath moveToPoint: CGPointMake(0, 0)];
+#if AS_PLATFORM_MACOS
+    [bezierPath lineToPoint: CGPointMake(0, bounds.size.height)];
+    [bezierPath lineToPoint: CGPointMake(bounds.size.width, bounds.size.height/2)];
+    [bezierPath lineToPoint: CGPointMake(0, 0)];
+#else
     [bezierPath addLineToPoint: CGPointMake(0, bounds.size.height)];
     [bezierPath addLineToPoint: CGPointMake(bounds.size.width, bounds.size.height/2)];
     [bezierPath addLineToPoint: CGPointMake(0, 0)];
+#endif
     [bezierPath closePath];
   } else if (buttonType == ASDefaultPlaybackButtonTypePause) {
     CGFloat pauseSingleLineWidth = bounds.size.width / 3.0;
     [bezierPath moveToPoint: CGPointMake(0, bounds.size.height)];
+#if AS_PLATFORM_MACOS
+    [bezierPath lineToPoint: CGPointMake(pauseSingleLineWidth, bounds.size.height)];
+    [bezierPath lineToPoint: CGPointMake(pauseSingleLineWidth, 0)];
+    [bezierPath lineToPoint: CGPointMake(0, 0)];
+    [bezierPath lineToPoint: CGPointMake(0, bounds.size.height)];
+#else
     [bezierPath addLineToPoint: CGPointMake(pauseSingleLineWidth, bounds.size.height)];
     [bezierPath addLineToPoint: CGPointMake(pauseSingleLineWidth, 0)];
     [bezierPath addLineToPoint: CGPointMake(0, 0)];
     [bezierPath addLineToPoint: CGPointMake(0, bounds.size.height)];
+#endif
     [bezierPath closePath];
     [bezierPath moveToPoint: CGPointMake(pauseSingleLineWidth * 2, 0)];
+#if AS_PLATFORM_MACOS
+    [bezierPath lineToPoint: CGPointMake(pauseSingleLineWidth * 2, bounds.size.height)];
+    [bezierPath lineToPoint: CGPointMake(bounds.size.width, bounds.size.height)];
+    [bezierPath lineToPoint: CGPointMake(bounds.size.width, 0)];
+    [bezierPath lineToPoint: CGPointMake(pauseSingleLineWidth * 2, 0)];
+#else
     [bezierPath addLineToPoint: CGPointMake(pauseSingleLineWidth * 2, bounds.size.height)];
     [bezierPath addLineToPoint: CGPointMake(bounds.size.width, bounds.size.height)];
     [bezierPath addLineToPoint: CGPointMake(bounds.size.width, 0)];
     [bezierPath addLineToPoint: CGPointMake(pauseSingleLineWidth * 2, 0)];
+#endif
     [bezierPath closePath];
   }
 

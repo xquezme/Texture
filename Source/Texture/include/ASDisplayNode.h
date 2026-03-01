@@ -9,7 +9,7 @@
 
 #pragma once
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "_ASAsyncTransactionContainer.h"
 #import "ASBaseDefines.h"
@@ -32,14 +32,14 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol ASContextTransitioning;
 
 /**
- * UIView creation block. Used to create the backing view of a new display node.
+ * ASDisplayView creation block. Used to create the backing view of a new display node.
  */
-typedef UIView * _Nonnull(^ASDisplayNodeViewBlock)(void);
+typedef ASDisplayView * _Nonnull(^ASDisplayNodeViewBlock)(void);
 
 /**
- * UIView creation block. Used to create the backing view of a new display node.
+ * ASDisplayView creation block. Used to create the backing view of a new display node.
  */
-typedef UIViewController * _Nonnull(^ASDisplayNodeViewControllerBlock)(void);
+typedef ASDisplayViewController * _Nonnull(^ASDisplayNodeViewControllerBlock)(void);
 
 /**
  * CALayer creation block. Used to create the backing layer of a new display node.
@@ -79,17 +79,17 @@ typedef NS_ENUM(unsigned char, ASCornerRoundingType) {
 ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 
 /**
- * An `ASDisplayNode` is an abstraction over `UIView` and `CALayer` that allows you to perform calculations about a view
+ * An `ASDisplayNode` is an abstraction over `ASDisplayView` and `CALayer` that allows you to perform calculations about a view
  * hierarchy off the main thread, and could do rendering off the main thread as well.
  *
- * The node API is designed to be as similar as possible to `UIView`. See the README for examples.
+ * The node API is designed to be as similar as possible to `ASDisplayView`. See the README for examples.
  *
  * ## Subclassing
  *
  * `ASDisplayNode` can be subclassed to create a new UI element. The subclass header `ASDisplayNode+Subclasses` provides
  * necessary declarations and conveniences.
  *
- * Commons reasons to subclass includes making a `UIView` property available and receiving a callback after async
+ * Commons reasons to subclass includes making a `ASDisplayView` property available and receiving a callback after async
  * display.
  *
  */
@@ -205,13 +205,13 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 /** 
  * @abstract Returns a view.
  *
- * @discussion The view property is lazily initialized, similar to UIViewController. 
+ * @discussion The view property is lazily initialized, similar to ASDisplayViewController. 
  * To go the other direction, use ASViewToDisplayNode() in ASDisplayNodeExtras.h.
  *
  * @warning The first access to it must be on the main thread, and should only be used on the main thread thereafter as 
  * well.
  */
-@property (readonly) UIView *view;
+@property (readonly) ASDisplayView *view;
 
 /** 
  * @abstract Returns whether a node's backing view or layer is loaded.
@@ -478,12 +478,12 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
  * @abstract Bounds insets for hit testing.
  *
  * @discussion When set to a non-zero inset, increases the bounds for hit testing to make it easier to tap or perform 
- * gestures on this node.  Default is UIEdgeInsetsZero.
+ * gestures on this node.  Default is ASEdgeInsetsZero.
  *
  * This affects the default implementation of -hitTest and -pointInside, so subclasses should call super if you override 
  * it and want hitTestSlop applied.
  */
-@property UIEdgeInsets hitTestSlop;
+@property ASEdgeInsets hitTestSlop;
 
 /** 
  * @abstract Returns a Boolean value indicating whether the receiver contains the specified point.
@@ -495,7 +495,9 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
  *
  * @return YES if point is inside the receiver's bounds; otherwise, NO.
  */
+#if !AS_PLATFORM_MACOS
 - (BOOL)pointInside:(CGPoint)point withEvent:(nullable UIEvent *)event AS_WARN_UNUSED_RESULT;
+#endif
 
 
 /** @name Converting Between View Coordinate Systems */
@@ -598,16 +600,16 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 @end
 
 /**
- * ## UIView bridge
+ * ## ASDisplayView bridge
  *
- * ASDisplayNode provides thread-safe access to most of UIView and CALayer properties and methods, traditionally unsafe.
+ * ASDisplayNode provides thread-safe access to most of ASDisplayView and CALayer properties and methods, traditionally unsafe.
  *
  * Using them will not cause the actual view/layer to be created, and will be applied when it is created (when the view 
  * or layer property is accessed).
  *
  * - NOTE: After the view or layer is created, the properties pass through to the view or layer directly and must be called on the main thread.
  *
- * See UIView and CALayer for documentation on these common properties.
+ * See ASDisplayView and CALayer for documentation on these common properties.
  */
 @interface ASDisplayNode (UIViewBridge)
 
@@ -692,7 +694,7 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 @property           CATransform3D subnodeTransform;           // default=CATransform3DIdentity
 
 @property (getter=isUserInteractionEnabled) BOOL userInteractionEnabled; // default=YES (NO for layer-backed nodes)
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS
 @property (getter=isExclusiveTouch) BOOL exclusiveTouch;      // default=NO
 #endif
 
@@ -701,12 +703,12 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 /**
  * @abstract The node view's background color.
  *
- * @discussion In contrast to UIView, setting a transparent color will not set opaque = NO.
+ * @discussion In contrast to ASDisplayView, setting a transparent color will not set opaque = NO.
  * This only affects nodes that implement +drawRect like ASTextNode.
 */
-@property (nullable, copy) UIColor *backgroundColor;           // default=nil
+@property (nullable, copy) ASColor *backgroundColor;           // default=nil
 
-@property (null_resettable, copy) UIColor *tintColor;          // default=Blue
+@property (null_resettable, copy) ASColor *tintColor;          // default=Blue
 
 /**
  * Notifies the node when the tintColor has changed.
@@ -718,14 +720,16 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 /**
  * @abstract A flag used to determine how a node lays out its content when its bounds change.
  *
- * @discussion This is like UIView's contentMode property, but better. We do our own mapping to layer.contentsGravity in 
+ * @discussion This is like ASDisplayView's contentMode property, but better. We do our own mapping to layer.contentsGravity in 
  * _ASDisplayView. You can set needsDisplayOnBoundsChange independently. 
  * Thus, UIViewContentModeRedraw is not allowed; use needsDisplayOnBoundsChange = YES instead, and pick an appropriate 
  * contentMode for your content while it's being re-rendered.
  */
-@property            UIViewContentMode contentMode;         // default=UIViewContentModeScaleToFill
 @property (copy)     NSString *contentsGravity;             // Use .contentMode in preference when possible.
+ #if !AS_PLATFORM_MACOS
+@property            UIViewContentMode contentMode;         // default=UIViewContentModeScaleToFill
 @property            UISemanticContentAttribute semanticContentAttribute;
+ #endif
 
 @property (nullable) CGColorRef shadowColor;                // default=opaque rgb black
 @property            CGFloat shadowOpacity;                 // default=0.0
@@ -740,18 +744,20 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 
 @property            BOOL needsDisplayOnBoundsChange;       // default==NO
 @property            BOOL autoresizesSubviews;              // default==YES (undefined for layer-backed nodes)
+ #if !AS_PLATFORM_MACOS
 @property            UIViewAutoresizing autoresizingMask;   // default==UIViewAutoresizingNone (undefined for layer-backed nodes)
+ #endif
 
 /**
  * @abstract Content margins
  *
- * @discussion This property is bridged to its UIView counterpart.
+ * @discussion This property is bridged to its ASDisplayView counterpart.
  *
  * If your layout depends on this property, you should probably enable automaticallyRelayoutOnLayoutMarginsChanges to ensure
  * that the layout gets automatically updated when the value of this property changes. Or you can override layoutMarginsDidChange
  * and make all the necessary updates manually.
  */
-@property           UIEdgeInsets layoutMargins;
+@property           ASEdgeInsets layoutMargins;
 @property           BOOL preservesSuperviewLayoutMargins;  // default is NO - set to enable pass-through or cascading behavior of margins from this view’s parent to its children
 - (void)layoutMarginsDidChange;
 
@@ -764,12 +770,12 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
  * that the layout gets automatically updated when the value of this property changes. Or you can override safeAreaInsetsDidChange
  * and make all the necessary updates manually.
  */
-@property (readonly)         UIEdgeInsets safeAreaInsets;
+@property (readonly)         ASEdgeInsets safeAreaInsets;
 @property           BOOL insetsLayoutMarginsFromSafeArea;  // Default: YES
 - (void)safeAreaInsetsDidChange;
 
 
-// UIResponder methods
+// ASResponder methods
 // By default these fall through to the underlying view, but can be overridden.
 - (BOOL)canBecomeFirstResponder;                                            // default==NO
 - (BOOL)becomeFirstResponder;                                               // default==NO (no-op)
@@ -778,14 +784,14 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 - (BOOL)isFirstResponder;
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender;
 
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
 //Focus Engine
 - (void)setNeedsFocusUpdate;
 - (BOOL)canBecomeFocused;
 - (void)updateFocusIfNeeded;
 - (void)didUpdateFocusInContext:(UIFocusUpdateContext *)context withAnimationCoordinator:(UIFocusAnimationCoordinator *)coordinator;
 - (BOOL)shouldUpdateFocusInContext:(UIFocusUpdateContext *)context;
-- (nullable UIView *)preferredFocusedView;
+- (nullable ASDisplayView *)preferredFocusedView;
 #endif
 
 @end
@@ -800,17 +806,21 @@ ASDK_EXTERN NSInteger const ASDefaultDrawingPriority;
 @property (nullable, copy)   NSAttributedString *accessibilityAttributedHint API_AVAILABLE(ios(11.0),tvos(11.0));
 @property (nullable, copy)   NSString *accessibilityValue;
 @property (nullable, copy)   NSAttributedString *accessibilityAttributedValue API_AVAILABLE(ios(11.0),tvos(11.0));
+ #if !AS_PLATFORM_MACOS
 @property           UIAccessibilityTraits accessibilityTraits;
+ #endif
 @property           CGRect accessibilityFrame;
-@property (nullable, copy)   UIBezierPath *accessibilityPath;
+@property (nullable, copy)   ASBezierPath *accessibilityPath;
 @property           CGPoint accessibilityActivationPoint;
 @property (nullable, copy)   NSString *accessibilityLanguage;
 @property           BOOL accessibilityElementsHidden;
 @property           BOOL accessibilityViewIsModal;
 @property           BOOL shouldGroupAccessibilityChildren;
+ #if !AS_PLATFORM_MACOS
 @property           UIAccessibilityNavigationStyle accessibilityNavigationStyle;
 @property (nullable, copy)   NSArray *accessibilityCustomActions API_AVAILABLE(ios(8.0),tvos(9.0));
-#if TARGET_OS_TV
+ #endif
+#if AS_PLATFORM_TVOS
 @property (nullable, copy) 	NSArray *accessibilityHeaderElements;
 #endif
 
@@ -894,7 +904,9 @@ typedef NS_ENUM(NSInteger, ASLayoutEngineType) {
  * @abstract A mask of options indicating how you want to perform the default transition animations.
  *           For a list of valid constants, see UIViewAnimationOptions.
  */
+#if !AS_PLATFORM_MACOS
 @property UIViewAnimationOptions defaultLayoutTransitionOptions;
+#endif
 
 /**
  * @discussion A place to perform your animation. New nodes have been inserted here. You can also use this time to re-order the hierarchy.
@@ -971,8 +983,12 @@ typedef NS_ENUM(NSInteger, ASLayoutEngineType) {
 @interface ASDisplayNode (ASAsyncTransactionContainer) <ASAsyncTransactionContainer>
 @end
 
-/** UIVIew(AsyncDisplayKit) defines convenience method for adding sub-ASDisplayNode to an UIView. */
-@interface UIView (AsyncDisplayKit)
+/** The platform view category defines convenience methods for adding sub-ASDisplayNode instances. */
+ #if AS_PLATFORM_MACOS
+  @interface NSView (AsyncDisplayKit)
+ #else
+  @interface UIView (AsyncDisplayKit)
+ #endif
 /**
  * Convenience method, equivalent to [view addSubview:node.view] or [view.layer addSublayer:node.layer] if layer-backed.
  *

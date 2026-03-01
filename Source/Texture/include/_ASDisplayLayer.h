@@ -7,9 +7,9 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
 #import "ASBaseDefines.h"
 #import "ASBlockTypes.h"
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -98,7 +98,7 @@ NS_ASSUME_NONNULL_BEGIN
 // Called on the display queue and/or main queue (MUST BE THREAD SAFE)
 
 /**
- @summary Delegate method to draw layer contents into a CGBitmapContext. The current UIGraphics context will be set to an appropriate context.
+ @summary Delegate method to draw layer contents into a CGBitmapContext. The current graphics context will be set to an appropriate context.
  @param parameters An object describing all of the properties you need to draw. Return this from -drawParametersForAsyncLayer:
  @param isCancelledBlock Execute this block to check whether the current drawing operation has been cancelled to avoid unnecessary work. A return value of YES means cancel drawing and return.
  @param isRasterizing YES if the layer is being rasterized into another layer, in which case drawRect: probably wants to avoid doing things like filling its bounds with a zero-alpha color to clear the backing store.
@@ -109,12 +109,12 @@ NS_ASSUME_NONNULL_BEGIN
    isRasterizing:(BOOL)isRasterizing;
 
 /**
- @summary Delegate override to provide new layer contents as a UIImage.
+ @summary Delegate override to provide new layer contents as an image.
  @param parameters An object describing all of the properties you need to draw. Return this from -drawParametersForAsyncLayer:
  @param isCancelledBlock Execute this block to check whether the current drawing operation has been cancelled to avoid unnecessary work. A return value of YES means cancel drawing and return.
- @return A UIImage (backed by a CGImage) with contents that are ready to display on the main thread. Make sure that the image is already decoded before returning it here.
+ @return An image (backed by a CGImage on iOS/tvOS) with contents that are ready to display on the main thread. Make sure that the image is already decoded before returning it here.
  */
-+ (UIImage *)displayWithParameters:(nullable id<NSObject>)parameters
++ (ASImage *)displayWithParameters:(nullable id<NSObject>)parameters
                        isCancelled:(AS_NOESCAPE asdisplaynode_iscancelled_block_t)isCancelledBlock;
 
 // Called on the main thread only

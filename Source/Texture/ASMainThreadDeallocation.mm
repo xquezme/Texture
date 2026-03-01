@@ -28,10 +28,12 @@
   // Will be unused if assertions are disabled.
   __unused int scanResult = sscanf(ivarsObj.objCType, "[%u^{objc_ivar}]", &count);
   ASDisplayNodeAssert(scanResult == 1, @"Unexpected type in NSValue: %s", ivarsObj.objCType);
-  Ivar ivars[count];
+  NSMutableData *ivarsData = [NSMutableData dataWithLength:sizeof(Ivar) * count];
+  Ivar *ivars = (Ivar *)ivarsData.mutableBytes;
   [ivarsObj getValue:ivars];
   
-  for (Ivar ivar : ivars) {
+  for (unsigned int i = 0; i < count; i++) {
+    Ivar ivar = ivars[i];
     id value = object_getIvar(self, ivar);
     if (value == nil) {
       continue;
@@ -139,7 +141,14 @@
 + (BOOL)needsMainThreadDeallocation
 {
   const auto name = class_getName(self);
-  if (0 == strncmp(name, "AV", 2) || 0 == strncmp(name, "UI", 2) || 0 == strncmp(name, "CA", 2)) {
+  if (0 == strncmp(name, "AV", 2) || 0 == strncmp(name, "CA", 2)) {
+    return YES;
+  }
+#if AS_PLATFORM_MACOS
+  if (0 == strncmp(name, "NS", 2)) {
+#else
+  if (0 == strncmp(name, "UI", 2)) {
+#endif
     return YES;
   }
   return NO;
@@ -156,7 +165,11 @@
 
 @end
 
+#if AS_PLATFORM_MACOS
+@implementation NSColor (ASNeedsMainThreadDeallocation)
+#else
 @implementation UIColor (ASNeedsMainThreadDeallocation)
+#endif
 
 + (BOOL)needsMainThreadDeallocation
 {
@@ -165,7 +178,11 @@
 
 @end
 
+#if AS_PLATFORM_MACOS
+@implementation NSGestureRecognizer (ASNeedsMainThreadDeallocation)
+#else
 @implementation UIGestureRecognizer (ASNeedsMainThreadDeallocation)
+#endif
 
 + (BOOL)needsMainThreadDeallocation
 {
@@ -174,7 +191,11 @@
 
 @end
 
+#if AS_PLATFORM_MACOS
+@implementation NSImage (ASNeedsMainThreadDeallocation)
+#else
 @implementation UIImage (ASNeedsMainThreadDeallocation)
+#endif
 
 + (BOOL)needsMainThreadDeallocation
 {
@@ -183,7 +204,11 @@
 
 @end
 
+#if AS_PLATFORM_MACOS
+@implementation NSResponder (ASNeedsMainThreadDeallocation)
+#else
 @implementation UIResponder (ASNeedsMainThreadDeallocation)
+#endif
 
 + (BOOL)needsMainThreadDeallocation
 {

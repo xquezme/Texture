@@ -10,11 +10,24 @@
 #import "ASVideoPlayerNode.h"
 
 #if AS_USE_VIDEO
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS || AS_PLATFORM_MACOS
 
 #import <AVFoundation/AVFoundation.h>
 
-#import "AsyncDisplayKit.h"
+#import "ASButtonNode.h"
+#import "ASDisplayNodeExtras.h"
+#import "ASTextNode.h"
+#import "ASDisplayNode+Subclasses.h"
+#import "ASDisplayNode+InterfaceState.h"
+#import "ASLayoutElement.h"
+#import "ASAbsoluteLayoutSpec.h"
+#import "ASCenterLayoutSpec.h"
+#import "ASInsetLayoutSpec.h"
+#import "ASOverlayLayoutSpec.h"
+#import "ASRatioLayoutSpec.h"
+#import "ASStackLayoutSpec.h"
+#import "ASRelativeLayoutSpec.h"
+#import "ASControlNode.h"
 #import "ASDefaultPlaybackButton.h"
 #import "ASDisplayNodeInternal.h"
 
@@ -85,7 +98,7 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
 
   BOOL _shouldAggressivelyRecoverFromStall;
 
-  UIColor *_defaultControlsColor;
+  ASColor *_defaultControlsColor;
 }
 
 @end
@@ -137,7 +150,7 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
 
 - (void)_initControlsAndVideoNode
 {
-  _defaultControlsColor = [UIColor whiteColor];
+  _defaultControlsColor = [ASColor whiteColor];
   _cachedControls = [[NSMutableDictionary alloc] init];
   
   _videoNode = [[ASVideoNode alloc] init];
@@ -372,7 +385,12 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
     _fullScreenButtonNode.style.preferredSize = CGSizeMake(16.0, 22.0);
     
     if (_delegateFlags.delegateFullScreenButtonImage) {
-      [_fullScreenButtonNode setImage:[_delegate videoPlayerNodeFullScreenButtonImage:self] forState:UIControlStateNormal];
+      ASImage *fullScreenImage = [_delegate videoPlayerNodeFullScreenButtonImage:self];
+#if AS_PLATFORM_MACOS
+      _fullScreenButtonNode.imageNode.image = fullScreenImage;
+#else
+      [_fullScreenButtonNode setImage:fullScreenImage forState:UIControlStateNormal];
+#endif
     }
 
     [_fullScreenButtonNode addTarget:self action:@selector(didTapFullScreenButton:) forControlEvents:ASControlNodeEventTouchUpInside];
@@ -428,9 +446,17 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
   
   if (_scrubberNode == nil) {
     __weak __typeof__(self) weakSelf = self;
-    _scrubberNode = [[ASDisplayNode alloc] initWithViewBlock:^UIView * _Nonnull {
+    _scrubberNode = [[ASDisplayNode alloc] initWithViewBlock:^ASDisplayView * _Nonnull {
       __typeof__(self) strongSelf = weakSelf;
-      
+#if AS_PLATFORM_MACOS
+      NSSlider *slider = [[NSSlider alloc] initWithFrame:CGRectZero];
+      slider.minValue = 0.0;
+      slider.maxValue = 1.0;
+      slider.continuous = YES;
+      slider.target = strongSelf;
+      slider.action = @selector(seekTimeDidChangeFromMacSlider:);
+      return slider;
+#else
       UISlider *slider = [[UISlider alloc] initWithFrame:CGRectZero];
       slider.minimumValue = 0.0;
       slider.maximumValue = 1.0;
@@ -448,16 +474,15 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
       }
 
       if (strongSelf->_delegateFlags.delegateScrubberThumbImage) {
-        UIImage *thumbImage = [strongSelf.delegate videoPlayerNodeScrubberThumbImage:strongSelf];
+        ASImage *thumbImage = [strongSelf.delegate videoPlayerNodeScrubberThumbImage:strongSelf];
         [slider setThumbImage:thumbImage forState:UIControlStateNormal];
       }
-
 
       [slider addTarget:strongSelf action:@selector(beginSeek) forControlEvents:UIControlEventTouchDown];
       [slider addTarget:strongSelf action:@selector(endSeek) forControlEvents:UIControlEventTouchUpInside|UIControlEventTouchUpOutside|UIControlEventTouchCancel];
       [slider addTarget:strongSelf action:@selector(seekTimeDidChange:) forControlEvents:UIControlEventValueChanged];
-
       return slider;
+#endif
     }];
 
     _scrubberNode.style.flexShrink = 1;
@@ -507,7 +532,7 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
     options = [_delegate videoPlayerNodeTimeLabelAttributes:self timeLabelType:controlType];
   } else {
     options = @{
-                NSFontAttributeName : [UIFont systemFontOfSize:12.0],
+                NSFontAttributeName : [ASFont systemFontOfSize:12.0],
                 NSForegroundColorAttributeName: _defaultControlsColor
                 };
   }
@@ -569,7 +594,12 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
   }
 
   if (_scrubberNode) {
-    [(UISlider*)_scrubberNode.view setValue:( timeInterval / CMTimeGetSeconds(_duration) ) animated:NO];
+    double value = (timeInterval / CMTimeGetSeconds(_duration));
+#if AS_PLATFORM_MACOS
+    [(NSSlider *)_scrubberNode.view setDoubleValue:value];
+#else
+    [(UISlider *)_scrubberNode.view setValue:value animated:NO];
+#endif
   }
 }
 
@@ -640,10 +670,22 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
 
   if (!_spinnerNode) {
     __weak __typeof__(self) weakSelf = self;
-    _spinnerNode = [[ASDisplayNode alloc] initWithViewBlock:^UIView *{
+    _spinnerNode = [[ASDisplayNode alloc] initWithViewBlock:^ASDisplayView *{
       __typeof__(self) strongSelf = weakSelf;
+#if AS_PLATFORM_MACOS
+      NSProgressIndicator *spinnerView = [[NSProgressIndicator alloc] initWithFrame:CGRectZero];
+      spinnerView.style = NSProgressIndicatorStyleSpinning;
+      spinnerView.indeterminate = YES;
+      spinnerView.displayedWhenStopped = NO;
+
+      if ([strongSelf->_delegate respondsToSelector:@selector(videoPlayerNodeSpinnerControlSize:)]) {
+        spinnerView.controlSize = [strongSelf->_delegate videoPlayerNodeSpinnerControlSize:strongSelf];
+      }
+
+      return spinnerView;
+#else
       UIActivityIndicatorView *spinnnerView = [[UIActivityIndicatorView alloc] init];
-      spinnnerView.backgroundColor = [UIColor clearColor];
+      spinnnerView.backgroundColor = [ASColor clearColor];
 
       if (strongSelf->_delegateFlags.delegateSpinnerTintColor) {
         spinnnerView.color = [strongSelf->_delegate videoPlayerNodeSpinnerTint:strongSelf];
@@ -656,6 +698,7 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
       }
       
       return spinnnerView;
+#endif
     }];
     _spinnerNode.style.preferredSize = CGSizeMake(44.0, 44.0);
     
@@ -666,7 +709,11 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
       [self setNeedsLayout];
     }
   }
+#if AS_PLATFORM_MACOS
+  [(NSProgressIndicator *)_spinnerNode.view startAnimation:nil];
+#else
   [(UIActivityIndicatorView *)_spinnerNode.view startAnimating];
+#endif
 }
 
 - (void)removeSpinner
@@ -707,11 +754,19 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
   _isSeeking = NO;
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)seekTimeDidChange:(UISlider*)slider
 {
   CGFloat percentage = slider.value * 100;
   [self seekToTime:percentage];
 }
+#else
+- (void)seekTimeDidChangeFromMacSlider:(NSSlider *)slider
+{
+  CGFloat percentage = slider.doubleValue * 100.0;
+  [self seekToTime:percentage];
+}
+#endif
 
 #pragma mark - Public API
 - (void)seekToTime:(CGFloat)percentComplete
@@ -824,7 +879,7 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
                                                                            children: [self controlsForLayoutSpec] ];
   controlbarSpec.style.alignSelf = ASStackLayoutAlignSelfStretch;
 
-  UIEdgeInsets insets = UIEdgeInsetsMake(10.0, 10.0, 10.0, 10.0);
+  ASEdgeInsets insets = ASEdgeInsetsMake(10.0, 10.0, 10.0, 10.0);
 
   ASInsetLayoutSpec *controlbarInsetSpec = [ASInsetLayoutSpec insetLayoutSpecWithInsets:insets child:controlbarSpec];
 
@@ -859,7 +914,11 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
     _delegateFlags.delegateNeededDefaultControls = [_delegate respondsToSelector:@selector(videoPlayerNodeNeededDefaultControls:)];
     _delegateFlags.delegateCustomControls = [_delegate respondsToSelector:@selector(videoPlayerNodeCustomControls:)];
     _delegateFlags.delegateSpinnerTintColor = [_delegate respondsToSelector:@selector(videoPlayerNodeSpinnerTint:)];
+#if AS_PLATFORM_MACOS
+    _delegateFlags.delegateSpinnerStyle = [_delegate respondsToSelector:@selector(videoPlayerNodeSpinnerControlSize:)];
+#else
     _delegateFlags.delegateSpinnerStyle = [_delegate respondsToSelector:@selector(videoPlayerNodeSpinnerStyle:)];
+#endif
     _delegateFlags.delegateScrubberMaximumTrackTintColor = [_delegate respondsToSelector:@selector(videoPlayerNodeScrubberMaximumTrackTint:)];
     _delegateFlags.delegateScrubberMinimumTrackTintColor = [_delegate respondsToSelector:@selector(videoPlayerNodeScrubberMinimumTrackTint:)];
     _delegateFlags.delegateScrubberThumbTintColor = [_delegate respondsToSelector:@selector(videoPlayerNodeScrubberThumbTint:)];
@@ -1012,6 +1071,6 @@ static void *ASVideoPlayerNodeContext = &ASVideoPlayerNodeContext;
 
 @end
 
-#endif // TARGET_OS_IOS
+#endif // AS_PLATFORM_IOS || AS_PLATFORM_MACOS
 
 #endif

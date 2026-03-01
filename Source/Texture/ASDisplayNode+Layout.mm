@@ -799,6 +799,7 @@ ASLayoutElementStyleExtensibilityForwarding
   return _defaultLayoutTransitionDelay;
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)setDefaultLayoutTransitionOptions:(UIViewAnimationOptions)defaultLayoutTransitionOptions
 {
   MutexLocker l(__instanceLock__);
@@ -810,6 +811,7 @@ ASLayoutElementStyleExtensibilityForwarding
   MutexLocker l(__instanceLock__);
   return _defaultLayoutTransitionOptions;
 }
+#endif
 
 #pragma mark <LayoutTransitioning>
 
@@ -868,7 +870,7 @@ ASLayoutElementStyleExtensibilityForwarding
   BOOL originAllowsGroupOpacity = node.allowsGroupOpacity;
   node.allowsGroupOpacity = YES;
 
-  [UIView animateWithDuration:self.defaultLayoutTransitionDuration delay:self.defaultLayoutTransitionDelay options:self.defaultLayoutTransitionOptions animations:^{
+  void (^animations)(void) = ^{
     // Fade removed subnodes and views out
     for (ASDisplayNode *removedSubnode in removedSubnodes) {
       removedSubnode.alpha = 0;
@@ -890,7 +892,9 @@ ASLayoutElementStyleExtensibilityForwarding
     for (ASDisplayNode *movedSubnode in movedSubnodes) {
       movedSubnode.frame = [context finalFrameForNode:movedSubnode];
     }
-  } completion:^(BOOL finished) {
+  };
+
+  void (^completion)(BOOL) = ^(BOOL finished) {
     // Restore all removed subnode alpha values
     for (_ASAnimatedTransitionContext *removedSubnodeContext in removedSubnodeContexts) {
       removedSubnodeContext.node.alpha = removedSubnodeContext.alpha;
@@ -901,7 +905,18 @@ ASLayoutElementStyleExtensibilityForwarding
     
     // Subnode removals are automatically performed
     [context completeTransition:finished];
-  }];
+  };
+
+#if AS_PLATFORM_MACOS
+  animations();
+  completion(YES);
+#else
+  [ASDisplayView animateWithDuration:self.defaultLayoutTransitionDuration
+                        delay:self.defaultLayoutTransitionDelay
+                      options:self.defaultLayoutTransitionOptions
+                   animations:animations
+                   completion:completion];
+#endif
 }
 
 /**

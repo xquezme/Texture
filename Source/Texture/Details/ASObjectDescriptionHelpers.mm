@@ -9,9 +9,8 @@
 
 #import "ASObjectDescriptionHelpers.h"
 
-#import <UIKit/UIGeometry.h>
-
 #import "NSIndexSet+ASHelpers.h"
+#import "ASPlatformDefines.h"
 
 NSString *ASGetDescriptionValueString(id object)
 {
@@ -21,12 +20,12 @@ NSString *ASGetDescriptionValueString(id object)
     const char *type = value.objCType;
     
     if (strcmp(type, @encode(CGRect)) == 0) {
-      CGRect rect = [value CGRectValue];
+      CGRect rect = ASRectFromNSValue(value);
       return [NSString stringWithFormat:@"(%g %g; %g %g)", rect.origin.x, rect.origin.y, rect.size.width, rect.size.height];
     } else if (strcmp(type, @encode(CGSize)) == 0) {
-      return NSStringFromCGSize(value.CGSizeValue);
+      return NSStringFromCGSize(ASSizeFromNSValue(value));
     } else if (strcmp(type, @encode(CGPoint)) == 0) {
-      return NSStringFromCGPoint(value.CGPointValue);
+      return NSStringFromCGPoint(ASPointFromNSValue(value));
     }
     
   } else if ([object isKindOfClass:[NSIndexSet class]]) {

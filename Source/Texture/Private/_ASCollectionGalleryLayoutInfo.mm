@@ -14,7 +14,7 @@
 - (instancetype)initWithItemSize:(CGSize)itemSize
               minimumLineSpacing:(CGFloat)minimumLineSpacing
          minimumInteritemSpacing:(CGFloat)minimumInteritemSpacing
-                    sectionInset:(UIEdgeInsets)sectionInset
+                    sectionInset:(ASEdgeInsets)sectionInset
 {
   self = [super init];
   if (self) {
@@ -35,7 +35,7 @@
   return CGSizeEqualToSize(_itemSize, info.itemSize)
   && _minimumLineSpacing == info.minimumLineSpacing
   && _minimumInteritemSpacing == info.minimumInteritemSpacing
-  && UIEdgeInsetsEqualToEdgeInsets(_sectionInset, info.sectionInset);
+  && ASEdgeInsetsEqualToEdgeInsets(_sectionInset, info.sectionInset);
 }
 
 - (BOOL)isEqual:(id)other
@@ -55,7 +55,7 @@
     CGSize itemSize;
     CGFloat minimumLineSpacing;
     CGFloat minimumInteritemSpacing;
-    UIEdgeInsets sectionInset;
+    ASEdgeInsets sectionInset;
   } data = {
     _itemSize,
     _minimumLineSpacing,

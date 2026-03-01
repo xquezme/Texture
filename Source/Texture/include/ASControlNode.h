@@ -50,11 +50,13 @@ typedef NS_OPTIONS(NSUInteger, ASControlNodeEvent)
  * Apple's UIControlState enum gets special treatment here, and
  * UIControlStateNormal is available in Swift.
  */
+#if !AS_PLATFORM_MACOS
 typedef UIControlState ASControlState ASDISPLAYNODE_DEPRECATED_MSG("Use UIControlState.");
 static UIControlState const ASControlStateNormal ASDISPLAYNODE_DEPRECATED_MSG("Use UIControlStateNormal.") = UIControlStateNormal;
 static UIControlState const ASControlStateDisabled ASDISPLAYNODE_DEPRECATED_MSG("Use UIControlStateDisabled.") = UIControlStateDisabled;
 static UIControlState const ASControlStateHighlighted ASDISPLAYNODE_DEPRECATED_MSG("Use UIControlStateHighlighted.") = UIControlStateHighlighted;
 static UIControlState const ASControlStateSelected ASDISPLAYNODE_DEPRECATED_MSG("Use UIControlStateSelected.") = UIControlStateSelected;
+#endif
 
 /**
   @abstract ASControlNode is the base class for control nodes (such as buttons), or nodes that track touches to invoke targets with action messages.
@@ -130,12 +132,15 @@ static UIControlState const ASControlStateSelected ASDISPLAYNODE_DEPRECATED_MSG(
 /**
   @abstract Sends the actions for the control events for a particular event.
   @param controlEvents A bitmask specifying the control events for which to send actions. See "Control Events" for bitmask constants. May not be 0.
-  @param event The event which triggered these control actions. May be nil.
+  @param event UIKit event object that triggered these control actions. May be nil.
+  @discussion This API is UIKit-only. macOS action dispatch uses the AppKit event path in implementation.
  */
+#if !AS_PLATFORM_MACOS
 - (void)sendActionsForControlEvents:(ASControlNodeEvent)controlEvents withEvent:(nullable UIEvent *)event;
+#endif
 @end
 
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
 @interface ASControlNode (tvOS)
 
 /**

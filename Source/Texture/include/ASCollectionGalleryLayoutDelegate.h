@@ -39,7 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @discussion For a vertically scrolling layout, this value represents the minimum spacing between rows.
  * For a horizontally scrolling one, it represents the minimum spacing between columns.
  * It is not applied between the first line and the header, or between the last line and the footer.
- * This is the same behavior as UICollectionViewFlowLayout's minimumLineSpacing.
+ * This is the same behavior as ASCollectionViewFlowLayout's minimumLineSpacing.
  *
  * @param delegate The calling object.
  *
@@ -57,7 +57,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @discussion For a vertically scrolling layout, this value represents the minimum spacing between items in the same row. 
  * For a horizontally scrolling one, it represents the minimum spacing between items in the same column.
  * It is considered while fitting items into lines, but the actual final spacing between some items might be larger.
- * This is the same behavior as UICollectionViewFlowLayout's minimumInteritemSpacing.
+ * This is the same behavior as ASCollectionViewFlowLayout's minimumInteritemSpacing.
  *
  * @param delegate The calling object.
  *
@@ -78,7 +78,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @return The margins used to layout content in a section
  */
-- (UIEdgeInsets)galleryLayoutDelegate:(ASCollectionGalleryLayoutDelegate *)delegate sectionInsetForElements:(ASElementMap *)elements;
+- (ASEdgeInsets)galleryLayoutDelegate:(ASCollectionGalleryLayoutDelegate *)delegate sectionInsetForElements:(ASElementMap *)elements;
 
 @end
 

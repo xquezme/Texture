@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -29,7 +29,11 @@ typedef NS_ENUM(NSInteger, ASTextAffinity) {
  ASTextPosition has the same API as Apple's implementation in UITextView/UITextField,
  so you can alse use it to interact with UITextView/UITextField.
  */
+#if AS_PLATFORM_MACOS
+@interface ASTextPosition : NSObject <NSCopying>
+#else
 @interface ASTextPosition : UITextPosition <NSCopying>
+#endif
 
 @property (nonatomic, readonly) NSInteger offset;
 @property (nonatomic, readonly) ASTextAffinity affinity;
@@ -49,7 +53,11 @@ typedef NS_ENUM(NSInteger, ASTextAffinity) {
  ASTextRange has the same API as Apple's implementation in UITextView/UITextField,
  so you can alse use it to interact with UITextView/UITextField.
  */
+#if AS_PLATFORM_MACOS
+@interface ASTextRange : NSObject <NSCopying>
+#else
 @interface ASTextRange : UITextRange <NSCopying>
+#endif
 
 @property (nonatomic, readonly) ASTextPosition *start;
 @property (nonatomic, readonly) ASTextPosition *end;
@@ -72,7 +80,11 @@ typedef NS_ENUM(NSInteger, ASTextAffinity) {
  ASTextSelectionRect has the same API as Apple's implementation in UITextView/UITextField,
  so you can alse use it to interact with UITextView/UITextField.
  */
+#if AS_PLATFORM_MACOS
+@interface ASTextSelectionRect : NSObject <NSCopying>
+#else
 @interface ASTextSelectionRect : UITextSelectionRect <NSCopying>
+#endif
 
 @property (nonatomic) CGRect rect;
 @property (nonatomic) NSWritingDirection writingDirection;

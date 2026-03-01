@@ -160,8 +160,13 @@ typedef void (^ASDataControllerSynchronizationBlock)();
       unowned ASCollectionElement *element = elements[i];
 
       NSMutableDictionary *dict = [[NSThread currentThread] threadDictionary];
+#if AS_PLATFORM_MACOS
+      dict[ASThreadDictMaxConstraintSizeKey] =
+          [NSValue valueWithSize:element.constrainedSize.max];
+#else
       dict[ASThreadDictMaxConstraintSizeKey] =
           [NSValue valueWithCGSize:element.constrainedSize.max];
+#endif
       unowned ASCellNode *node = element.node;
       [dict removeObjectForKey:ASThreadDictMaxConstraintSizeKey];
 
@@ -375,7 +380,7 @@ typedef void (^ASDataControllerSynchronizationBlock)();
   if (indexPaths.count == 0 || _dataSource == nil) {
     return;
   }
-  
+
   BOOL isRowKind = [kind isEqualToString:ASDataControllerRowNodeKind];
   if (!isRowKind && !_dataSourceFlags.supplementaryNodeBlockOfKindAtIndexPath) {
     // Populating supplementary elements but data source doesn't support.
@@ -559,13 +564,13 @@ typedef void (^ASDataControllerSynchronizationBlock)();
   
   if (changeSet.includesReloadData) {
     if (_initialReloadDataHasBeenCalled) {
-      os_log_debug(ASCollectionLog(), "reloadData %@", ASViewToDisplayNode(ASDynamicCast(self.dataSource, UIView)));
+      os_log_debug(ASCollectionLog(), "reloadData %@", ASViewToDisplayNode(ASDynamicCast(self.dataSource, ASDisplayView)));
     } else {
-      os_log_debug(ASCollectionLog(), "Initial reloadData %@", ASViewToDisplayNode(ASDynamicCast(self.dataSource, UIView)));
+      os_log_debug(ASCollectionLog(), "Initial reloadData %@", ASViewToDisplayNode(ASDynamicCast(self.dataSource, ASDisplayView)));
       _initialReloadDataHasBeenCalled = YES;
     }
   } else {
-    os_log_debug(ASCollectionLog(), "performBatchUpdates %@ %@", ASViewToDisplayNode(ASDynamicCast(self.dataSource, UIView)), changeSet);
+    os_log_debug(ASCollectionLog(), "performBatchUpdates %@ %@", ASViewToDisplayNode(ASDynamicCast(self.dataSource, ASDisplayView)), changeSet);
   }
 
   if (!ASActivateExperimentalFeature(ASExperimentalOptimizeDataControllerPipeline)) {

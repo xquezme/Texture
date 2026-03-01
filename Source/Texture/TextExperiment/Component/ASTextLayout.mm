@@ -29,8 +29,8 @@ static inline CGSize ASTextClipCGSize(CGSize size) {
   return size;
 }
 
-static inline UIEdgeInsets UIEdgeInsetRotateVertical(UIEdgeInsets insets) {
-  UIEdgeInsets one;
+static inline ASEdgeInsets ASEdgeInsetRotateVertical(ASEdgeInsets insets) {
+  ASEdgeInsets one;
   one.top = insets.left;
   one.left = insets.bottom;
   one.bottom = insets.right;
@@ -39,20 +39,36 @@ static inline UIEdgeInsets UIEdgeInsetRotateVertical(UIEdgeInsets insets) {
 }
 
 /**
- Sometimes CoreText may convert CGColor to UIColor for `kCTForegroundColorAttributeName`
+ Sometimes CoreText may convert CGColor to ASColor for `kCTForegroundColorAttributeName`
  attribute in iOS7. This should be a bug of CoreText, and may cause crash. Here's a workaround.
  */
 static CGColorRef ASTextGetCGColor(CGColorRef color) {
-  static UIColor *defaultColor;
+  static ASColor *defaultColor;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    defaultColor = [UIColor blackColor];
+    defaultColor = [ASColor blackColor];
   });
   if (!color) return defaultColor.CGColor;
   if ([((__bridge NSObject *)color) respondsToSelector:@selector(CGColor)]) {
-    return ((__bridge UIColor *)color).CGColor;
+    return ((__bridge ASColor *)color).CGColor;
   }
   return color;
+}
+
+static inline ASBezierPath *ASTextBezierPathWithRoundedRect(CGRect rect, CGFloat cornerRadius) {
+#if AS_PLATFORM_MACOS
+  return [ASBezierPath bezierPathWithRoundedRect:rect xRadius:cornerRadius yRadius:cornerRadius];
+#else
+  return [ASBezierPath bezierPathWithRoundedRect:rect cornerRadius:cornerRadius];
+#endif
+}
+
+static inline void ASTextAppendBezierPath(ASBezierPath *path, ASBezierPath *otherPath) {
+#if AS_PLATFORM_MACOS
+  [path appendBezierPath:otherPath];
+#else
+  [path appendPath:otherPath];
+#endif
 }
 
 @implementation ASTextLinePositionSimpleModifier
@@ -81,15 +97,14 @@ static CGColorRef ASTextGetCGColor(CGColorRef color) {
 }
 @end
 
-
 @implementation ASTextContainer {
   @package
   BOOL _readonly; ///< used only in ASTextLayout.implementation
   dispatch_semaphore_t _lock;
   
   CGSize _size;
-  UIEdgeInsets _insets;
-  UIBezierPath *_path;
+  ASEdgeInsets _insets;
+  ASBezierPath *_path;
   NSArray *_exclusionPaths;
   BOOL _pathFillEvenOdd;
   CGFloat _pathLineWidth;
@@ -104,21 +119,21 @@ static CGColorRef ASTextGetCGColor(CGColorRef color) {
 {
   return [NSString
           stringWithFormat:@"immutable: %@, insets: %@, size: %@", self->_readonly ? @"YES" : @"NO",
-                           NSStringFromUIEdgeInsets(self->_insets), NSStringFromCGSize(self->_size)];
+                           ASStringFromEdgeInsets(self->_insets), NSStringFromCGSize(self->_size)];
 }
 
 + (instancetype)containerWithSize:(CGSize)size NS_RETURNS_RETAINED {
-  return [self containerWithSize:size insets:UIEdgeInsetsZero];
+  return [self containerWithSize:size insets:ASEdgeInsetsZero];
 }
 
-+ (instancetype)containerWithSize:(CGSize)size insets:(UIEdgeInsets)insets NS_RETURNS_RETAINED {
++ (instancetype)containerWithSize:(CGSize)size insets:(ASEdgeInsets)insets NS_RETURNS_RETAINED {
   ASTextContainer *one = [self new];
   one.size = ASTextClipCGSize(size);
   one.insets = insets;
   return one;
 }
 
-+ (instancetype)containerWithPath:(UIBezierPath *)path NS_RETURNS_RETAINED {
++ (instancetype)containerWithPath:(ASBezierPath *)path NS_RETURNS_RETAINED {
   ASTextContainer *one = [self new];
   one.path = path;
   return one;
@@ -165,8 +180,8 @@ static CGColorRef ASTextGetCGColor(CGColorRef color) {
 }
 
 - (void)encodeWithCoder:(NSCoder *)aCoder {
-  [aCoder encodeObject:[NSValue valueWithCGSize:_size] forKey:@"size"];
-  [aCoder encodeObject:[NSValue valueWithUIEdgeInsets:_insets] forKey:@"insets"];
+  [aCoder encodeObject:ASValueWithCGSize(_size) forKey:@"size"];
+  [aCoder encodeObject:ASValueWithEdgeInsets(_insets) forKey:@"insets"];
   [aCoder encodeObject:_path forKey:@"path"];
   [aCoder encodeObject:_exclusionPaths forKey:@"exclusionPaths"];
   [aCoder encodeBool:_pathFillEvenOdd forKey:@"pathFillEvenOdd"];
@@ -183,8 +198,8 @@ static CGColorRef ASTextGetCGColor(CGColorRef color) {
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
   self = [self init];
-  _size = ((NSValue *)[aDecoder decodeObjectForKey:@"size"]).CGSizeValue;
-  _insets = ((NSValue *)[aDecoder decodeObjectForKey:@"insets"]).UIEdgeInsetsValue;
+  _size = ASSizeFromValue([aDecoder decodeObjectForKey:@"size"]);
+  _insets = ASEdgeInsetsFromValue([aDecoder decodeObjectForKey:@"insets"]);
   _path = [aDecoder decodeObjectForKey:@"path"];
   _exclusionPaths = [aDecoder decodeObjectForKey:@"exclusionPaths"];
   _pathFillEvenOdd = [aDecoder decodeBoolForKey:@"pathFillEvenOdd"];
@@ -227,11 +242,11 @@ dispatch_semaphore_signal(_lock);
   Setter(if(!_path) _size = ASTextClipCGSize(size));
 }
 
-- (UIEdgeInsets)insets {
-  Getter(UIEdgeInsets insets = _insets) return insets;
+- (ASEdgeInsets)insets {
+  Getter(ASEdgeInsets insets = _insets) return insets;
 }
 
-- (void)setInsets:(UIEdgeInsets)insets {
+- (void)setInsets:(ASEdgeInsets)insets {
   Setter(if(!_path){
     if (insets.top < 0) insets.top = 0;
     if (insets.left < 0) insets.left = 0;
@@ -241,17 +256,17 @@ dispatch_semaphore_signal(_lock);
   });
 }
 
-- (UIBezierPath *)path {
-  Getter(UIBezierPath *path = _path) return path;
+- (ASBezierPath *)path {
+  Getter(ASBezierPath *path = _path) return path;
 }
 
-- (void)setPath:(UIBezierPath *)path {
+- (void)setPath:(ASBezierPath *)path {
   Setter(
          _path = path.copy;
          if (_path) {
            CGRect bounds = _path.bounds;
            CGSize size = bounds.size;
-           UIEdgeInsets insets = UIEdgeInsetsZero;
+           ASEdgeInsets insets = ASEdgeInsetsZero;
            if (bounds.origin.x < 0) size.width += bounds.origin.x;
            if (bounds.origin.x > 0) insets.left = bounds.origin.x;
            if (bounds.origin.y < 0) size.height += bounds.origin.y;
@@ -329,8 +344,6 @@ dispatch_semaphore_signal(_lock);
 #undef Getter
 #undef Setter
 @end
-
-
 
 
 @interface ASTextLayout ()
@@ -452,7 +465,7 @@ dispatch_semaphore_signal(_lock);
     CGRect rect = (CGRect) {CGPointZero, container.size };
     if (needFixLayoutSizeBug) {
       constraintSizeIsExtended = YES;
-      constraintRectBeforeExtended = UIEdgeInsetsInsetRect(rect, container.insets);
+      constraintRectBeforeExtended = ASRectInsetWithEdgeInsets(rect, container.insets);
       constraintRectBeforeExtended = CGRectStandardize(constraintRectBeforeExtended);
       if (container.isVerticalForm) {
         rect.size.width = ASTextContainerMaxSize.width;
@@ -460,7 +473,7 @@ dispatch_semaphore_signal(_lock);
         rect.size.height = ASTextContainerMaxSize.height;
       }
     }
-    rect = UIEdgeInsetsInsetRect(rect, container.insets);
+    rect = ASRectInsetWithEdgeInsets(rect, container.insets);
     rect = CGRectStandardize(rect);
     cgPathBox = rect;
     rect = CGRectApplyAffineTransform(rect, CGAffineTransformMakeScale(1, -1));
@@ -475,7 +488,7 @@ dispatch_semaphore_signal(_lock);
       path = CGPathCreateMutableCopy(container.path.CGPath);
     } else {
       CGRect rect = (CGRect) {CGPointZero, container.size };
-      rect = UIEdgeInsetsInsetRect(rect, container.insets);
+      rect = ASRectInsetWithEdgeInsets(rect, container.insets);
       CGPathRef rectPath = CGPathCreateWithRect(rect, NULL);
       if (rectPath) {
         path = CGPathCreateMutableCopy(rectPath);
@@ -483,7 +496,7 @@ dispatch_semaphore_signal(_lock);
       }
     }
     if (path) {
-      [layout.container.exclusionPaths enumerateObjectsUsingBlock: ^(UIBezierPath *onePath, NSUInteger idx, BOOL *stop) {
+      [layout.container.exclusionPaths enumerateObjectsUsingBlock: ^(ASBezierPath *onePath, NSUInteger idx, BOOL *stop) {
         CGPathAddPath(path, NULL, onePath.CGPath);
       }];
       
@@ -752,7 +765,7 @@ dispatch_semaphore_signal(_lock);
           rect = CGRectInset(rect, -inset, -inset);
         }
       } else {
-        rect = UIEdgeInsetsInsetRect(rect, ASTextUIEdgeInsetsInvert(container.insets));
+        rect = ASRectInsetWithEdgeInsets(rect, ASTextUIEdgeInsetsInvert(container.insets));
       }
       rect = CGRectStandardize(rect);
       CGSize size = rect.size;
@@ -792,7 +805,7 @@ dispatch_semaphore_signal(_lock);
             [attrs removeObjectsForKeys:[NSMutableAttributedString as_allDiscontinuousAttributeKeys]];
             CTFontRef font = (__bridge CTFontRef) attrs[(id) kCTFontAttributeName];
             CGFloat fontSize = font ? CTFontGetSize(font) : 12.0;
-            UIFont *uiFont = [UIFont systemFontOfSize:fontSize * 0.9];
+            ASFont *uiFont = [ASFont systemFontOfSize:fontSize * 0.9];
             if (uiFont) {
               font = CTFontCreateWithName((__bridge CFStringRef) uiFont.fontName, uiFont.pointSize, NULL);
             } else {
@@ -1643,6 +1656,10 @@ dispatch_semaphore_signal(_lock);
       newPos.offset != otherPosition.offset) {
     return newPos;
   }
+
+#if AS_PLATFORM_MACOS
+  return oldPosition;
+#else
   NSUInteger lineIndex = [self lineIndexForPosition:otherPosition];
   if (lineIndex == NSNotFound) return oldPosition;
   ASTextLine *line = _lines[lineIndex];
@@ -1677,6 +1694,7 @@ dispatch_semaphore_signal(_lock);
   }
   
   return oldPosition;
+#endif
 }
 
 - (ASTextRange *)textRangeAtPoint:(CGPoint)point {
@@ -1692,6 +1710,11 @@ dispatch_semaphore_signal(_lock);
   CGRect rect = [self caretRectForPosition:pos];
   if (CGRectIsNull(rect)) return nil;
   
+#if AS_PLATFORM_MACOS
+  (void)RTL;
+  (void)rect;
+  return [self textRangeByExtendingPosition:pos];
+#else
   if (_container.verticalForm) {
     ASTextRange *range = [self textRangeByExtendingPosition:pos inDirection:(rect.origin.y >= point.y && !RTL) ? UITextLayoutDirectionUp:UITextLayoutDirectionDown offset:1];
     return range;
@@ -1699,6 +1722,7 @@ dispatch_semaphore_signal(_lock);
     ASTextRange *range = [self textRangeByExtendingPosition:pos inDirection:(rect.origin.x >= point.x && !RTL) ? UITextLayoutDirectionLeft:UITextLayoutDirectionRight offset:1];
     return range;
   }
+#endif
 }
 
 - (ASTextRange *)closestTextRangeAtPoint:(CGPoint)point {
@@ -1711,6 +1735,11 @@ dispatch_semaphore_signal(_lock);
   CGRect rect = [self caretRectForPosition:pos];
   if (CGRectIsNull(rect)) return nil;
   
+#if AS_PLATFORM_MACOS
+  (void)RTL;
+  (void)rect;
+  return [self textRangeByExtendingPosition:pos];
+#else
   UITextLayoutDirection direction = UITextLayoutDirectionRight;
   if (pos.offset >= line.range.location + line.range.length) {
     if (direction != RTL) {
@@ -1734,6 +1763,7 @@ dispatch_semaphore_signal(_lock);
   
   ASTextRange *range = [self textRangeByExtendingPosition:pos inDirection:direction offset:1];
   return range;
+#endif
 }
 
 - (ASTextRange *)textRangeByExtendingPosition:(ASTextPosition *)position {
@@ -1798,6 +1828,7 @@ dispatch_semaphore_signal(_lock);
   return [ASTextRange rangeWithRange:NSMakeRange(position.offset, 0) affinity:position.affinity];
 }
 
+#if !AS_PLATFORM_MACOS
 - (ASTextRange *)textRangeByExtendingPosition:(ASTextPosition *)position
                                   inDirection:(UITextLayoutDirection)direction
                                        offset:(NSInteger)offset {
@@ -1936,6 +1967,7 @@ dispatch_semaphore_signal(_lock);
     return [ASTextRange rangeWithRange:NSMakeRange(start, end - start)];
   }
 }
+#endif
 
 - (NSUInteger)lineIndexForPosition:(ASTextPosition *)position {
   if (!position) return NSNotFound;
@@ -2368,7 +2400,7 @@ static void ASTextDrawRun(ASTextLine *line, CTRunRef run, CGContextRef context, 
         CTRunGetAdvances(run, CFRangeMake(0, 0), glyphAdvances);
         CGFloat ascent = CTFontGetAscent(runFont);
         CGFloat descent = CTFontGetDescent(runFont);
-        CGAffineTransform glyphTransform = glyphTransformValue.CGAffineTransformValue;
+        CGAffineTransform glyphTransform = ASCGAffineTransformFromValue(glyphTransformValue);
         CGPoint zeroPoint = CGPointZero;
         
         for (ASTextRunGlyphRange *oneRange in runRanges) {
@@ -2419,7 +2451,7 @@ static void ASTextDrawRun(ASTextLine *line, CTRunRef run, CGContextRef context, 
           runStrIdx[glyphCount] = runStrRange.location + runStrRange.length;
           CGSize glyphAdvances[glyphCount];
           CTRunGetAdvances(run, CFRangeMake(0, 0), glyphAdvances);
-          CGAffineTransform glyphTransform = glyphTransformValue.CGAffineTransformValue;
+          CGAffineTransform glyphTransform = ASCGAffineTransformFromValue(glyphTransformValue);
           CGPoint zeroPoint = CGPointZero;
           
           for (NSUInteger g = 0; g < glyphCount; g++) {
@@ -2500,14 +2532,14 @@ static void ASTextDrawBorderRects(CGContextRef context, CGSize size, ASTextBorde
   
   NSMutableArray *paths = [NSMutableArray new];
   for (NSValue *value in rects) {
-    CGRect rect = value.CGRectValue;
+    CGRect rect = ASCGRectFromValue(value);
     if (isVertical) {
-      rect = UIEdgeInsetsInsetRect(rect, UIEdgeInsetRotateVertical(border.insets));
+      rect = ASRectInsetWithEdgeInsets(rect, ASEdgeInsetRotateVertical(border.insets));
     } else {
-      rect = UIEdgeInsetsInsetRect(rect, border.insets);
+      rect = ASRectInsetWithEdgeInsets(rect, border.insets);
     }
     rect = ASTextCGRectPixelRound(rect);
-    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:border.cornerRadius];
+    ASBezierPath *path = ASTextBezierPathWithRoundedRect(rect, border.cornerRadius);
     [path closePath];
     [paths addObject:path];
   }
@@ -2515,7 +2547,7 @@ static void ASTextDrawBorderRects(CGContextRef context, CGSize size, ASTextBorde
   if (border.fillColor) {
     CGContextSaveGState(context);
     CGContextSetFillColorWithColor(context, border.fillColor.CGColor);
-    for (UIBezierPath *path in paths) {
+    for (ASBezierPath *path in paths) {
       CGContextAddPath(context, path.CGPath);
     }
     CGContextFillPath(context);
@@ -2526,7 +2558,7 @@ static void ASTextDrawBorderRects(CGContextRef context, CGSize size, ASTextBorde
     
     //-------------------------- single line ------------------------------//
     CGContextSaveGState(context);
-    for (UIBezierPath *path in paths) {
+    for (ASBezierPath *path in paths) {
       CGRect bounds = CGRectUnion(path.bounds, (CGRect){CGPointZero, size});
       bounds = CGRectInset(bounds, -2 * border.strokeWidth, -2 * border.strokeWidth);
       CGContextAddRect(context, bounds);
@@ -2546,14 +2578,14 @@ static void ASTextDrawBorderRects(CGContextRef context, CGSize size, ASTextBorde
     }
     CGContextSetLineJoin(context, border.lineJoin);
     for (NSValue *value in rects) {
-      CGRect rect = value.CGRectValue;
+      CGRect rect = ASCGRectFromValue(value);
       if (isVertical) {
-        rect = UIEdgeInsetsInsetRect(rect, UIEdgeInsetRotateVertical(border.insets));
+        rect = ASRectInsetWithEdgeInsets(rect, ASEdgeInsetRotateVertical(border.insets));
       } else {
-        rect = UIEdgeInsetsInsetRect(rect, border.insets);
+        rect = ASRectInsetWithEdgeInsets(rect, border.insets);
       }
       rect = CGRectInset(rect, inset, inset);
-      UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:border.cornerRadius + radiusDelta];
+      ASBezierPath *path = ASTextBezierPathWithRoundedRect(rect, border.cornerRadius + radiusDelta);
       [path closePath];
       CGContextAddPath(context, path.CGPath);
     }
@@ -2565,10 +2597,10 @@ static void ASTextDrawBorderRects(CGContextRef context, CGSize size, ASTextBorde
       CGContextSaveGState(context);
       CGFloat inset = -border.strokeWidth * 2;
       for (NSValue *value in rects) {
-        CGRect rect = value.CGRectValue;
-        rect = UIEdgeInsetsInsetRect(rect, border.insets);
+        CGRect rect = ASCGRectFromValue(value);
+        rect = ASRectInsetWithEdgeInsets(rect, border.insets);
         rect = CGRectInset(rect, inset, inset);
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:border.cornerRadius + 2 * border.strokeWidth];
+        ASBezierPath *path = ASTextBezierPathWithRoundedRect(rect, border.cornerRadius + 2 * border.strokeWidth);
         [path closePath];
         
         CGRect bounds = CGRectUnion(path.bounds, (CGRect){CGPointZero, size});
@@ -2586,10 +2618,10 @@ static void ASTextDrawBorderRects(CGContextRef context, CGSize size, ASTextBorde
         radiusDelta = 0;
       }
       for (NSValue *value in rects) {
-        CGRect rect = value.CGRectValue;
-        rect = UIEdgeInsetsInsetRect(rect, border.insets);
+        CGRect rect = ASCGRectFromValue(value);
+        rect = ASRectInsetWithEdgeInsets(rect, border.insets);
         rect = CGRectInset(rect, inset, inset);
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:rect cornerRadius:border.cornerRadius + radiusDelta];
+        ASBezierPath *path = ASTextBezierPathWithRoundedRect(rect, border.cornerRadius + radiusDelta);
         [path closePath];
         CGContextAddPath(context, path.CGPath);
       }
@@ -2774,16 +2806,16 @@ static void ASTextDrawBlockBorder(ASTextLayout *layout, CGContextRef context, CG
       } while (true);
       
       if (isVertical) {
-        UIEdgeInsets insets = layout.container.insets;
+        ASEdgeInsets insets = layout.container.insets;
         unionRect.origin.y = insets.top;
         unionRect.size.height = layout.container.size.height -insets.top - insets.bottom;
       } else {
-        UIEdgeInsets insets = layout.container.insets;
+        ASEdgeInsets insets = layout.container.insets;
         unionRect.origin.x = insets.left;
         unionRect.size.width = layout.container.size.width -insets.left - insets.right;
       }
       unionRect.origin.x += verticalOffset;
-      ASTextDrawBorderRects(context, size, border, @[[NSValue valueWithCGRect:unionRect]], isVertical);
+      ASTextDrawBorderRects(context, size, border, @[ASValueWithCGRect(unionRect)], isVertical);
       
       l = lineContinueIndex;
       break;
@@ -2879,32 +2911,32 @@ static void ASTextDrawBorder(ASTextLayout *layout, CGContextRef context, CGSize 
         }
         
         if (!CGRectIsNull(extLineRect)) {
-          [runRects addObject:[NSValue valueWithCGRect:extLineRect]];
+          [runRects addObject:ASValueWithCGRect(extLineRect)];
         }
       }
       
       NSMutableArray *drawRects = [NSMutableArray new];
-      CGRect curRect= ((NSValue *)[runRects firstObject]).CGRectValue;
+      CGRect curRect = ASCGRectFromValue([runRects firstObject]);
       for (NSInteger re = 0, reMax = runRects.count; re < reMax; re++) {
-        CGRect rect = ((NSValue *)runRects[re]).CGRectValue;
+        CGRect rect = ASCGRectFromValue(runRects[re]);
         if (isVertical) {
           if (fabs(rect.origin.x - curRect.origin.x) < 1) {
             curRect = ASTextMergeRectInSameLine(rect, curRect, isVertical);
           } else {
-            [drawRects addObject:[NSValue valueWithCGRect:curRect]];
+            [drawRects addObject:ASValueWithCGRect(curRect)];
             curRect = rect;
           }
         } else {
           if (fabs(rect.origin.y - curRect.origin.y) < 1) {
             curRect = ASTextMergeRectInSameLine(rect, curRect, isVertical);
           } else {
-            [drawRects addObject:[NSValue valueWithCGRect:curRect]];
+            [drawRects addObject:ASValueWithCGRect(curRect)];
             curRect = rect;
           }
         }
       }
       if (!CGRectEqualToRect(curRect, CGRectZero)) {
-        [drawRects addObject:[NSValue valueWithCGRect:curRect]];
+        [drawRects addObject:ASValueWithCGRect(curRect)];
       }
       
       ASTextDrawBorderRects(context, size, border, drawRects, isVertical);
@@ -3051,7 +3083,7 @@ static void ASTextDrawDecoration(ASTextLayout *layout, CGContextRef context, CGS
   CGContextRestoreGState(context);
 }
 
-static void ASTextDrawAttachment(ASTextLayout *layout, CGContextRef context, CGSize size, CGPoint point, UIView *targetView, CALayer *targetLayer, BOOL (^cancel)(void)) {
+static void ASTextDrawAttachment(ASTextLayout *layout, CGContextRef context, CGSize size, CGPoint point, ASDisplayView *targetView, CALayer *targetLayer, BOOL (^cancel)(void)) {
   
   BOOL isVertical = layout.container.verticalForm;
   CGFloat verticalOffset = isVertical ? (size.width - layout.container.size.width) : 0;
@@ -3060,12 +3092,12 @@ static void ASTextDrawAttachment(ASTextLayout *layout, CGContextRef context, CGS
     ASTextAttachment *a = layout.attachments[i];
     if (!a.content) continue;
     
-    UIImage *image = nil;
-    UIView *view = nil;
+    ASImage *image = nil;
+    ASDisplayView *view = nil;
     CALayer *layer = nil;
-    if ([a.content isKindOfClass:[UIImage class]]) {
+    if ([a.content isKindOfClass:[ASImage class]]) {
       image = a.content;
-    } else if ([a.content isKindOfClass:[UIView class]]) {
+    } else if ([a.content isKindOfClass:[ASDisplayView class]]) {
       view = a.content;
     } else if ([a.content isKindOfClass:[CALayer class]]) {
       layer = a.content;
@@ -3077,18 +3109,23 @@ static void ASTextDrawAttachment(ASTextLayout *layout, CGContextRef context, CGS
     if (cancel && cancel()) break;
     
     CGSize asize = image ? image.size : view ? view.frame.size : layer.frame.size;
-    CGRect rect = ((NSValue *)layout.attachmentRects[i]).CGRectValue;
+    CGRect rect = ASCGRectFromValue(layout.attachmentRects[i]);
     if (isVertical) {
-      rect = UIEdgeInsetsInsetRect(rect, UIEdgeInsetRotateVertical(a.contentInsets));
+      rect = ASRectInsetWithEdgeInsets(rect, ASEdgeInsetRotateVertical(a.contentInsets));
     } else {
-      rect = UIEdgeInsetsInsetRect(rect, a.contentInsets);
+      rect = ASRectInsetWithEdgeInsets(rect, a.contentInsets);
     }
+#if !AS_PLATFORM_MACOS
     rect = ASTextCGRectFitWithContentMode(rect, asize, a.contentMode);
+#endif
     rect = ASTextCGRectPixelRound(rect);
     rect = CGRectStandardize(rect);
     rect.origin.x += point.x + verticalOffset;
     rect.origin.y += point.y;
     if (image) {
+#if AS_PLATFORM_MACOS
+      [image drawInRect:rect];
+#else
       CGImageRef ref = image.CGImage;
       if (ref) {
         CGContextSaveGState(context);
@@ -3097,6 +3134,7 @@ static void ASTextDrawAttachment(ASTextLayout *layout, CGContextRef context, CGS
         CGContextDrawImage(context, rect, ref);
         CGContextRestoreGState(context);
       }
+#endif
     } else if (view) {
       view.frame = rect;
       [targetView addSubview:view];
@@ -3209,7 +3247,7 @@ static void ASTextDrawInnerShadow(ASTextLayout *layout, CGContextRef context, CG
           CGContextSetAlpha(context, CGColorGetAlpha(shadow.color.CGColor));
           CGContextClipToRect(context, runImageBounds);
           CGContextBeginTransparencyLayer(context, NULL); {
-            UIColor *opaqueShadowColor = [shadow.color colorWithAlphaComponent:1];
+            ASColor *opaqueShadowColor = [shadow.color colorWithAlphaComponent:1];
             CGContextSetShadowWithColor(context, shadow.offset, shadow.radius, opaqueShadowColor.CGColor);
             CGContextSetFillColorWithColor(context, opaqueShadowColor.CGColor);
             CGContextSetBlendMode(context, kCGBlendModeSourceOut);
@@ -3231,7 +3269,9 @@ static void ASTextDrawInnerShadow(ASTextLayout *layout, CGContextRef context, CG
 }
 
 static void ASTextDrawDebug(ASTextLayout *layout, CGContextRef context, CGSize size, CGPoint point, ASTextDebugOption *op) {
+#if !AS_PLATFORM_MACOS
   UIGraphicsPushContext(context);
+#endif
   CGContextSaveGState(context);
   CGContextTranslateCTM(context, point.x, point.y);
   CGContextSetLineWidth(context, 1.0 / ASScreenScale());
@@ -3244,18 +3284,18 @@ static void ASTextDrawDebug(ASTextLayout *layout, CGContextRef context, CGSize s
   CGContextTranslateCTM(context, verticalOffset, 0);
   
   if (op.CTFrameBorderColor || op.CTFrameFillColor) {
-    UIBezierPath *path = layout.container.path;
+    ASBezierPath *path = layout.container.path;
     if (!path) {
       CGRect rect = (CGRect){CGPointZero, layout.container.size};
-      rect = UIEdgeInsetsInsetRect(rect, layout.container.insets);
+      rect = ASRectInsetWithEdgeInsets(rect, layout.container.insets);
       if (op.CTFrameBorderColor) rect = ASTextCGRectPixelHalf(rect);
       else rect = ASTextCGRectPixelRound(rect);
-      path = [UIBezierPath bezierPathWithRect:rect];
+      path = [ASBezierPath bezierPathWithRect:rect];
     }
     [path closePath];
     
-    for (UIBezierPath *ex in layout.container.exclusionPaths) {
-      [path appendPath:ex];
+    for (ASBezierPath *ex in layout.container.exclusionPaths) {
+      ASTextAppendBezierPath(path, ex);
     }
     if (op.CTFrameFillColor) {
       [op.CTFrameFillColor setFill];
@@ -3269,7 +3309,7 @@ static void ASTextDrawDebug(ASTextLayout *layout, CGContextRef context, CGSize s
               CGContextFillPath(context);
             }
             CGContextSetBlendMode(context, kCGBlendModeDestinationOut);
-            [[UIColor blackColor] setFill];
+            [[ASColor blackColor] setFill];
             CGPathRef cgPath = CGPathCreateCopyByStrokingPath(path.CGPath, NULL, layout.container.pathLineWidth, kCGLineCapButt, kCGLineJoinMiter, 0);
             if (cgPath) {
               CGContextAddPath(context, cgPath);
@@ -3336,7 +3376,7 @@ static void ASTextDrawDebug(ASTextLayout *layout, CGContextRef context, CGSize s
       [op.CTLineNumberColor set];
       NSMutableAttributedString *num = [[NSMutableAttributedString alloc] initWithString:@(l).description];
       num.as_color = op.CTLineNumberColor;
-      num.as_font = [UIFont systemFontOfSize:6];
+      num.as_font = [ASFont systemFontOfSize:6];
       [num drawAtPoint:CGPointMake(line.position.x, line.position.y - (isVertical ? 1 : 6))];
     }
     if (op.CTRunFillColor || op.CTRunBorderColor || op.CTRunNumberColor || op.CGGlyphFillColor || op.CGGlyphBorderColor) {
@@ -3385,7 +3425,7 @@ static void ASTextDrawDebug(ASTextLayout *layout, CGContextRef context, CGSize s
           [op.CTRunNumberColor set];
           NSMutableAttributedString *num = [[NSMutableAttributedString alloc] initWithString:@(r).description];
           num.as_color = op.CTRunNumberColor;
-          num.as_font = [UIFont systemFontOfSize:6];
+          num.as_font = [ASFont systemFontOfSize:6];
           [num drawAtPoint:CGPointMake(runTypoBounds.origin.x, runTypoBounds.origin.y - 1)];
         }
         if (op.CGGlyphBorderColor || op.CGGlyphFillColor) {
@@ -3419,14 +3459,16 @@ static void ASTextDrawDebug(ASTextLayout *layout, CGContextRef context, CGSize s
     }
   }
   CGContextRestoreGState(context);
+#if !AS_PLATFORM_MACOS
   UIGraphicsPopContext();
+#endif
 }
 
 
 - (void)drawInContext:(CGContextRef)context
                  size:(CGSize)size
                 point:(CGPoint)point
-                 view:(UIView *)view
+                 view:(ASDisplayView *)view
                 layer:(CALayer *)layer
                 debug:(ASTextDebugOption *)debug
                cancel:(BOOL (^)(void))cancel{

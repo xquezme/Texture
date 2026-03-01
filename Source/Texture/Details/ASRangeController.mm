@@ -17,6 +17,7 @@
 #import "ASDisplayNodeInternal.h" // Required for interfaceState and hierarchyState setter methods.
 #import "ASElementMap.h"
 #import "ASSignpost.h"
+#import "ASPlatformDefines.h"
 
 #import "ASCellNode+Internal.h"
 #import "AsyncDisplayKit+Debug.h"
@@ -48,13 +49,13 @@
   
 #if AS_RANGECONTROLLER_LOG_UPDATE_FREQ
   NSUInteger _updateCountThisFrame;
-  CADisplayLink *_displayLink;
+  ASDisplayLink *_displayLink;
 #endif
 }
 
 @end
 
-static UIApplicationState __ApplicationState = UIApplicationStateActive;
+static BOOL __ASApplicationIsBackground = NO;
 
 @implementation ASRangeController
 
@@ -75,7 +76,7 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
   [[[self class] allRangeControllersWeakSet] addObject:self];
   
 #if AS_RANGECONTROLLER_LOG_UPDATE_FREQ
-  _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(_updateCountDisplayLinkDidFire)];
+  _displayLink = [ASDisplayLink displayLinkWithTarget:self selector:@selector(_updateCountDisplayLinkDidFire)];
   [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 #endif
   
@@ -122,7 +123,7 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
   if (_dataSource) {
     selfInterfaceState = [_dataSource interfaceStateForRangeController:self];
   }
-  if (__ApplicationState == UIApplicationStateBackground) {
+  if (__ASApplicationIsBackground) {
     // If the app is background, pretend to be invisible so that we inform each cell it is no longer being viewed by the user
     selfInterfaceState &= ~(ASInterfaceStateVisible);
   }
@@ -201,7 +202,7 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
 - (void)_updateVisibleNodeIndexPaths
 {
   as_activity_scope_verbose(as_activity_create("Update range controller", AS_ACTIVITY_CURRENT, OS_ACTIVITY_FLAG_DEFAULT));
-  as_log_verbose(ASCollectionLog(), "Updating ranges for %@", ASViewToDisplayNode(ASDynamicCast(self.delegate, UIView)));
+  as_log_verbose(ASCollectionLog(), "Updating ranges for %@", ASViewToDisplayNode(ASDynamicCast(self.delegate, ASDisplayView)));
   ASDisplayNodeAssert(_layoutController, @"An ASLayoutController is required by ASRangeController");
   if (!_layoutController || !_dataSource) {
     return;
@@ -395,8 +396,12 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
   // TODO: This code is for debugging only, but would be great to clean up with a delegate method implementation.
   if (ASDisplayNode.shouldShowRangeDebugOverlay) {
     ASScrollDirection scrollableDirections = ASScrollDirectionUp | ASScrollDirectionDown;
-    if ([_dataSource isKindOfClass:NSClassFromString(@"ASCollectionView")]) {
-        scrollableDirections = ((ASCollectionView *)_dataSource).scrollableDirections;
+    id dataSource = _dataSource;
+    if ([dataSource respondsToSelector:@selector(scrollableDirections)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+      scrollableDirections = (ASScrollDirection)(NSInteger)[dataSource performSelector:@selector(scrollableDirections)];
+#pragma clang diagnostic pop
     }
     
     [self updateRangeController:self
@@ -463,7 +468,7 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
 
 #pragma mark - Cell node view handling
 
-- (void)configureContentView:(UIView *)contentView forCellNode:(ASCellNode *)node
+- (void)configureContentView:(ASDisplayView *)contentView forCellNode:(ASCellNode *)node
 {
   ASDisplayNodeAssertMainThread();
   ASDisplayNodeAssert(node, @"Cannot move a nil node to a view");
@@ -481,7 +486,7 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
   }
   
   // clean the content view
-  for (UIView *view in contentView.subviews) {
+  for (ASDisplayView *view in contentView.subviews) {
     [view removeFromSuperview];
   }
   
@@ -551,11 +556,16 @@ static UIApplicationState __ApplicationState = UIApplicationStateActive;
 + (void)registerSharedApplicationNotifications
 {
   NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+#if AS_PLATFORM_MACOS
+  [center addObserver:self selector:@selector(didEnterBackground:) name:NSApplicationDidResignActiveNotification object:nil];
+  [center addObserver:self selector:@selector(willEnterForeground:) name:NSApplicationDidBecomeActiveNotification object:nil];
+#else
 #if ASRangeControllerAutomaticLowMemoryHandling
   [center addObserver:self selector:@selector(didReceiveMemoryWarning:) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
 #endif
   [center addObserver:self selector:@selector(didEnterBackground:) name:UIApplicationDidEnterBackgroundNotification object:nil];
   [center addObserver:self selector:@selector(willEnterForeground:) name:UIApplicationWillEnterForegroundNotification object:nil];
+#endif
 }
 
 static ASLayoutRangeMode __rangeModeForMemoryWarnings = ASLayoutRangeModeLowMemory;
@@ -591,7 +601,7 @@ static ASLayoutRangeMode __rangeModeForMemoryWarnings = ASLayoutRangeModeLowMemo
   }
   
   // Because -interfaceState checks __ApplicationState and always clears the "visible" bit if Backgrounded, we must set this after updating the range mode.
-  __ApplicationState = UIApplicationStateBackground;
+  __ASApplicationIsBackground = YES;
   for (ASRangeController *rangeController in allRangeControllers) {
     // Trigger a range update immediately, as we may not be allowed by the system to run the update block scheduled by changing range mode.
     // There's no need to call needs update as updateCurrentRangeWithMode sets this if necessary.
@@ -606,7 +616,7 @@ static ASLayoutRangeMode __rangeModeForMemoryWarnings = ASLayoutRangeModeLowMemo
 + (void)willEnterForeground:(NSNotification *)notification
 {
   NSArray *allRangeControllers = [[self allRangeControllersWeakSet] allObjects];
-  __ApplicationState = UIApplicationStateActive;
+  __ASApplicationIsBackground = NO;
   for (ASRangeController *rangeController in allRangeControllers) {
     BOOL isVisible = ASInterfaceStateIncludesVisible([rangeController interfaceState]);
     [rangeController updateCurrentRangeWithMode:isVisible ? ASLayoutRangeModeMinimum : ASLayoutRangeModeVisibleOnly];

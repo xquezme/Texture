@@ -8,7 +8,8 @@
 //
 
 #import <Foundation/Foundation.h>
-#if TARGET_OS_TV
+#import "ASBaseDefines.h"
+#if AS_PLATFORM_TVOS
 #import "ASControlNode.h"
 #import "ASControlNode+Private.h"
 
@@ -17,11 +18,11 @@
 #pragma mark - tvOS
 - (void)_pressDown
 {
-  [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveLinear animations:^{
+  [ASDisplayView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveLinear animations:^{
     [self setPressedState];
   } completion:^(BOOL finished) {
     if (finished) {
-      [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveLinear animations:^{
+      [ASDisplayView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveLinear animations:^{
         [self setFocusedState];
       } completion:nil];
     }
@@ -72,20 +73,20 @@
 
 - (void)applyDefaultShadowProperties:(CALayer *)layer
 {
-  layer.shadowColor = [UIColor blackColor].CGColor;
+  layer.shadowColor = [ASColor blackColor].CGColor;
   layer.shadowRadius = 12.0;
   layer.shadowOpacity = 0.45;
-  layer.shadowPath = [UIBezierPath bezierPathWithRect:self.layer.bounds].CGPath;
+  layer.shadowPath = [ASBezierPath bezierPathWithRect:self.layer.bounds].CGPath;
 }
 
 - (void)setDefaultFocusAppearance
 {
   CALayer *layer = self.layer;
   layer.shadowOffset = CGSizeZero;
-  layer.shadowColor = [UIColor blackColor].CGColor;
+  layer.shadowColor = [ASColor blackColor].CGColor;
   layer.shadowRadius = 0;
   layer.shadowOpacity = 0;
-  layer.shadowPath = [UIBezierPath bezierPathWithRect:self.layer.bounds].CGPath;
+  layer.shadowPath = [ASBezierPath bezierPathWithRect:self.layer.bounds].CGPath;
   self.view.transform = CGAffineTransformScale(CGAffineTransformIdentity, 1, 1);
 }
 @end

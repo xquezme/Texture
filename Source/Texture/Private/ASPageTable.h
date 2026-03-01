@@ -7,7 +7,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASAssert.h"
 #import "ASBaseDefines.h"
 
@@ -64,7 +64,7 @@ typedef NSMapTable ASPageTable;
 /**
  * A page to array of layout attributes table.
  */
-typedef ASPageTable<id, NSMutableArray<UICollectionViewLayoutAttributes *> *> ASPageToLayoutAttributesTable;
+typedef ASPageTable<id, NSMutableArray<ASCollectionViewLayoutAttributes *> *> ASPageToLayoutAttributesTable;
 
 /**
  * A category for creating & using map tables meant for storing objects using ASPage as keys.

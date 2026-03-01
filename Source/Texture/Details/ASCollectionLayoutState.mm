@@ -20,9 +20,18 @@
 
 #import <queue>
 
+static ASCollectionViewLayoutAttributes *ASCollectionLayoutAttributesForItemAtIndexPath(NSIndexPath *indexPath)
+{
+#if AS_PLATFORM_MACOS
+  return [ASCollectionViewLayoutAttributes layoutAttributesForItemWithIndexPath:indexPath];
+#else
+  return [ASCollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+#endif
+}
+
 @implementation NSMapTable (ASCollectionLayoutConvenience)
 
-+ (NSMapTable<ASCollectionElement *, UICollectionViewLayoutAttributes *> *)elementToLayoutAttributesTable
++ (NSMapTable<ASCollectionElement *, ASCollectionViewLayoutAttributes *> *)elementToLayoutAttributesTable
 {
   return [NSMapTable mapTableWithKeyOptions:(NSMapTableWeakMemory | NSMapTableObjectPointerPersonality) valueOptions:NSMapTableStrongMemory];
 }
@@ -33,7 +42,7 @@
   AS::Mutex __instanceLock__;
   CGSize _contentSize;
   ASCollectionLayoutContext *_context;
-  NSMapTable<ASCollectionElement *, UICollectionViewLayoutAttributes *> *_elementToLayoutAttributesTable;
+  NSMapTable<ASCollectionElement *, ASCollectionViewLayoutAttributes *> *_elementToLayoutAttributesTable;
   ASPageToLayoutAttributesTable *_pageToLayoutAttributesTable;
   ASPageToLayoutAttributesTable *_unmeasuredPageToLayoutAttributesTable;
 }
@@ -73,11 +82,11 @@ elementToLayoutAttributesTable:[NSMapTable elementToLayoutAttributesTable]];
       NSIndexPath *indexPath = [elements indexPathForElement:element];
       NSString *supplementaryElementKind = element.supplementaryElementKind;
 
-      UICollectionViewLayoutAttributes *attrs;
+      ASCollectionViewLayoutAttributes *attrs;
       if (supplementaryElementKind == nil) {
-        attrs = [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+        attrs = ASCollectionLayoutAttributesForItemAtIndexPath(indexPath);
       } else {
-        attrs = [UICollectionViewLayoutAttributes layoutAttributesForSupplementaryViewOfKind:supplementaryElementKind withIndexPath:indexPath];
+        attrs = [ASCollectionViewLayoutAttributes layoutAttributesForSupplementaryViewOfKind:supplementaryElementKind withIndexPath:indexPath];
       }
 
       CGRect frame = layout.frame;
@@ -121,30 +130,30 @@ elementToLayoutAttributesTable:[NSMapTable elementToLayoutAttributesTable]];
   return _contentSize;
 }
 
-- (NSArray<UICollectionViewLayoutAttributes *> *)allLayoutAttributes
+- (NSArray<ASCollectionViewLayoutAttributes *> *)allLayoutAttributes
 {
   return [_elementToLayoutAttributesTable.objectEnumerator allObjects];
 }
 
-- (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
+- (ASCollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
 {
   ASCollectionElement *element = [_context.elements elementForItemAtIndexPath:indexPath];
   return [_elementToLayoutAttributesTable objectForKey:element];
 }
 
-- (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryElementOfKind:(NSString *)elementKind
+- (ASCollectionViewLayoutAttributes *)layoutAttributesForSupplementaryElementOfKind:(NSString *)elementKind
                                                                         atIndexPath:(NSIndexPath *)indexPath
 {
   ASCollectionElement *element = [_context.elements supplementaryElementOfKind:elementKind atIndexPath:indexPath];
   return [_elementToLayoutAttributesTable objectForKey:element];
 }
 
-- (UICollectionViewLayoutAttributes *)layoutAttributesForElement:(ASCollectionElement *)element
+- (ASCollectionViewLayoutAttributes *)layoutAttributesForElement:(ASCollectionElement *)element
 {
   return [_elementToLayoutAttributesTable objectForKey:element];
 }
 
-- (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect
+- (NSArray<ASCollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect
 {
   CGSize pageSize = _context.viewportSize;
   NSPointerArray *pages = ASPageCoordinatesForPagesThatIntersectRect(rect, _contentSize, pageSize);
@@ -153,17 +162,17 @@ elementToLayoutAttributesTable:[NSMapTable elementToLayoutAttributesTable]];
   }
 
   // Use a set here because some items may span multiple pages
-  const auto result = [[NSMutableSet<UICollectionViewLayoutAttributes *> alloc] init];
+  const auto result = [[NSMutableSet<ASCollectionViewLayoutAttributes *> alloc] init];
   for (id pagePtr in pages) {
     ASPageCoordinate page = (ASPageCoordinate)pagePtr;
-    NSArray<UICollectionViewLayoutAttributes *> *allAttrs = [_pageToLayoutAttributesTable objectForPage:page];
+    NSArray<ASCollectionViewLayoutAttributes *> *allAttrs = [_pageToLayoutAttributesTable objectForPage:page];
     if (allAttrs.count > 0) {
       CGRect pageRect = ASPageCoordinateGetPageRect(page, pageSize);
 
       if (CGRectContainsRect(rect, pageRect)) {
         [result addObjectsFromArray:allAttrs];
       } else {
-        for (UICollectionViewLayoutAttributes *attrs in allAttrs) {
+        for (ASCollectionViewLayoutAttributes *attrs in allAttrs) {
           if (CGRectIntersectsRect(rect, attrs.frame)) {
             [result addObject:attrs];
           }
@@ -207,7 +216,7 @@ elementToLayoutAttributesTable:[NSMapTable elementToLayoutAttributesTable]];
       intersectingAttrsInPage = attrsInPage;
     } else {
       // The page intersects the specified rect. Some attributes in this page are returned, some are not.
-      for (UICollectionViewLayoutAttributes *attrs in attrsInPage) {
+      for (ASCollectionViewLayoutAttributes *attrs in attrsInPage) {
         if (CGRectIntersectsRect(rect, attrs.frame)) {
           if (intersectingAttrsInPage == nil) {
             intersectingAttrsInPage = [[NSMutableArray alloc] init];
@@ -235,13 +244,13 @@ elementToLayoutAttributesTable:[NSMapTable elementToLayoutAttributesTable]];
 
 #pragma mark - Private methods
 
-+ (ASPageToLayoutAttributesTable *)_unmeasuredLayoutAttributesTableFromTable:(NSMapTable<ASCollectionElement *, UICollectionViewLayoutAttributes *> *)table
++ (ASPageToLayoutAttributesTable *)_unmeasuredLayoutAttributesTableFromTable:(NSMapTable<ASCollectionElement *, ASCollectionViewLayoutAttributes *> *)table
                                                                  contentSize:(CGSize)contentSize
                                                                     pageSize:(CGSize)pageSize
 {
-  NSMutableArray<UICollectionViewLayoutAttributes *> *unmeasuredAttrs = [[NSMutableArray alloc] init];
+  NSMutableArray<ASCollectionViewLayoutAttributes *> *unmeasuredAttrs = [[NSMutableArray alloc] init];
   for (ASCollectionElement *element in table) {
-    UICollectionViewLayoutAttributes *attrs = [table objectForKey:element];
+    ASCollectionViewLayoutAttributes *attrs = [table objectForKey:element];
     if (element.nodeIfAllocated == nil || CGSizeEqualToSize(element.nodeIfAllocated.calculatedSize, attrs.frame.size) == NO) {
       [unmeasuredAttrs addObject:attrs];
     }

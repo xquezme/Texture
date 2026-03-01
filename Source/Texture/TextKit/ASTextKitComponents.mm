@@ -50,6 +50,7 @@
   self.threadSafeBounds = bounds;
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)setContentOffset:(CGPoint)contentOffset
 {
   if (_deallocating) {
@@ -58,6 +59,7 @@
   
   [super setContentOffset:contentOffset];
 }
+#endif
 
 
 @end

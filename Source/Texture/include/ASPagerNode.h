@@ -75,25 +75,25 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Data Source is required, and uses a different protocol from ASCollectionNode.
  */
-- (void)setDataSource:(nullable id <ASPagerDataSource>)dataSource;
-- (nullable id <ASPagerDataSource>)dataSource AS_WARN_UNUSED_RESULT;
+- (void)setDataSource:(nullable id<ASPagerDataSource>)dataSource;
+- (nullable id<ASPagerDataSource>)dataSource AS_WARN_UNUSED_RESULT;
 
 /**
  * Delegate is optional.
  * This includes UIScrollViewDelegate as well as most methods from UICollectionViewDelegate, like willDisplay...
  */
-- (void)setDelegate:(nullable id <ASPagerDelegate>)delegate;
-- (nullable id <ASPagerDelegate>)delegate AS_WARN_UNUSED_RESULT;
+- (void)setDelegate:(nullable id<ASPagerDelegate>)delegate;
+- (nullable id<ASPagerDelegate>)delegate AS_WARN_UNUSED_RESULT;
 
 /**
  * The underlying ASCollectionView object.
  */
-@property (readonly) ASCollectionView *view;
+@property(readonly) ASCollectionView *view;
 
 /**
  * Returns the current page index. Main thread only.
  */
-@property (nonatomic, readonly) NSInteger currentPageIndex NS_SWIFT_UI_ACTOR;
+@property(nonatomic, readonly) NSInteger currentPageIndex NS_SWIFT_UI_ACTOR;
 
 /**
  * Scroll the contents of the receiver to ensure that the page is visible
@@ -113,7 +113,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Tells the pager node to allow its view controller to automatically adjust its content insets.
  *
- * @see UIViewController.automaticallyAdjustsScrollViewInsets
+ * @see ASDisplayViewController.automaticallyAdjustsScrollViewInsets
  *
  * @discussion ASPagerNode should usually not have its content insets automatically adjusted
  * because it scrolls horizontally, and flow layout will log errors because the pages
@@ -126,7 +126,9 @@ NS_ASSUME_NONNULL_BEGIN
  * the pager node will set the property on the view controller to NO and log a warning message. In the future,
  * the pager node will just log the warning, and you'll need to configure your view controller on your own.
  */
-@property (nonatomic) BOOL allowsAutomaticInsetsAdjustment;
+#if !AS_PLATFORM_MACOS
+@property(nonatomic) BOOL allowsAutomaticInsetsAdjustment;
+#endif
 
 @end
 

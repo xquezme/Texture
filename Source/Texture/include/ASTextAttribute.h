@@ -8,7 +8,7 @@
 //
 
 #import "ASBaseDefines.h"
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -87,66 +87,66 @@ typedef NS_ENUM (NSUInteger, ASTextTruncationType) {
 
 /// The value of this attribute is a `ASTextBackedString` object.
 /// Use this attribute to store the original plain text if it is replaced by something else (such as attachment).
-UIKIT_EXTERN NSString *const ASTextBackedStringAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextBackedStringAttributeName;
 
 /// The value of this attribute is a `ASTextBinding` object.
 /// Use this attribute to bind a range of text together, as if it was a single charactor.
-UIKIT_EXTERN NSString *const ASTextBindingAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextBindingAttributeName;
 
 /// The value of this attribute is a `ASTextShadow` object.
 /// Use this attribute to add shadow to a range of text.
 /// Shadow will be drawn below text glyphs. Use ASTextShadow.subShadow to add multi-shadow.
-UIKIT_EXTERN NSString *const ASTextShadowAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextShadowAttributeName;
 
 /// The value of this attribute is a `ASTextShadow` object.
 /// Use this attribute to add inner shadow to a range of text.
 /// Inner shadow will be drawn above text glyphs. Use ASTextShadow.subShadow to add multi-shadow.
-UIKIT_EXTERN NSString *const ASTextInnerShadowAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextInnerShadowAttributeName;
 
 /// The value of this attribute is a `ASTextDecoration` object.
 /// Use this attribute to add underline to a range of text.
 /// The underline will be drawn below text glyphs.
-UIKIT_EXTERN NSString *const ASTextUnderlineAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextUnderlineAttributeName;
 
 /// The value of this attribute is a `ASTextDecoration` object.
 /// Use this attribute to add strikethrough (delete line) to a range of text.
 /// The strikethrough will be drawn above text glyphs.
-UIKIT_EXTERN NSString *const ASTextStrikethroughAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextStrikethroughAttributeName;
 
 /// The value of this attribute is a `ASTextBorder` object.
 /// Use this attribute to add cover border or cover color to a range of text.
 /// The border will be drawn above the text glyphs.
-UIKIT_EXTERN NSString *const ASTextBorderAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextBorderAttributeName;
 
 /// The value of this attribute is a `ASTextBorder` object.
 /// Use this attribute to add background border or background color to a range of text.
 /// The border will be drawn below the text glyphs.
-UIKIT_EXTERN NSString *const ASTextBackgroundBorderAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextBackgroundBorderAttributeName;
 
 /// The value of this attribute is a `ASTextBorder` object.
 /// Use this attribute to add a code block border to one or more line of text.
 /// The border will be drawn below the text glyphs.
-UIKIT_EXTERN NSString *const ASTextBlockBorderAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextBlockBorderAttributeName;
 
 /// The value of this attribute is a `ASTextAttachment` object.
 /// Use this attribute to add attachment to text.
 /// It should be used in conjunction with a CTRunDelegate.
-UIKIT_EXTERN NSString *const ASTextAttachmentAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextAttachmentAttributeName;
 
 /// The value of this attribute is a `ASTextHighlight` object.
 /// Use this attribute to add a touchable highlight state to a range of text.
-UIKIT_EXTERN NSString *const ASTextHighlightAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextHighlightAttributeName;
 
 /// The value of this attribute is a `NSValue` object stores CGAffineTransform.
 /// Use this attribute to add transform to each glyph in a range of text.
-UIKIT_EXTERN NSString *const ASTextGlyphTransformAttributeName;
+FOUNDATION_EXTERN NSString *const ASTextGlyphTransformAttributeName;
 
 
 
 #pragma mark - String Token Define
 
-UIKIT_EXTERN NSString *const ASTextAttachmentToken; ///< Object replacement character (U+FFFC), used for text attachment.
-UIKIT_EXTERN NSString *const ASTextTruncationToken; ///< Horizontal ellipsis (U+2026), used for text truncation  "…".
+FOUNDATION_EXTERN NSString *const ASTextAttachmentToken; ///< Object replacement character (U+FFFC), used for text attachment.
+FOUNDATION_EXTERN NSString *const ASTextTruncationToken; ///< Horizontal ellipsis (U+2026), used for text truncation  "…".
 
 
 
@@ -160,7 +160,7 @@ UIKIT_EXTERN NSString *const ASTextTruncationToken; ///< Horizontal ellipsis (U+
  @param range         The text range in `text` (if no range, the range.location is NSNotFound).
  @param rect          The text frame in `containerView` (if no data, the rect is CGRectNull).
  */
-typedef void(^ASTextAction)(UIView *containerView, NSAttributedString *text, NSRange range, CGRect rect);
+typedef void(^ASTextAction)(ASDisplayView *containerView, NSAttributedString *text, NSRange range, CGRect rect);
 
 
 /**
@@ -200,9 +200,9 @@ typedef void(^ASTextAction)(UIView *containerView, NSAttributedString *text, NSR
  It's similar to `NSShadow`, but offers more options.
  */
 @interface ASTextShadow : NSObject <NSCoding, NSCopying>
-+ (instancetype)shadowWithColor:(nullable UIColor *)color offset:(CGSize)offset radius:(CGFloat)radius NS_RETURNS_RETAINED;
++ (instancetype)shadowWithColor:(nullable ASColor *)color offset:(CGSize)offset radius:(CGFloat)radius NS_RETURNS_RETAINED;
 
-@property (nullable, nonatomic) UIColor *color; ///< shadow color
+@property (nullable, nonatomic) ASColor *color; ///< shadow color
 @property (nonatomic) CGSize offset;                    ///< shadow offset
 @property (nonatomic) CGFloat radius;                   ///< shadow blur radius
 @property (nonatomic) CGBlendMode blendMode;            ///< shadow blend mode
@@ -223,10 +223,10 @@ typedef void(^ASTextAction)(UIView *containerView, NSAttributedString *text, NSR
  */
 @interface ASTextDecoration : NSObject <NSCoding, NSCopying>
 + (instancetype)decorationWithStyle:(ASTextLineStyle)style NS_RETURNS_RETAINED;
-+ (instancetype)decorationWithStyle:(ASTextLineStyle)style width:(nullable NSNumber *)width color:(nullable UIColor *)color NS_RETURNS_RETAINED;
++ (instancetype)decorationWithStyle:(ASTextLineStyle)style width:(nullable NSNumber *)width color:(nullable ASColor *)color NS_RETURNS_RETAINED;
 @property (nonatomic) ASTextLineStyle style;                   ///< line style
 @property (nullable, nonatomic) NSNumber *width;       ///< line width (nil means automatic width)
-@property (nullable, nonatomic) UIColor *color;        ///< line color (nil means automatic color)
+@property (nullable, nonatomic) ASColor *color;        ///< line color (nil means automatic color)
 @property (nullable, nonatomic) ASTextShadow *shadow;  ///< line shadow
 @end
 
@@ -245,16 +245,16 @@ typedef void(^ASTextAction)(UIView *containerView, NSAttributedString *text, NSR
  ╰──────╯
  */
 @interface ASTextBorder : NSObject <NSCoding, NSCopying>
-+ (instancetype)borderWithLineStyle:(ASTextLineStyle)lineStyle lineWidth:(CGFloat)width strokeColor:(nullable UIColor *)color NS_RETURNS_RETAINED;
-+ (instancetype)borderWithFillColor:(nullable UIColor *)color cornerRadius:(CGFloat)cornerRadius NS_RETURNS_RETAINED;
++ (instancetype)borderWithLineStyle:(ASTextLineStyle)lineStyle lineWidth:(CGFloat)width strokeColor:(nullable ASColor *)color NS_RETURNS_RETAINED;
++ (instancetype)borderWithFillColor:(nullable ASColor *)color cornerRadius:(CGFloat)cornerRadius NS_RETURNS_RETAINED;
 @property (nonatomic) ASTextLineStyle lineStyle;              ///< border line style
 @property (nonatomic) CGFloat strokeWidth;                    ///< border line width
-@property (nullable, nonatomic) UIColor *strokeColor; ///< border line color
+@property (nullable, nonatomic) ASColor *strokeColor; ///< border line color
 @property (nonatomic) CGLineJoin lineJoin;                    ///< border line join
-@property (nonatomic) UIEdgeInsets insets;                    ///< border insets for text bounds
+@property (nonatomic) ASEdgeInsets insets;                    ///< border insets for text bounds
 @property (nonatomic) CGFloat cornerRadius;                   ///< border corder radius
 @property (nullable, nonatomic) ASTextShadow *shadow; ///< border shadow
-@property (nullable, nonatomic) UIColor *fillColor;   ///< inner fill color
+@property (nullable, nonatomic) ASColor *fillColor;   ///< inner fill color
 @end
 
 
@@ -264,15 +264,17 @@ typedef void(^ASTextAction)(UIView *containerView, NSAttributedString *text, NSR
  the key named ASTextAttachmentAttributeName).
  
  When display an attributed string which contains `ASTextAttachment` object,
- the content will be placed in text metric. If the content is `UIImage`,
- then it will be drawn to CGContext; if the content is `UIView` or `CALayer`,
+ the content will be placed in text metric. If the content is `ASImage`,
+ then it will be drawn to CGContext; if the content is `ASDisplayView` or `CALayer`,
  then it will be added to the text container's view or layer.
  */
 @interface ASTextAttachment : NSObject<NSCoding, NSCopying>
 + (instancetype)attachmentWithContent:(nullable id)content NS_RETURNS_RETAINED;
-@property (nullable, nonatomic) id content;             ///< Supported type: UIImage, UIView, CALayer
+@property (nullable, nonatomic) id content;             ///< Supported type: ASImage, ASDisplayView, CALayer
+#if !AS_PLATFORM_MACOS
 @property (nonatomic) UIViewContentMode contentMode;            ///< Content display mode.
-@property (nonatomic) UIEdgeInsets contentInsets;               ///< The insets when drawing content.
+#endif
+@property (nonatomic) ASEdgeInsets contentInsets;               ///< The insets when drawing content.
 @property (nullable, nonatomic) NSDictionary *userInfo; ///< The user information dictionary.
 @end
 
@@ -309,13 +311,13 @@ typedef void(^ASTextAction)(UIView *containerView, NSAttributedString *text, NSR
  
  @param color The background border color.
  */
-+ (instancetype)highlightWithBackgroundColor:(nullable UIColor *)color NS_RETURNS_RETAINED;
++ (instancetype)highlightWithBackgroundColor:(nullable ASColor *)color NS_RETURNS_RETAINED;
 
 // Convenience methods below to set the `attributes`.
-- (void)setFont:(nullable UIFont *)font;
-- (void)setColor:(nullable UIColor *)color;
+- (void)setFont:(nullable ASFont *)font;
+- (void)setColor:(nullable ASColor *)color;
 - (void)setStrokeWidth:(nullable NSNumber *)width;
-- (void)setStrokeColor:(nullable UIColor *)color;
+- (void)setStrokeColor:(nullable ASColor *)color;
 - (void)setShadow:(nullable ASTextShadow *)shadow;
 - (void)setInnerShadow:(nullable ASTextShadow *)shadow;
 - (void)setUnderline:(nullable ASTextDecoration *)underline;

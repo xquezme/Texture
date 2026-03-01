@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIResponder.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -15,11 +15,15 @@ NS_ASSUME_NONNULL_BEGIN
 AS_SUBCLASSING_RESTRICTED
 @interface ASResponderChainEnumerator : NSEnumerator
 
-- (instancetype)initWithResponder:(UIResponder *)responder;
+- (instancetype)initWithResponder:(ASResponder *)responder;
 
 @end
 
+#if AS_PLATFORM_MACOS
+@interface NSResponder (ASResponderChainEnumerator)
+#else
 @interface UIResponder (ASResponderChainEnumerator)
+#endif
 
 - (ASResponderChainEnumerator *)asdk_responderChainEnumerator;
 

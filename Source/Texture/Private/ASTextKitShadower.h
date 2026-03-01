@@ -7,8 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
-
+#import "ASPlatformDefines.h"
 #import "ASAvailability.h"
 
 #if AS_ENABLE_TEXTNODE
@@ -22,7 +21,7 @@ AS_SUBCLASSING_RESTRICTED
 @interface ASTextKitShadower : NSObject
 
 + (ASTextKitShadower *)shadowerWithShadowOffset:(CGSize)shadowOffset
-                                    shadowColor:(UIColor *)shadowColor
+                                    shadowColor:(ASColor *)shadowColor
                                   shadowOpacity:(CGFloat)shadowOpacity
                                    shadowRadius:(CGFloat)shadowRadius;
 
@@ -34,7 +33,7 @@ AS_SUBCLASSING_RESTRICTED
 @property (nonatomic, readonly) CGSize shadowOffset;
 
 //! CGColor in which the shadow is drawn
-@property (nonatomic, copy, readonly) UIColor *shadowColor;
+@property (nonatomic, copy, readonly) ASColor *shadowColor;
 
 //! Alpha of the shadow
 @property (nonatomic, readonly) CGFloat shadowOpacity;
@@ -48,10 +47,10 @@ AS_SUBCLASSING_RESTRICTED
  *
  * Example:
  *  CGRect boundsWithoutShadowPadding; // Large enough to fit text, not large enough to fit the shadow as well
- *  UIEdgeInsets shadowPadding = [shadower shadowPadding];
- *  CGRect boundsWithShadowPadding = UIEdgeInsetsRect(boundsWithoutShadowPadding, shadowPadding);
+ *  ASEdgeInsets shadowPadding = [shadower shadowPadding];
+ *  CGRect boundsWithShadowPadding = ASRectInsetWithEdgeInsets(boundsWithoutShadowPadding, shadowPadding);
  */
-- (UIEdgeInsets)shadowPadding;
+- (ASEdgeInsets)shadowPadding;
 
 - (CGSize)insetSizeWithConstrainedSize:(CGSize)constrainedSize;
 

@@ -41,7 +41,7 @@ static NSString *const kAssetsLibraryURLScheme = @"assets-library";
   @param imageIdentifier The identifier of the image that was loaded, or nil if no image was loaded.
   @param error An error describing why an image couldn't be loaded, if it failed to load; nil otherwise.
  */
-typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdentifier, NSError *error);
+typedef void(^ASMultiplexImageLoadCompletionBlock)(ASImage *image, id imageIdentifier, NSError *error);
 
 @interface ASMultiplexImageNode ()
 {
@@ -110,9 +110,9 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   @abstract Returns the best image that is immediately available from our datasource without downloading or hitting the cache.
   @param imageIdentifierOut Upon return, the image identifier for the returned image; nil otherwise.
   @discussion This method exclusively uses the data source's -multiplexImageNode:imageForIdentifier: method to return images. It does not fetch from the cache or kick off downloading.
-  @result The best UIImage available immediately; nil if no image is immediately available.
+  @result The best ASImage available immediately; nil if no image is immediately available.
  */
-- (UIImage *)_bestImmediatelyAvailableImageFromDataSource:(id *)imageIdentifierOut;
+- (ASImage *)_bestImmediatelyAvailableImageFromDataSource:(id *)imageIdentifierOut;
 
 /**
   @abstract Loads and displays the next image in the receiver's loading sequence.
@@ -127,7 +127,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   @param completionBlock The block to be performed when the image has been fetched from the cache, if possible. May not be nil.
   @discussion This method queries both the session's in-memory and on-disk caches (with preference for the in-memory cache).
  */
-- (void)_fetchImageWithIdentifierFromCache:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(UIImage *image))completionBlock;
+- (void)_fetchImageWithIdentifierFromCache:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(ASImage *image))completionBlock;
 
 #if TARGET_OS_IOS && AS_USE_ASSETS_LIBRARY
 /**
@@ -136,7 +136,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   @param assetURL The assets-library URL (e.g., "assets-library://identifier") of the image to load, from ALAsset. May not be nil.
   @param completionBlock The block to be performed when the image has been loaded, if possible. May not be nil.
  */
-- (void)_loadALAssetWithIdentifier:(id)imageIdentifier URL:(NSURL *)assetURL completion:(void (^)(UIImage *image, NSError *error))completionBlock;
+- (void)_loadALAssetWithIdentifier:(id)imageIdentifier URL:(NSURL *)assetURL completion:(void (^)(ASImage *image, NSError *error))completionBlock;
 #endif
 
 #if AS_USE_PHOTOS
@@ -146,7 +146,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   @param request The photos image request to load. May not be nil.
   @param completionBlock The block to be performed when the image has been loaded, if possible. May not be nil.
  */
-- (void)_loadPHAssetWithRequest:(ASPhotosFrameworkImageRequest *)request identifier:(id)imageIdentifier completion:(void (^)(UIImage *image, NSError *error))completionBlock API_AVAILABLE(ios(8.0), tvos(10.0));
+- (void)_loadPHAssetWithRequest:(ASPhotosFrameworkImageRequest *)request identifier:(id)imageIdentifier completion:(void (^)(ASImage *image, NSError *error))completionBlock API_AVAILABLE(ios(8.0), tvos(10.0), macos(10.13));
 #endif
 
 /**
@@ -155,7 +155,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
  @param imageURL The URL of the image to downloaded. May not be nil.
  @param completionBlock The block to be performed when the image has been downloaded, if possible. May not be nil.
  */
-- (void)_downloadImageWithIdentifier:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(UIImage *image, NSError *error))completionBlock;
+- (void)_downloadImageWithIdentifier:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(ASImage *image, NSError *error))completionBlock;
 
 @end
 
@@ -236,7 +236,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   [super displayDidFinish];
 
   // We may now be displaying the loaded identifier, if they're different.
-  UIImage *displayedImage = self.image;
+  ASImage *displayedImage = self.image;
   if (displayedImage) {
     if (!ASObjectIsEqual(_displayedImageIdentifier, _loadedImageIdentifier))
       [self _setDisplayedImageIdentifier:_loadedImageIdentifier withImage:displayedImage];
@@ -296,13 +296,13 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 
 #pragma mark - Core
 
-- (void)setImage:(UIImage *)image
+- (void)setImage:(ASImage *)image
 {
   ASDisplayNodeAssert(NO, @"Setting the image directly on an ASMultiplexImageNode is unsafe. It will be cleared in didExitPreloadRange and will have no way to restore in didEnterPreloadRange");
   super.image = image;
 }
 
-- (void)_setImage:(UIImage *)image
+- (void)_setImage:(ASImage *)image
 {
   super.image = image;
 }
@@ -388,7 +388,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 
 
 #pragma mark - Core Internal
-- (void)_setDisplayedImageIdentifier:(id)displayedImageIdentifier withImage:(UIImage *)image
+- (void)_setDisplayedImageIdentifier:(id)displayedImageIdentifier withImage:(ASImage *)image
 {
   ASDisplayNodeAssertMainThread();
     
@@ -433,14 +433,14 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 {
   // Grab the best possible image we can load right now.
   id bestImmediatelyAvailableImageIdentifier = nil;
-  UIImage *bestImmediatelyAvailableImage = [self _bestImmediatelyAvailableImageFromDataSource:&bestImmediatelyAvailableImageIdentifier];
+  ASImage *bestImmediatelyAvailableImage = [self _bestImmediatelyAvailableImageFromDataSource:&bestImmediatelyAvailableImageIdentifier];
   as_log_verbose(ASImageLoadingLog(), "%@ Best immediately available image identifier is %@", self, bestImmediatelyAvailableImageIdentifier);
 
   // Load it. This kicks off cache fetching/downloading, as appropriate.
   [self _finishedLoadingImage:bestImmediatelyAvailableImage forIdentifier:bestImmediatelyAvailableImageIdentifier error:nil];
 }
 
-- (UIImage *)_bestImmediatelyAvailableImageFromDataSource:(id *)imageIdentifierOut
+- (ASImage *)_bestImmediatelyAvailableImageFromDataSource:(id *)imageIdentifierOut
 {
   MutexLocker l(_imageIdentifiersLock);
 
@@ -450,12 +450,12 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   }
 
   // Grab the best available image from the data source.
-  UIImage *existingImage = self.image;
+  ASImage *existingImage = self.image;
   for (id imageIdentifier in _imageIdentifiers) {
     // If this image is already loaded, don't request it from the data source again because
-    // the data source may generate a new instance of UIImage that returns NO for isEqual:
+    // the data source may generate a new instance of ASImage that returns NO for isEqual:
     // and we'll end up in an infinite loading loop.
-    UIImage *image = ASObjectIsEqual(imageIdentifier, _loadedImageIdentifier) ? existingImage : [_dataSource multiplexImageNode:self imageForImageIdentifier:imageIdentifier];
+    ASImage *image = ASObjectIsEqual(imageIdentifier, _loadedImageIdentifier) ? existingImage : [_dataSource multiplexImageNode:self imageForImageIdentifier:imageIdentifier];
     if (image) {
       if (imageIdentifierOut) {
         *imageIdentifierOut = imageIdentifier;
@@ -503,7 +503,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   ASImageDownloaderProgressImage progress = nil;
   if (shouldRenderProgressImages && ASInterfaceStateIncludesVisible(interfaceState)) {
     __weak __typeof__(self) weakSelf = self;
-    progress = ^(UIImage * _Nonnull progressImage, CGFloat progress, id _Nullable downloadIdentifier) {
+    progress = ^(ASImage * _Nonnull progressImage, CGFloat progress, id _Nullable downloadIdentifier) {
       __typeof__(self) strongSelf = weakSelf;
       if (strongSelf == nil) {
         return;
@@ -573,7 +573,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   self.loadingImageIdentifier = nextImageIdentifier;
 
   __weak __typeof__(self) weakSelf = self;
-  ASMultiplexImageLoadCompletionBlock finishedLoadingBlock = ^(UIImage *image, id imageIdentifier, NSError *error) {
+  ASMultiplexImageLoadCompletionBlock finishedLoadingBlock = ^(ASImage *image, id imageIdentifier, NSError *error) {
     __typeof__(self) strongSelf = weakSelf;
     if (!strongSelf)
       return;
@@ -587,7 +587,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 
   // Ask our data-source if it's got this image.
   if (_dataSourceFlags.image) {
-    UIImage *image = [_dataSource multiplexImageNode:self imageForImageIdentifier:nextImageIdentifier];
+    ASImage *image = [_dataSource multiplexImageNode:self imageForImageIdentifier:nextImageIdentifier];
     if (image) {
       as_log_verbose(ASImageLoadingLog(), "Acquired image from data source for %@ ident: %@", self, nextImageIdentifier);
       finishedLoadingBlock(image, nextImageIdentifier, nil);
@@ -607,7 +607,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   // If it's an assets-library URL, we need to fetch it from the assets library.
   if ([[nextImageURL scheme] isEqualToString:kAssetsLibraryURLScheme]) {
     // Load the asset.
-    [self _loadALAssetWithIdentifier:nextImageIdentifier URL:nextImageURL completion:^(UIImage *downloadedImage, NSError *error) {
+    [self _loadALAssetWithIdentifier:nextImageIdentifier URL:nextImageURL completion:^(ASImage *downloadedImage, NSError *error) {
       as_log_verbose(ASImageLoadingLog(), "Acquired image from assets library for %@ %@", weakSelf, nextImageIdentifier);
       finishedLoadingBlock(downloadedImage, nextImageIdentifier, error);
     }];
@@ -617,10 +617,10 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 #endif
   
 #if AS_USE_PHOTOS
-  if (AS_AVAILABLE_IOS_TVOS(9, 10)) {
+  if (@available(iOS 9.0, tvOS 10.0, macOS 10.13, *)) {
     // Likewise, if it's a Photos asset, we need to fetch it accordingly.
     if (ASPhotosFrameworkImageRequest *request = [ASPhotosFrameworkImageRequest requestWithURL:nextImageURL]) {
-      [self _loadPHAssetWithRequest:request identifier:nextImageIdentifier completion:^(UIImage *image, NSError *error) {
+      [self _loadPHAssetWithRequest:request identifier:nextImageIdentifier completion:^(ASImage *image, NSError *error) {
         as_log_verbose(ASImageLoadingLog(), "Acquired image from Photos for %@ %@", weakSelf, nextImageIdentifier);
         finishedLoadingBlock(image, nextImageIdentifier, error);
       }];
@@ -632,7 +632,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   
   // Otherwise, it's a web URL that we can download.
   // First, check the cache.
-  [self _fetchImageWithIdentifierFromCache:nextImageIdentifier URL:nextImageURL completion:^(UIImage *imageFromCache) {
+  [self _fetchImageWithIdentifierFromCache:nextImageIdentifier URL:nextImageURL completion:^(ASImage *imageFromCache) {
     __typeof__(self) strongSelf = weakSelf;
     if (!strongSelf)
       return;
@@ -651,7 +651,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
     }
     
     // Otherwise, we've got to download it.
-    [strongSelf _downloadImageWithIdentifier:nextImageIdentifier URL:nextImageURL completion:^(UIImage *downloadedImage, NSError *error) {
+    [strongSelf _downloadImageWithIdentifier:nextImageIdentifier URL:nextImageURL completion:^(ASImage *downloadedImage, NSError *error) {
       __typeof__(self) strongSelf = weakSelf;
       if (downloadedImage) {
         as_log_verbose(ASImageLoadingLog(), "Acquired image from download for %@ id: %@ img: %@", strongSelf, nextImageIdentifier, downloadedImage);
@@ -663,7 +663,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   }];
 }
 #if TARGET_OS_IOS && AS_USE_ASSETS_LIBRARY
-- (void)_loadALAssetWithIdentifier:(id)imageIdentifier URL:(NSURL *)assetURL completion:(void (^)(UIImage *image, NSError *error))completionBlock
+- (void)_loadALAssetWithIdentifier:(id)imageIdentifier URL:(NSURL *)assetURL completion:(void (^)(ASImage *image, NSError *error))completionBlock
 {
   ASDisplayNodeAssertNotNil(imageIdentifier, @"imageIdentifier is required");
   ASDisplayNodeAssertNotNil(assetURL, @"assetURL is required");
@@ -679,7 +679,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
     ALAssetRepresentation *representation = [asset defaultRepresentation];
     CGImageRef coreGraphicsImage = [representation fullScreenImage];
 
-    UIImage *downloadedImage = (coreGraphicsImage ? [UIImage imageWithCGImage:coreGraphicsImage] : nil);
+    ASImage *downloadedImage = (coreGraphicsImage ? [ASImage imageWithCGImage:coreGraphicsImage] : nil);
     completionBlock(downloadedImage, nil);
   } failureBlock:^(NSError *error) {
     completionBlock(nil, error);
@@ -689,7 +689,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 #endif
 
 #if AS_USE_PHOTOS
-- (void)_loadPHAssetWithRequest:(ASPhotosFrameworkImageRequest *)request identifier:(id)imageIdentifier completion:(void (^)(UIImage *image, NSError *error))completionBlock
+- (void)_loadPHAssetWithRequest:(ASPhotosFrameworkImageRequest *)request identifier:(id)imageIdentifier completion:(void (^)(ASImage *image, NSError *error))completionBlock
 {
   ASDisplayNodeAssertNotNil(imageIdentifier, @"imageIdentifier is required");
   ASDisplayNodeAssertNotNil(request, @"request is required");
@@ -755,7 +755,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
     }
     
     PHImageManager *imageManager = strongSelf.imageManager ? : PHImageManager.defaultManager;
-    [imageManager requestImageForAsset:imageAsset targetSize:request.targetSize contentMode:request.contentMode options:options resultHandler:^(UIImage *image, NSDictionary *info) {
+    [imageManager requestImageForAsset:imageAsset targetSize:request.targetSize contentMode:request.contentMode options:options resultHandler:^(ASImage *image, NSDictionary *info) {
       NSError *error = info[PHImageErrorKey];
       
       if (error == nil && image == nil) {
@@ -778,7 +778,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 }
 #endif
 
-- (void)_fetchImageWithIdentifierFromCache:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(UIImage *image))completionBlock
+- (void)_fetchImageWithIdentifierFromCache:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(ASImage *image))completionBlock
 {
   ASDisplayNodeAssertNotNil(imageIdentifier, @"imageIdentifier is required");
   ASDisplayNodeAssertNotNil(imageURL, @"imageURL is required");
@@ -795,7 +795,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   }
 }
 
-- (void)_downloadImageWithIdentifier:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(UIImage *image, NSError *error))completionBlock
+- (void)_downloadImageWithIdentifier:(id)imageIdentifier URL:(NSURL *)imageURL completion:(void (^)(ASImage *image, NSError *error))completionBlock
 {
   ASDisplayNodeAssertNotNil(imageIdentifier, @"imageIdentifier is required");
   ASDisplayNodeAssertNotNil(imageURL, @"imageURL is required");
@@ -881,7 +881,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
 }
 
 #pragma mark -
-- (void)_finishedLoadingImage:(UIImage *)image forIdentifier:(id)imageIdentifier error:(NSError *)error
+- (void)_finishedLoadingImage:(ASImage *)image forIdentifier:(id)imageIdentifier error:(NSError *)error
 {
   // If we failed to load, we stop the loading process.
   // Note that if we bailed before we began downloading because the best identifier changed, we don't bail, but rather just begin loading the best image identifier.
@@ -899,7 +899,7 @@ typedef void(^ASMultiplexImageLoadCompletionBlock)(UIImage *image, id imageIdent
   if (image || imageIdentifierCount == 0) {
     as_log_verbose(ASImageLoadingLog(), "[%p] loaded -> displaying (%@, %@)", self, imageIdentifier, image);
     id previousIdentifier = self.loadedImageIdentifier;
-    UIImage *previousImage = self.image;
+    ASImage *previousImage = self.image;
 
     self.loadedImageIdentifier = imageIdentifier;
     [self _setImage:image];

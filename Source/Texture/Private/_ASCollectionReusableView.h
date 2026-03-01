@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 
 @class ASCellNode, ASCollectionElement;
@@ -15,11 +15,15 @@
 NS_ASSUME_NONNULL_BEGIN
 
 AS_SUBCLASSING_RESTRICTED // Note: ASDynamicCastStrict is used on instances of this class based on this restriction.
+#if AS_PLATFORM_MACOS
+@interface _ASCollectionReusableView : NSView
+#else
 @interface _ASCollectionReusableView : UICollectionReusableView
+#endif
 
 @property (nullable, nonatomic, readonly) ASCellNode *node;
 @property (nullable, nonatomic) ASCollectionElement *element;
-@property (nullable, nonatomic) UICollectionViewLayoutAttributes *layoutAttributes;
+@property (nullable, nonatomic) ASCollectionViewLayoutAttributes *layoutAttributes;
 
 @end
 

@@ -1,0 +1,33 @@
+{
+  "originHash" : "d8b84c65b7ef6df85fc643dec20f4840af9612ff5ca69dc7f7ba45617d95f0dd",
+  "pins" : [
+    {
+      "identity" : "pincache",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pinterest/PINCache.git",
+      "state" : {
+        "revision" : "2fb85948463292c2e824148cf17dc62a4c217a94",
+        "version" : "3.0.4"
+      }
+    },
+    {
+      "identity" : "pinoperation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pinterest/PINOperation.git",
+      "state" : {
+        "revision" : "a74f978733bdaf982758bfa23d70a189f4b4c1b6",
+        "version" : "1.2.3"
+      }
+    },
+    {
+      "identity" : "pinremoteimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pinterest/PINRemoteImage.git",
+      "state" : {
+        "revision" : "37022d0fb9359ce33fa06028d03382c8b9957c62",
+        "version" : "3.0.4"
+      }
+    }
+  ],
+  "version" : 3
+}

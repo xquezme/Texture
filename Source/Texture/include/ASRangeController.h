@@ -64,11 +64,11 @@ AS_SUBCLASSING_RESTRICTED
 /**
  * Add the sized node for `indexPath` as a subview of `contentView`.
  *
- * @param contentView UIView to add a (sized) node's view to.
+ * @param contentView ASDisplayView to add a (sized) node's view to.
  *
  * @param node The cell node to be added.
  */
-- (void)configureContentView:(UIView *)contentView forCellNode:(ASCellNode *)node;
+- (void)configureContentView:(ASDisplayView *)contentView forCellNode:(ASCellNode *)node;
 
 - (void)setTuningParameters:(ASRangeTuningParameters)tuningParameters forRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType;
 

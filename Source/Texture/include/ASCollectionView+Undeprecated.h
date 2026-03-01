@@ -45,7 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param layout The layout object to use for organizing items. The collection view stores a strong reference to the specified object. Must not be nil.
  */
-- (instancetype)initWithCollectionViewLayout:(UICollectionViewLayout *)layout;
+- (instancetype)initWithCollectionViewLayout:(ASCollectionViewLayout *)layout;
 
 /**
  * Initializes an ASCollectionView
@@ -55,7 +55,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param frame The frame rectangle for the collection view, measured in points. The origin of the frame is relative to the superview in which you plan to add it. This frame is passed to the superclass during initialization.
  * @param layout The layout object to use for organizing items. The collection view stores a strong reference to the specified object. Must not be nil.
  */
-- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(UICollectionViewLayout *)layout;
+- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout;
 
 @property (nonatomic) CGFloat leadingScreensForBatching;
 
@@ -67,7 +67,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, weak) id<ASCollectionViewLayoutInspecting> layoutInspector;
 
-@property (nonatomic) UIEdgeInsets contentInset;
+@property (nonatomic) ASEdgeInsets contentInset;
 
 @property (nonatomic) CGPoint contentOffset;
 
@@ -119,7 +119,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)setTuningParameters:(ASRangeTuningParameters)tuningParameters forRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType;
 
+#if !AS_PLATFORM_MACOS
 - (nullable __kindof UICollectionViewCell *)cellForItemAtIndexPath:(NSIndexPath *)indexPath;
+#endif
 
 @property (nonatomic, readonly) NSArray<NSIndexPath *> *indexPathsForVisibleItems;
 
@@ -132,9 +134,9 @@ NS_ASSUME_NONNULL_BEGIN
  * @param scrollPosition Where the row should end up after the scroll.
  * @param animated Whether the scroll should be animated or not.
  */
-- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(UICollectionViewScrollPosition)scrollPosition animated:(BOOL)animated;
+- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASCollectionViewScrollPosition)scrollPosition animated:(BOOL)animated;
 
-- (void)selectItemAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(UICollectionViewScrollPosition)scrollPosition;
+- (void)selectItemAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASCollectionViewScrollPosition)scrollPosition;
 
 /**
  *  Perform a batch of updates asynchronously, optionally disabling all animations in the batch. This method must be called from the main thread.

@@ -9,10 +9,9 @@
 
 #import "ASBaseDefines.h"
 #import "ASLayoutRangeType.h"
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
-
-@class UIViewController;
 
 ASDK_EXTERN ASLayoutRangeMode ASLayoutRangeModeForVisibilityDepth(NSUInteger visibilityDepth);
 
@@ -87,7 +86,7 @@ ASDK_EXTERN ASLayoutRangeMode ASLayoutRangeModeForVisibilityDepth(NSUInteger vis
  *
  * @param childViewController Expected to return the visibility depth of the child view controller.
  */
-- (NSInteger)visibilityDepthOfChildViewController:(UIViewController *)childViewController;
+- (NSInteger)visibilityDepthOfChildViewController:(ASDisplayViewController *)childViewController;
 
 @end
 
@@ -135,7 +134,7 @@ ASDK_EXTERN ASLayoutRangeMode ASLayoutRangeModeForVisibilityDepth(NSUInteger vis
 }
 
 #define ASVisibilityDidMoveToParentViewController \
-- (void)didMoveToParentViewController:(UIViewController *)parent \
+- (void)didMoveToParentViewController:(ASDisplayViewController *)parent \
 { \
   [super didMoveToParentViewController:parent]; \
   _parentManagesVisibilityDepth = NO; \

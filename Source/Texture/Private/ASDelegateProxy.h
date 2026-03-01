@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <Foundation/Foundation.h>
+#import "ASPlatformDefines.h"
 
 @class ASDelegateProxy;
 @protocol ASDelegateProxyInterceptor <NSObject>
@@ -38,9 +38,10 @@
  *
  * Any selector included in this function *MUST* be implemented by ASTableView.
  */
-
+#if !AS_PLATFORM_MACOS
 @interface ASTableViewProxy : ASDelegateProxy
 @end
+#endif
 
 /**
  * ASCollectionView intercepts and/or overrides a few of UICollectionView's critical data source and delegate methods.
@@ -53,4 +54,3 @@
 
 @interface ASPagerNodeProxy : ASDelegateProxy
 @end
-

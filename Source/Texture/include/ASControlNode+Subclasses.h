@@ -8,7 +8,7 @@
 //
 
 #import "ASControlNode.h"
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface ASControlNode (Subclassing)
 
+#if !AS_PLATFORM_MACOS
 /**
  @abstract Sends action messages for the given control events.
  @param controlEvents A bitmask whose set flags specify the control events for which action messages are sent. See "Control Events" in ASControlNode.h for bitmask constants.
@@ -57,6 +58,33 @@ NS_ASSUME_NONNULL_BEGIN
  @param touchEvent An event object encapsulating the information specific to the user event.
  */
 - (void)endTrackingWithTouch:(nullable UITouch *)touch withEvent:(nullable UIEvent *)touchEvent;
+#else
+/**
+ @abstract Sent to the control when tracking begins on macOS.
+ @param event The AppKit event that started tracking.
+ @result YES if tracking should start; NO otherwise.
+ */
+- (BOOL)beginTrackingWithEvent:(NSEvent *)event;
+
+/**
+ @abstract Sent continuously to the control while tracking on macOS.
+ @param event The AppKit event for the current tracking update.
+ @result YES if tracking should continue; NO otherwise.
+ */
+- (BOOL)continueTrackingWithEvent:(NSEvent *)event;
+
+/**
+ @abstract Sent to the control when tracking should be cancelled on macOS.
+ @param event The AppKit event that caused cancellation, or nil for non-event cancellation.
+ */
+- (void)cancelTrackingWithEvent:(nullable NSEvent *)event;
+
+/**
+ @abstract Sent to the control when tracking ends on macOS.
+ @param event The AppKit event that ended tracking.
+ */
+- (void)endTrackingWithEvent:(nullable NSEvent *)event;
+#endif
 
 /**
  @abstract Settable version of highlighted property.

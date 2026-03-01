@@ -8,7 +8,7 @@
 //
 
 #import <QuartzCore/QuartzCore.h>
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "ASBaseDefines.h"
 #import "ASDisplayNode.h"
@@ -101,7 +101,9 @@ __unused static NSString *NSStringFromASInterfaceStateChange(ASInterfaceState ol
 /**
  Returns the appropriate interface state for a given ASDisplayNode and window
  */
+#if !AS_PLATFORM_MACOS
 ASDK_EXTERN ASInterfaceState ASInterfaceStateForDisplayNode(ASDisplayNode *displayNode, UIWindow *window) AS_WARN_UNUSED_RESULT;
+#endif
 
 /**
  Given a layer, returns the associated display node, if any.
@@ -111,7 +113,7 @@ ASDK_EXTERN ASDisplayNode * _Nullable ASLayerToDisplayNode(CALayer * _Nullable l
 /**
  Given a view, returns the associated display node, if any.
  */
-ASDK_EXTERN ASDisplayNode * _Nullable ASViewToDisplayNode(UIView * _Nullable view) AS_WARN_UNUSED_RESULT;
+ASDK_EXTERN ASDisplayNode * _Nullable ASViewToDisplayNode(ASDisplayView * _Nullable view) AS_WARN_UNUSED_RESULT;
 
 /**
  Given a node, returns the root of the node hierarchy (where supernode == nil)
@@ -151,12 +153,14 @@ ASDK_EXTERN __kindof ASDisplayNode * _Nullable ASDisplayNodeFindFirstSupernodeOf
 /**
  * Given a layer, find the window it lives in, if any.
  */
+#if !AS_PLATFORM_MACOS
 ASDK_EXTERN UIWindow * _Nullable ASFindWindowOfLayer(CALayer *layer) AS_WARN_UNUSED_RESULT;
+#endif
 
 /**
  * Given a layer, find the closest view it lives in, if any.
  */
-ASDK_EXTERN UIView * _Nullable ASFindClosestViewOfLayer(CALayer *layer) AS_WARN_UNUSED_RESULT;
+ASDK_EXTERN ASDisplayView * _Nullable ASFindClosestViewOfLayer(CALayer *layer) AS_WARN_UNUSED_RESULT;
 
 /**
  * Given two nodes, finds their most immediate common parent.  Used for geometry conversion methods.
@@ -198,8 +202,8 @@ ASDK_EXTERN __kindof ASDisplayNode * _Nullable ASDisplayNodeFindFirstSubnode(ASD
  */
 ASDK_EXTERN __kindof ASDisplayNode * _Nullable ASDisplayNodeFindFirstSubnodeOfClass(ASDisplayNode *start, Class c) AS_WARN_UNUSED_RESULT;
 
-ASDK_EXTERN UIColor *ASDisplayNodeDefaultPlaceholderColor(void) AS_WARN_UNUSED_RESULT;
-ASDK_EXTERN UIColor *ASDisplayNodeDefaultTintColor(void) AS_WARN_UNUSED_RESULT;
+ASDK_EXTERN ASColor *ASDisplayNodeDefaultPlaceholderColor(void) AS_WARN_UNUSED_RESULT;
+ASDK_EXTERN ASColor *ASDisplayNodeDefaultTintColor(void) AS_WARN_UNUSED_RESULT;
 
 /**
  Disable willAppear / didAppear / didDisappear notifications for a sub-hierarchy, then re-enable when done. Nested calls are supported.

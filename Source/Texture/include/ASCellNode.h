@@ -93,7 +93,7 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
  *   is called, when the node is not yet in the hierarchy and its frame cannot be converted to/from other nodes. Instead
  *   you can use the layout attributes object to learn where and how the cell will be displayed.
  */
-@property (nullable, copy, readonly) UICollectionViewLayoutAttributes *layoutAttributes;
+@property (nullable, copy, readonly) ASCollectionViewLayoutAttributes *layoutAttributes;
 
 /**
  * A Boolean value that is synchronized with the underlying collection or tableView cell property.
@@ -133,7 +133,7 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
  * The backing view controller, or @c nil if the node wasn't initialized with backing view controller
  * @note This property must be accessed on the main thread.
  */
-@property (nullable, nonatomic, readonly) UIViewController *viewController NS_SWIFT_UI_ACTOR;
+@property (nullable, nonatomic, readonly) ASDisplayViewController *viewController NS_SWIFT_UI_ACTOR;
 
 
 /**
@@ -145,17 +145,19 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
  * ASCellNode must forward touch events in order for UITableView and UICollectionView tap handling to work. Overriding
  * these methods (e.g. for highlighting) requires the super method be called.
  */
+#if !AS_PLATFORM_MACOS
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event ASDISPLAYNODE_REQUIRES_SUPER;
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event ASDISPLAYNODE_REQUIRES_SUPER;
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event ASDISPLAYNODE_REQUIRES_SUPER;
 - (void)touchesCancelled:(nullable NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event ASDISPLAYNODE_REQUIRES_SUPER;
+#endif
 
 /** 
  * Called by the system when ASCellNode is used with an ASCollectionNode.  It will not be called by ASTableNode.
- * When the UICollectionViewLayout object returns a new UICollectionViewLayoutAttributes object, the corresponding ASCellNode will be updated.
+ * When the ASCollectionViewLayout object returns a new ASCollectionViewLayoutAttributes object, the corresponding ASCellNode will be updated.
  * See UICollectionViewCell's applyLayoutAttributes: for a full description.
 */
-- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes;
+- (void)applyLayoutAttributes:(ASCollectionViewLayoutAttributes *)layoutAttributes;
 
 /**
  * @abstract Initializes a cell with a given view controller block.
@@ -177,7 +179,9 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
  *   deliver only the `Visible` and `Invisible` events, `scrollView` will be nil, and
  *   `cellFrame` will be the zero rect.
  */
-- (void)cellNodeVisibilityEvent:(ASCellNodeVisibilityEvent)event inScrollView:(nullable UIScrollView *)scrollView withCellFrame:(CGRect)cellFrame;
+- (void)cellNodeVisibilityEvent:(ASCellNodeVisibilityEvent)event inScrollView:(nullable ASScrollView *)scrollView withCellFrame:(CGRect)cellFrame;
+
+#if !AS_PLATFORM_MACOS
 
 #pragma mark - UITableViewCell specific passthrough properties
 
@@ -197,13 +201,13 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
  * ASTableView uses these properties when configuring UITableViewCells that host ASCellNodes.
  * ASCollectionView uses these properties when configuring UICollectionViewCells that host ASCellNodes.
  */
-@property (nullable) UIView *selectedBackgroundView;
+@property (nullable) ASDisplayView *selectedBackgroundView;
 
 /* @abstract The view used as the background of the cell.
  * ASTableView uses these properties when configuring UITableViewCells that host ASCellNodes.
  * ASCollectionView uses these properties when configuring UICollectionViewCells that host ASCellNodes.
  */
-@property (nullable) UIView *backgroundView;
+@property (nullable) ASDisplayView *backgroundView;
 
 /* @abstract The accessory type view on the right side of the cell. Please take care of your ASLayoutSpec so that doesn't overlay the accessoryView
  * @default UITableViewCellAccessoryNone
@@ -215,6 +219,8 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
  * ASTableView uses these properties when configuring UITableViewCells that host ASCellNodes.
  */
 @property UIEdgeInsets separatorInset;
+
+#endif
 
 @end
 
@@ -237,7 +243,7 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
 /**
  * Initializes a text cell with given text attributes and text insets
  */
-- (instancetype)initWithAttributes:(NSDictionary *)textAttributes insets:(UIEdgeInsets)textInsets;
+- (instancetype)initWithAttributes:(NSDictionary *)textAttributes insets:(ASEdgeInsets)textInsets;
 
 /**
  * Text to display.
@@ -252,7 +258,7 @@ typedef NS_ENUM(NSUInteger, ASCellNodeVisibilityEvent) {
 /**
  * The text inset or outset for each edge. The default value is 15.0 horizontal and 11.0 vertical padding.
  */
-@property UIEdgeInsets textInsets;
+@property ASEdgeInsets textInsets;
 
 /**
  * The text node used by this cell node.

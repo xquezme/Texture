@@ -12,26 +12,28 @@
 #import "ASStackLayoutDefines.h"
 
 @interface ASButtonNode () {
+#if !AS_PLATFORM_MACOS
   NSAttributedString *_normalAttributedTitle;
   NSAttributedString *_highlightedAttributedTitle;
   NSAttributedString *_selectedAttributedTitle;
   NSAttributedString *_selectedHighlightedAttributedTitle;
   NSAttributedString *_disabledAttributedTitle;
 
-  UIImage *_normalImage;
-  UIImage *_highlightedImage;
-  UIImage *_selectedImage;
-  UIImage *_selectedHighlightedImage;
-  UIImage *_disabledImage;
+  ASImage *_normalImage;
+  ASImage *_highlightedImage;
+  ASImage *_selectedImage;
+  ASImage *_selectedHighlightedImage;
+  ASImage *_disabledImage;
 
-  UIImage *_normalBackgroundImage;
-  UIImage *_highlightedBackgroundImage;
-  UIImage *_selectedBackgroundImage;
-  UIImage *_selectedHighlightedBackgroundImage;
-  UIImage *_disabledBackgroundImage;
+  ASImage *_normalBackgroundImage;
+  ASImage *_highlightedBackgroundImage;
+  ASImage *_selectedBackgroundImage;
+  ASImage *_selectedHighlightedBackgroundImage;
+  ASImage *_disabledBackgroundImage;
+#endif
 
   CGFloat _contentSpacing;
-  UIEdgeInsets _contentEdgeInsets;
+  ASEdgeInsets _contentEdgeInsets;
   ASTextNode *_titleNode;
   ASImageNode *_imageNode;
   ASImageNode *_backgroundImageNode;

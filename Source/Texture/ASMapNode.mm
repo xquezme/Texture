@@ -9,7 +9,7 @@
 
 #import "ASMapNode.h"
 
-#if TARGET_OS_IOS && AS_USE_MAPKIT
+#if AS_USE_MAPKIT && !TARGET_OS_TV
 
 #import <tgmath.h>
 
@@ -27,6 +27,16 @@
   NSArray *_annotations;
 }
 @end
+
+static inline CGFloat ASMapNodeImageScale(ASImage *image)
+{
+#if AS_PLATFORM_MACOS
+  (void)image;
+  return 1.0;
+#else
+  return image.scale;
+#endif
+}
 
 @implementation ASMapNode
 
@@ -213,7 +223,7 @@
                 }
                  
                 if (!error) {
-                  UIImage *image = snapshot.image;
+                  ASImage *image = snapshot.image;
                   NSArray *annotations = strongSelf.annotations;
                   if (annotations.count > 0) {
                     // Only create a graphics context if we have annotations to draw.
@@ -221,10 +231,14 @@
                     
                     CGRect finalImageRect = CGRectMake(0, 0, image.size.width, image.size.height);
                     
-                    image = ASGraphicsCreateImage(strongSelf.primitiveTraitCollection, image.size, YES, image.scale, image, nil, ^{
+                    image = ASGraphicsCreateImage(strongSelf.primitiveTraitCollection, image.size, YES, ASMapNodeImageScale(image), image, nil, ^{
+#if AS_PLATFORM_MACOS
+                      [image drawAtPoint:CGPointZero fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0];
+#else
                       [image drawAtPoint:CGPointZero];
+#endif
 
-                      UIImage *pinImage;
+                      ASImage *pinImage;
                       CGPoint pinCenterOffset = CGPointZero;
 
                       // Get a standard annotation view pin if there is no custom annotation block.
@@ -249,7 +263,11 @@
                           point.y -= pinSize.height / 2.0;
                           point.x += pinCenterOffset.x;
                           point.y += pinCenterOffset.y;
+#if AS_PLATFORM_MACOS
+                          [pinImage drawAtPoint:point fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0];
+#else
                           [pinImage drawAtPoint:point];
+#endif
                         }
                       }
                     });
@@ -260,7 +278,7 @@
   }];
 }
 
-+ (UIImage *)defaultPinImageWithCenterOffset:(CGPoint *)centerOffset NS_RETURNS_RETAINED
++ (ASImage *)defaultPinImageWithCenterOffset:(CGPoint *)centerOffset NS_RETURNS_RETAINED
 {
   static MKAnnotationView *pin;
   static dispatch_once_t onceToken;
@@ -289,7 +307,9 @@
   [_mapView setRegion:options.region animated:YES];
   [_mapView setMapType:options.mapType];
   _mapView.showsBuildings = options.showsBuildings;
+#if !AS_PLATFORM_MACOS
   _mapView.showsPointsOfInterest = options.showsPointsOfInterest;
+#endif
 }
 
 #pragma mark - Actions
@@ -437,4 +457,4 @@
 }
 
 @end
-#endif // TARGET_OS_IOS && AS_USE_MAPKIT
+#endif // AS_USE_MAPKIT && !TARGET_OS_TV

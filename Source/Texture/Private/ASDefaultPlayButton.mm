@@ -41,23 +41,33 @@
     buttonBounds = CGRectMake(originX, (bounds.size.height - widthHeight)/2, widthHeight, widthHeight);
   }
 
-  CGContextRef context = UIGraphicsGetCurrentContext();
+  CGContextRef context = nil;
+#if AS_PLATFORM_MACOS
+  context = NSGraphicsContext.currentContext.CGContext;
+#else
+  context = UIGraphicsGetCurrentContext();
+#endif
 
   // Circle Drawing
-  UIBezierPath *ovalPath = [UIBezierPath bezierPathWithOvalInRect: buttonBounds];
-  [[UIColor colorWithWhite:0.0 alpha:0.5] setFill];
+  ASBezierPath *ovalPath = [ASBezierPath bezierPathWithOvalInRect: buttonBounds];
+  [[ASColor colorWithWhite:0.0 alpha:0.5] setFill];
   [ovalPath fill];
   
   // Triangle Drawing
   CGContextSaveGState(context);
   
-  UIBezierPath *trianglePath = [UIBezierPath bezierPath];
+  ASBezierPath *trianglePath = [ASBezierPath bezierPath];
   [trianglePath moveToPoint:CGPointMake(originX + widthHeight/3, bounds.size.height/4 + (bounds.size.height/2)/4)];
+#if AS_PLATFORM_MACOS
+  [trianglePath lineToPoint:CGPointMake(originX + widthHeight/3, bounds.size.height - bounds.size.height/4 - (bounds.size.height/2)/4)];
+  [trianglePath lineToPoint:CGPointMake(bounds.size.width - originX - widthHeight/4, bounds.size.height/2)];
+#else
   [trianglePath addLineToPoint:CGPointMake(originX + widthHeight/3, bounds.size.height - bounds.size.height/4 - (bounds.size.height/2)/4)];
   [trianglePath addLineToPoint:CGPointMake(bounds.size.width - originX - widthHeight/4, bounds.size.height/2)];
+#endif
 
   [trianglePath closePath];
-  [[UIColor colorWithWhite:0.9 alpha:0.9] setFill];
+  [[ASColor colorWithWhite:0.9 alpha:0.9] setFill];
   [trianglePath fill];
   
   CGContextRestoreGState(context);

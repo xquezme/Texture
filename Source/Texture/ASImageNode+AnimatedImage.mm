@@ -23,7 +23,7 @@
 #define ASAnimatedImageDebug  0
 
 @interface ASNetworkImageNode (Private)
-- (void)_locked_setDefaultImage:(UIImage *)image;
+- (void)_locked_setDefaultImage:(ASImage *)image;
 @end
 
 
@@ -52,7 +52,7 @@
   if (animatedImage != nil) {
     __weak ASImageNode *weakSelf = self;
     if ([animatedImage respondsToSelector:@selector(setCoverImageReadyCallback:)]) {
-      animatedImage.coverImageReadyCallback = ^(UIImage *coverImage) {
+      animatedImage.coverImageReadyCallback = ^(ASImage *coverImage) {
         // In this case the lock is already gone we have to call the unlocked version therefore
         [weakSelf setCoverImageCompleted:coverImage];
       };
@@ -113,7 +113,7 @@
   return _imageNodeFlags.animatedImagePaused;
 }
 
-- (void)setCoverImageCompleted:(UIImage *)coverImage
+- (void)setCoverImageCompleted:(ASImage *)coverImage
 {
   if (ASInterfaceStateIncludesDisplay(self.interfaceState)) {
     ASLockScopeSelf();
@@ -121,7 +121,7 @@
   }
 }
 
-- (void)_locked_setCoverImageCompleted:(UIImage *)coverImage
+- (void)_locked_setCoverImageCompleted:(ASImage *)coverImage
 {
   DISABLED_ASAssertLocked(__instanceLock__);
   
@@ -134,13 +134,13 @@
   }
 }
 
-- (void)setCoverImage:(UIImage *)coverImage
+- (void)setCoverImage:(ASImage *)coverImage
 {
   ASLockScopeSelf();
   [self _locked_setCoverImage:coverImage];
 }
 
-- (void)_locked_setCoverImage:(UIImage *)coverImage
+- (void)_locked_setCoverImage:(ASImage *)coverImage
 {
   DISABLED_ASAssertLocked(__instanceLock__);
   
@@ -242,7 +242,7 @@
   AS::MutexLocker l(_displayLinkLock);
   if (_displayLink == nil) {
     _playHead = 0;
-    _displayLink = [CADisplayLink displayLinkWithTarget:[ASWeakProxy weakProxyWithTarget:self] selector:@selector(displayLinkFired:)];
+    _displayLink = [ASDisplayLink displayLinkWithTarget:[ASWeakProxy weakProxyWithTarget:self] selector:@selector(displayLinkFired:)];
     _lastSuccessfulFrameIndex = NSUIntegerMax;
     
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:_animatedImageRunLoopMode];
@@ -320,7 +320,7 @@
 
 #pragma mark - Display Link Callbacks
 
-- (void)displayLinkFired:(CADisplayLink *)displayLink
+- (void)displayLinkFired:(ASDisplayLink *)displayLink
 {
   ASDisplayNodeAssertMainThread();
 

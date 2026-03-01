@@ -14,7 +14,7 @@
 
 @implementation ASDisplayNode (Convenience)
 
-- (__kindof UIViewController *)closestViewController
+- (__kindof ASDisplayViewController *)closestViewController
 {
   ASDisplayNodeAssertMainThread();
   
@@ -24,10 +24,10 @@
   }
 
   // Get the closest view.
-  UIView *view = ASFindClosestViewOfLayer(self.layer);
+  ASDisplayView *view = ASFindClosestViewOfLayer(self.layer);
   // Travel up the responder chain to find a view controller.
-  for (UIResponder *responder in [view asdk_responderChainEnumerator]) {
-    UIViewController *vc = ASDynamicCast(responder, UIViewController);
+  for (ASResponder *responder in [view asdk_responderChainEnumerator]) {
+    ASDisplayViewController *vc = ASDynamicCast(responder, ASDisplayViewController);
     if (vc != nil) {
       return vc;
     }

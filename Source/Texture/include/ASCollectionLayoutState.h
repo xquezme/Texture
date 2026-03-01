@@ -8,7 +8,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 
 @class ASCollectionLayoutContext, ASLayout, ASCollectionElement;
@@ -19,7 +19,7 @@ typedef ASCollectionElement * _Nullable (^ASCollectionLayoutStateGetElementBlock
 
 @interface NSMapTable (ASCollectionLayoutConvenience)
 
-+ (NSMapTable<ASCollectionElement *, UICollectionViewLayoutAttributes *> *)elementToLayoutAttributesTable;
++ (NSMapTable<ASCollectionElement *, ASCollectionViewLayoutAttributes *> *)elementToLayoutAttributesTable;
 
 @end
 
@@ -48,7 +48,7 @@ AS_SUBCLASSING_RESTRICTED
  */
 - (instancetype)initWithContext:(ASCollectionLayoutContext *)context
                     contentSize:(CGSize)contentSize
- elementToLayoutAttributesTable:(NSMapTable<ASCollectionElement *, UICollectionViewLayoutAttributes *> *)table NS_DESIGNATED_INITIALIZER;
+ elementToLayoutAttributesTable:(NSMapTable<ASCollectionElement *, ASCollectionViewLayoutAttributes *> *)table NS_DESIGNATED_INITIALIZER;
 
 /**
  * Convenience initializer. Returns an object with zero content size and an empty table.
@@ -73,21 +73,21 @@ AS_SUBCLASSING_RESTRICTED
 /**
  * Returns all layout attributes present in this object.
  */
-- (NSArray<UICollectionViewLayoutAttributes *> *)allLayoutAttributes;
+- (NSArray<ASCollectionViewLayoutAttributes *> *)allLayoutAttributes;
 
 /**
  * Returns layout attributes of elements in the specified rect.
  *
  * @param rect The rect containing the target elements.
  */
-- (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect;
+- (NSArray<ASCollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect;
 
 /**
  * Returns layout attributes of the element at the specified index path.
  *
  * @param indexPath The index path of the item.
  */
-- (nullable UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath;
+- (nullable ASCollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath;
 
 /**
  * Returns layout attributes of the specified supplementary element.
@@ -96,7 +96,7 @@ AS_SUBCLASSING_RESTRICTED
  *
  * @param indexPath The index path of the element.
  */
-- (nullable UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryElementOfKind:(NSString *)kind
+- (nullable ASCollectionViewLayoutAttributes *)layoutAttributesForSupplementaryElementOfKind:(NSString *)kind
                                                                                  atIndexPath:(NSIndexPath *)indexPath;
 
 /**
@@ -104,7 +104,7 @@ AS_SUBCLASSING_RESTRICTED
  *
  * @element The element.
  */
-- (nullable UICollectionViewLayoutAttributes *)layoutAttributesForElement:(ASCollectionElement *)element;
+- (nullable ASCollectionViewLayoutAttributes *)layoutAttributesForElement:(ASCollectionElement *)element;
 
 @end
 

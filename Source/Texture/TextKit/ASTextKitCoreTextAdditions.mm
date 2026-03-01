@@ -8,6 +8,7 @@
 //
 
 #import "ASTextKitCoreTextAdditions.h"
+#import "ASTextCoreTextConversions.h"
 
 #if AS_ENABLE_TEXTNODE
 
@@ -66,9 +67,9 @@ NSDictionary *NSAttributedStringAttributesForCoreTextAttributes(NSDictionary *co
 
     // kCTFontAttributeName -> NSFontAttributeName
     if ([coreTextKey isEqualToString:(NSString *)kCTFontAttributeName]) {
-      // Its reference type, CTFontRef, is toll-free bridged with UIFont in iOS and NSFont in OS X
+      // Its reference type, CTFontRef, is toll-free bridged with ASFont in iOS and NSFont in OS X
       CTFontRef coreTextFont = (__bridge CTFontRef)coreTextValue;
-      cleanAttributes[NSFontAttributeName] = (__bridge UIFont *)coreTextFont;
+      cleanAttributes[NSFontAttributeName] = (__bridge ASFont *)coreTextFont;
     }
     // kCTKernAttributeName -> NSKernAttributeName
     else if ([coreTextKey isEqualToString:(NSString *)kCTKernAttributeName]) {
@@ -80,7 +81,7 @@ NSDictionary *NSAttributedStringAttributesForCoreTextAttributes(NSDictionary *co
     }
     // kCTForegroundColorAttributeName -> NSForegroundColorAttributeName
     else if ([coreTextKey isEqualToString:(NSString *)kCTForegroundColorAttributeName]) {
-      cleanAttributes[NSForegroundColorAttributeName] = [UIColor colorWithCGColor:(CGColorRef)coreTextValue];
+      cleanAttributes[NSForegroundColorAttributeName] = [ASColor colorWithCGColor:(CGColorRef)coreTextValue];
     }
     // kCTParagraphStyleAttributeName -> NSParagraphStyleAttributeName
     else if ([coreTextKey isEqualToString:(NSString *)kCTParagraphStyleAttributeName]) {
@@ -97,7 +98,7 @@ NSDictionary *NSAttributedStringAttributesForCoreTextAttributes(NSDictionary *co
     }
     // kCTStrokeColorAttributeName -> NSStrokeColorAttributeName
     else if ([coreTextKey isEqualToString:(NSString *)kCTStrokeColorAttributeName]) {
-      cleanAttributes[NSStrokeColorAttributeName] = [UIColor colorWithCGColor:(CGColorRef)coreTextValue];
+      cleanAttributes[NSStrokeColorAttributeName] = [ASColor colorWithCGColor:(CGColorRef)coreTextValue];
     }
     // kCTUnderlineStyleAttributeName -> NSUnderlineStyleAttributeName
     else if ([coreTextKey isEqualToString:(NSString *)kCTUnderlineStyleAttributeName]) {
@@ -186,7 +187,7 @@ NSAttributedString *ASCleanseAttributedStringOfCoreTextAttributes(NSAttributedSt
                                            kCTParagraphStyleSpecifierAlignment,
                                            sizeof(coreTextAlignment),
                                            &coreTextAlignment)) {
-    newParagraphStyle.alignment = NSTextAlignmentFromCTTextAlignment(coreTextAlignment);
+    newParagraphStyle.alignment = ASTextAlignmentFromCTTextAlignment(coreTextAlignment);
   }
 
   // kCTParagraphStyleSpecifierFirstLineHeadIndent -> firstLineHeadIndent

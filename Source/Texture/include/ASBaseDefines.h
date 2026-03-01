@@ -159,7 +159,7 @@
 #define ASCompareAssignObjects(lvalue, newValue) \
   ASCompareAssignCustom(lvalue, newValue, ASObjectIsEqual)
 
-// e.g. ASCompareAssignCustom(_myInsets, insets, UIEdgeInsetsEqualToEdgeInsets)
+// e.g. ASCompareAssignCustom(_myInsets, insets, ASEdgeInsetsEqualToEdgeInsets)
 #define ASCompareAssignCustom(lvalue, newValue, isequal) ({  \
   BOOL result = !(isequal(lvalue, newValue));                \
   if (result) { lvalue = newValue; }                         \
@@ -209,14 +209,14 @@
   id __collection = collectionArg; \
   NSArray *__result; \
   if (__collection) { \
-    id __buf[[__collection count]]; \
-    NSUInteger __i = 0; \
+    NSMutableArray *__mapped = [[NSMutableArray alloc] initWithCapacity:[__collection count]]; \
     for (decl in __collection) {\
-      if ((__buf[__i] = work)) { \
-        __i++; \
+      id __mappedObject = work; \
+      if (__mappedObject) { \
+        [__mapped addObject:__mappedObject]; \
       } \
     } \
-    __result = [NSArray arrayByTransferring:__buf count:__i]; \
+    __result = __mapped; \
   } \
   __result; \
 })

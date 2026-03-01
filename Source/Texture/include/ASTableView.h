@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "ASBaseDefines.h"
 #import "ASLayoutRangeType.h"
@@ -16,9 +16,29 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class ASCellNode;
+@class ASTableNode;
+
+#if AS_PLATFORM_MACOS
+
+/**
+ * AppKit-backed table view used by Texture's table abstractions on macOS.
+ */
+@interface ASTableView : NSTableView
+
+/// The corresponding table node, or nil if one does not exist.
+@property (nonatomic, weak, readonly) ASTableNode *tableNode;
+
+/**
+ * Retrieves the node for the row at the given index path.
+ */
+- (nullable ASCellNode *)nodeForRowAtIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT;
+
+@end
+
+#else
+
 @protocol ASTableDataSource;
 @protocol ASTableDelegate;
-@class ASTableNode;
 
 /**
  * Asynchronous UITableView with Intelligent Preloading capabilities.
@@ -48,9 +68,9 @@ NS_ASSUME_NONNULL_BEGIN
  * @param frame A rectangle specifying the initial location and size of the table view in its superview’s coordinates.
  * The frame of the table view changes as table cells are added and deleted.
  *
- * @param style A constant that specifies the style of the table view. See UITableViewStyle for descriptions of valid constants.
+ * @param style A constant that specifies the style of the table view. See ASTableViewStyle for descriptions of valid constants.
  */
-- (instancetype)initWithFrame:(CGRect)frame style:(UITableViewStyle)style ASDISPLAYNODE_DEPRECATED_MSG("Please use ASTableNode instead of ASTableView.");
+- (instancetype)initWithFrame:(CGRect)frame style:(ASTableViewStyle)style ASDISPLAYNODE_DEPRECATED_MSG("Please use ASTableNode instead of ASTableView.");
 
 /**
  * The number of screens left to scroll before the delegate -tableView:beginBatchFetchingWithContext: is called.
@@ -141,9 +161,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (nullable __kindof UITableViewCell *)cellForRowAtIndexPath:(NSIndexPath *)indexPath ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
-- (void)scrollToRowAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(UITableViewScrollPosition)scrollPosition animated:(BOOL)animated ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)scrollToRowAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASTableViewScrollPosition)scrollPosition animated:(BOOL)animated ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
-- (void)selectRowAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(UITableViewScrollPosition)scrollPosition ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)selectRowAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASTableViewScrollPosition)scrollPosition ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
 - (nullable NSIndexPath *)indexPathForRowAtPoint:(CGPoint)point ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
@@ -214,19 +234,19 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)onDidFinishProcessingUpdates:(void (^)(void))completion;
 - (void)waitUntilAllUpdatesAreCommitted ASDISPLAYNODE_DEPRECATED_MSG("Use -[ASTableNode waitUntilAllUpdatesAreProcessed] instead.");
 
-- (void)insertSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)insertSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
-- (void)deleteSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)deleteSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
-- (void)reloadSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)reloadSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
 - (void)moveSection:(NSInteger)section toSection:(NSInteger)newSection ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
-- (void)insertRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)insertRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
-- (void)deleteRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)deleteRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
-- (void)reloadRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
+- (void)reloadRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
 - (void)moveRowAtIndexPath:(NSIndexPath *)indexPath toIndexPath:(NSIndexPath *)newIndexPath ASDISPLAYNODE_DEPRECATED_MSG("Use ASTableNode method instead.");
 
@@ -241,5 +261,7 @@ ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASTableDataSource.")
 ASDISPLAYNODE_DEPRECATED_MSG("Renamed to ASTableDelegate.")
 @protocol ASTableViewDelegate <ASTableDelegate>
 @end
+
+#endif
 
 NS_ASSUME_NONNULL_END

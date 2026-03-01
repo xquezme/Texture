@@ -7,6 +7,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import "ASPlatformDefines.h"
+
 #import "ASCollectionViewLayoutController.h"
 
 #import "ASAssert.h"
@@ -19,6 +21,16 @@ struct ASRangeGeometry {
 };
 typedef struct ASRangeGeometry ASRangeGeometry;
 
+static inline BOOL ASCollectionLayoutAttributesHasIdentityTransform(ASCollectionViewLayoutAttributes *layoutAttributes)
+{
+#if AS_PLATFORM_MACOS
+  (void)layoutAttributes;
+  return YES;
+#else
+  return CATransform3DIsIdentity(layoutAttributes.transform3D);
+#endif
+}
+
 #pragma mark -
 #pragma mark ASCollectionViewLayoutController
 
@@ -26,7 +38,7 @@ typedef struct ASRangeGeometry ASRangeGeometry;
 {
   @package
   ASCollectionView * __weak _collectionView;
-  UICollectionViewLayout * __strong _collectionViewLayout;
+  ASCollectionViewLayout * __strong _collectionViewLayout;
 }
 @end
 
@@ -68,14 +80,14 @@ typedef struct ASRangeGeometry ASRangeGeometry;
   __auto_type display = [[NSHashTable<ASCollectionElement *> alloc] initWithOptions:NSHashTableObjectPointerPersonality capacity:count];
   __auto_type preload = [[NSHashTable<ASCollectionElement *> alloc] initWithOptions:NSHashTableObjectPointerPersonality capacity:count];
 
-  for (UICollectionViewLayoutAttributes *la in layoutAttributes) {
+  for (ASCollectionViewLayoutAttributes *la in layoutAttributes) {
     // Manually filter out elements that don't intersect the range bounds.
     // See comment in elementsForItemsWithinRangeBounds:
     // This is re-implemented here so that the iteration over layoutAttributes can be done once to check both ranges.
     CGRect frame = la.frame;
     BOOL intersectsDisplay = CGRectIntersectsRect(displayBounds, frame);
     BOOL intersectsPreload = CGRectIntersectsRect(preloadBounds, frame);
-    if (intersectsDisplay == NO && intersectsPreload == NO && CATransform3DIsIdentity(la.transform3D) == YES) {
+    if (intersectsDisplay == NO && intersectsPreload == NO && ASCollectionLayoutAttributesHasIdentityTransform(la)) {
       // Questionable why the element would be included here, but it doesn't belong.
       continue;
     }
@@ -100,13 +112,13 @@ typedef struct ASRangeGeometry ASRangeGeometry;
   NSArray *layoutAttributes = [_collectionViewLayout layoutAttributesForElementsInRect:rangeBounds];
   NSHashTable<ASCollectionElement *> *elementSet = [[NSHashTable alloc] initWithOptions:NSHashTableObjectPointerPersonality capacity:layoutAttributes.count];
   
-  for (UICollectionViewLayoutAttributes *la in layoutAttributes) {
+  for (ASCollectionViewLayoutAttributes *la in layoutAttributes) {
     // Manually filter out elements that don't intersect the range bounds.
     // If a layout returns elements outside the requested rect this can be a huge problem.
     // For instance in a paging flow, you may only want to preload 3 pages (one center, one on each side)
     // but if flow layout includes the 4th page (which it does! as of iOS 9&10), you will preload a 4th
     // page as well.
-    if (CATransform3DIsIdentity(la.transform3D) && CGRectIntersectsRect(la.frame, rangeBounds) == NO) {
+    if (ASCollectionLayoutAttributesHasIdentityTransform(la) && CGRectIntersectsRect(la.frame, rangeBounds) == NO) {
       continue;
     }
     [elementSet addObject:[map elementForLayoutAttributes:la]];

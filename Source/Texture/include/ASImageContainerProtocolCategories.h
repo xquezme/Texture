@@ -7,10 +7,14 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASImageProtocols.h"
 
-@interface UIImage (ASImageContainerProtocol) <ASImageContainerProtocol>
+#if AS_PLATFORM_MACOS
+ @interface NSImage (ASImageContainerProtocol) <ASImageContainerProtocol>
+#else
+ @interface UIImage (ASImageContainerProtocol) <ASImageContainerProtocol>
+#endif
 
 @end
 

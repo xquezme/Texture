@@ -9,20 +9,21 @@
 
 #import <Foundation/Foundation.h>
 #import "ASAbstractLayoutController.h"
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class UITableView;
+@class ASTableView;
 
 /**
- *  A layout controller designed for use with UITableView.
+ *  A layout controller designed for use with ASTableView.
  */
 AS_SUBCLASSING_RESTRICTED
 @interface ASTableLayoutController : ASAbstractLayoutController
 
-@property (nonatomic, weak, readonly) UITableView *tableView;
+@property (nonatomic, weak, readonly) ASTableView *tableView;
 
-- (instancetype)initWithTableView:(UITableView *)tableView;
+- (instancetype)initWithTableView:(ASTableView *)tableView;
 
 @end
 

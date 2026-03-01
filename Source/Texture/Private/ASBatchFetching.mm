@@ -11,7 +11,7 @@
 #import "ASBatchContext.h"
 #import "ASBatchFetchingDelegate.h"
 
-BOOL ASDisplayShouldFetchBatchForScrollView(UIScrollView<ASBatchFetchingScrollView> *scrollView,
+BOOL ASDisplayShouldFetchBatchForScrollView(ASScrollView<ASBatchFetchingScrollView> *scrollView,
                                             ASScrollDirection scrollDirection,
                                             ASScrollDirection scrollableDirections,
                                             CGPoint contentOffset,
@@ -30,7 +30,7 @@ BOOL ASDisplayShouldFetchBatchForScrollView(UIScrollView<ASBatchFetchingScrollVi
   CGFloat leadingScreens = scrollView.leadingScreensForBatching;
   id<ASBatchFetchingDelegate> delegate = scrollView.batchFetchingDelegate;
   BOOL visible = (scrollView.window != nil);
-  BOOL shouldRenderRTLLayout = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:scrollView.semanticContentAttribute] == UIUserInterfaceLayoutDirectionRightToLeft;
+  BOOL shouldRenderRTLLayout = ASDisplayViewIsRightToLeft(scrollView);
   return ASDisplayShouldFetchBatchForContext(context, scrollDirection, scrollableDirections, bounds, contentSize, contentOffset, leadingScreens, visible, shouldRenderRTLLayout, velocity, flipsHorizontallyInOppositeLayoutDirection, delegate);
 }
 

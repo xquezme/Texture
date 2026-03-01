@@ -7,6 +7,10 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <TargetConditionals.h>
+
+#if TARGET_OS_IOS || TARGET_OS_TV
+
 #import "ASScrollNode.h"
 #import "ASDisplayNodeExtras.h"
 #import "ASDisplayNode+FrameworkPrivate.h"
@@ -17,10 +21,10 @@
 #import "ASThread.h"
 #import "ASDisplayNode+Yoga.h"
 
-@interface ASScrollView : UIScrollView
+@interface _ASScrollNodeView : ASScrollView
 @end
 
-@implementation ASScrollView
+@implementation _ASScrollNodeView
 
 // This special +layerClass allows ASScrollNode to get -layout calls from -layoutSublayers.
 + (Class)layerClass
@@ -72,7 +76,7 @@
 - (instancetype)init
 {
   if (self = [super init]) {
-    [self setViewBlock:^UIView *{ return [[ASScrollView alloc] init]; }];
+    [self setViewBlock:^ASDisplayView *{ return [[_ASScrollNodeView alloc] init]; }];
   }
   return self;
 }
@@ -185,3 +189,5 @@
 }
 
 @end
+
+#endif

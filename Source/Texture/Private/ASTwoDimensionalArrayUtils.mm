@@ -10,12 +10,10 @@
 #import "ASAssert.h"
 #import "ASCollections.h"
 #import "ASInternalHelpers.h"
+#import "ASPlatformDefines.h"
 #import "ASTwoDimensionalArrayUtils.h"
 
 #import <vector>
-
-// Import UIKit to get [NSIndexPath indexPathForItem:inSection:] which uses
-// tagged pointers.
 
 #pragma mark - Public Methods
 
@@ -47,14 +45,14 @@ void ASDeleteElementsInTwoDimensionalArrayAtIndexPaths(NSMutableArray *mutableAr
    * work ends up running the same code.
    */
   for (NSIndexPath *indexPath in indexPaths) {
-    NSInteger section = indexPath.section;
+    NSInteger section = indexPath.as_section;
     if (section >= mutableArray.count) {
       ASDisplayNodeCFailAssert(@"Invalid section index %ld – only %ld sections", (long)section, (long)mutableArray.count);
       continue;
     }
 
     NSMutableArray *subarray = mutableArray[section];
-    NSInteger item = indexPath.item;
+    NSInteger item = indexPath.as_item;
     if (item >= subarray.count) {
       ASDisplayNodeCFailAssert(@"Invalid item index %ld – only %ld items in section %ld", (long)item, (long)subarray.count, (long)section);
       continue;
@@ -80,7 +78,7 @@ NSArray<NSIndexPath *> *ASIndexPathsForTwoDimensionalArray(NSArray <NSArray *>* 
   indexPaths.reserve(totalCount);
   for (NSInteger i = 0; i < sectionCount; i++) {
     for (NSInteger j = 0; j < counts[i]; j++) {
-      indexPaths.push_back([NSIndexPath indexPathForItem:j inSection:i]);
+      indexPaths.push_back([NSIndexPath as_indexPathForItem:j inSection:i]);
     }
   }
   return [NSArray arrayByTransferring:indexPaths.data() count:totalCount];
@@ -107,13 +105,13 @@ id ASGetElementInTwoDimensionalArray(NSArray *array, NSIndexPath *indexPath)
 {
   ASDisplayNodeCAssertNotNil(indexPath, @"Expected non-nil index path");
   ASDisplayNodeCAssert(indexPath.length == 2, @"Expected index path of length 2. Index path: %@", indexPath);
-  NSInteger section = indexPath.section;
+  NSInteger section = indexPath.as_section;
   if (array.count <= section) {
     return nil;
   }
 
   NSArray *innerArray = array[section];
-  NSInteger item = indexPath.item;
+  NSInteger item = indexPath.as_item;
   if (innerArray.count <= item) {
     return nil;
   }

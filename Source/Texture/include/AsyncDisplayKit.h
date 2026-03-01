@@ -8,6 +8,7 @@
 //
 
 #if __has_include(<AsyncDisplayKit/AsyncDisplayKit.h>)
+  #import <AsyncDisplayKit/ASPlatformDefines.h>
   #import <AsyncDisplayKit/ASAbsoluteLayoutElement.h>
   #import <AsyncDisplayKit/ASAbsoluteLayoutSpec.h>
   #import <AsyncDisplayKit/ASAbstractLayoutController.h>
@@ -55,6 +56,7 @@
   #import <AsyncDisplayKit/ASDisplayNode+InterfaceState.h>
   #import <AsyncDisplayKit/ASDisplayNode+LayoutSpec.h>
   #import <AsyncDisplayKit/ASDisplayNode+Subclasses.h>
+  #import <AsyncDisplayKit/ASDisplayNode+Yoga.h>
   #import <AsyncDisplayKit/ASDisplayNode.h>
   #import <AsyncDisplayKit/ASDisplayNodeExtras.h>
   #import <AsyncDisplayKit/ASEditableTextNode.h>
@@ -114,17 +116,17 @@
   #import <AsyncDisplayKit/ASTableNode.h>
   #import <AsyncDisplayKit/ASTableView.h>
   #import <AsyncDisplayKit/ASTableViewProtocols.h>
+  #import <AsyncDisplayKit/ASTextKitComponents.h>
+  #import <AsyncDisplayKit/ASTextNode+Beta.h>
+  #import <AsyncDisplayKit/ASTextNode.h>
+  #import <AsyncDisplayKit/ASTextNodeCommon.h>
+  #import <AsyncDisplayKit/ASTextNodeTypes.h>
   #import <AsyncDisplayKit/ASTextAttribute.h>
   #import <AsyncDisplayKit/ASTextDebugOption.h>
   #import <AsyncDisplayKit/ASTextInput.h>
-  #import <AsyncDisplayKit/ASTextKitComponents.h>
   #import <AsyncDisplayKit/ASTextLayout.h>
   #import <AsyncDisplayKit/ASTextLine.h>
-  #import <AsyncDisplayKit/ASTextNode+Beta.h>
-  #import <AsyncDisplayKit/ASTextNode.h>
   #import <AsyncDisplayKit/ASTextNode2.h>
-  #import <AsyncDisplayKit/ASTextNodeCommon.h>
-  #import <AsyncDisplayKit/ASTextNodeTypes.h>
   #import <AsyncDisplayKit/ASThread.h>
   #import <AsyncDisplayKit/ASTraitCollection.h>
   #import <AsyncDisplayKit/ASVideoNode.h>
@@ -133,10 +135,14 @@
   #import <AsyncDisplayKit/ASWeakProxy.h>
   #import <AsyncDisplayKit/ASWeakSet.h>
   #import <AsyncDisplayKit/AsyncDisplayKit+Debug.h>
-  #import <AsyncDisplayKit/AsyncDisplayKit+IGListKitMethods.h>
+  #if !AS_PLATFORM_MACOS
+    #import <AsyncDisplayKit/AsyncDisplayKit+IGListKitMethods.h>
+  #endif
   #import <AsyncDisplayKit/AsyncDisplayKit+Tips.h>
   #import <AsyncDisplayKit/CoreGraphics+ASConvenience.h>
-  #import <AsyncDisplayKit/IGListAdapter+AsyncDisplayKit.h>
+  #if !AS_PLATFORM_MACOS
+    #import <AsyncDisplayKit/IGListAdapter+AsyncDisplayKit.h>
+  #endif
   #import <AsyncDisplayKit/NSArray+Diffing.h>
   #import <AsyncDisplayKit/NSMutableAttributedString+TextKitAdditions.h>
   #import <AsyncDisplayKit/UICollectionViewLayout+ASConvenience.h>
@@ -150,6 +156,7 @@
   #import <AsyncDisplayKit/_ASDisplayView.h>
   #import <AsyncDisplayKit/_ASTransitionContext.h>
 #else
+  #import "ASPlatformDefines.h"
   #import "ASAbsoluteLayoutElement.h"
   #import "ASAbsoluteLayoutSpec.h"
   #import "ASAbstractLayoutController.h"
@@ -197,6 +204,7 @@
   #import "ASDisplayNode+InterfaceState.h"
   #import "ASDisplayNode+LayoutSpec.h"
   #import "ASDisplayNode+Subclasses.h"
+  #import "ASDisplayNode+Yoga.h"
   #import "ASDisplayNode.h"
   #import "ASDisplayNodeExtras.h"
   #import "ASEditableTextNode.h"
@@ -256,17 +264,17 @@
   #import "ASTableNode.h"
   #import "ASTableView.h"
   #import "ASTableViewProtocols.h"
+  #import "ASTextKitComponents.h"
+  #import "ASTextNode+Beta.h"
+  #import "ASTextNode.h"
+  #import "ASTextNodeCommon.h"
+  #import "ASTextNodeTypes.h"
   #import "ASTextAttribute.h"
   #import "ASTextDebugOption.h"
   #import "ASTextInput.h"
-  #import "ASTextKitComponents.h"
   #import "ASTextLayout.h"
   #import "ASTextLine.h"
-  #import "ASTextNode+Beta.h"
-  #import "ASTextNode.h"
   #import "ASTextNode2.h"
-  #import "ASTextNodeCommon.h"
-  #import "ASTextNodeTypes.h"
   #import "ASThread.h"
   #import "ASTraitCollection.h"
   #import "ASVideoNode.h"
@@ -275,10 +283,14 @@
   #import "ASWeakProxy.h"
   #import "ASWeakSet.h"
   #import "AsyncDisplayKit+Debug.h"
-  #import "AsyncDisplayKit+IGListKitMethods.h"
+  #if !AS_PLATFORM_MACOS
+    #import "AsyncDisplayKit+IGListKitMethods.h"
+  #endif
   #import "AsyncDisplayKit+Tips.h"
   #import "CoreGraphics+ASConvenience.h"
-  #import "IGListAdapter+AsyncDisplayKit.h"
+  #if !AS_PLATFORM_MACOS
+    #import "IGListAdapter+AsyncDisplayKit.h"
+  #endif
   #import "NSArray+Diffing.h"
   #import "NSMutableAttributedString+TextKitAdditions.h"
   #import "UICollectionViewLayout+ASConvenience.h"

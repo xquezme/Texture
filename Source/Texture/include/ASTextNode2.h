@@ -73,11 +73,11 @@ NS_ASSUME_NONNULL_BEGIN
  * An array of path objects representing the regions where text should not be displayed.
  *
  * @discussion The default value of this property is an empty array. You can
- * assign an array of UIBezierPath objects to exclude text from one or more regions in
+ * assign an array of ASBezierPath objects to exclude text from one or more regions in
  * the text node's bounds. You can use this property to have text wrap around images,
  * shapes or other text like a fancy magazine.
  */
-@property (nullable, copy) NSArray<UIBezierPath *> *exclusionPaths;
+@property (nullable, copy) NSArray<ASBezierPath *> *exclusionPaths;
 
 #pragma mark - Placeholders
 
@@ -93,12 +93,12 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  @abstract The placeholder color.
  */
-@property (nullable, copy) UIColor *placeholderColor;
+@property (nullable, copy) ASColor *placeholderColor;
 
 /**
  @abstract Inset each line of the placeholder.
  */
-@property UIEdgeInsets placeholderInsets;
+@property ASEdgeInsets placeholderInsets;
 
 #pragma mark - Shadow
 
@@ -117,7 +117,7 @@ NS_ASSUME_NONNULL_BEGIN
  UIEdgeInsetsRect(boundingRectForText, shadowPadding)
  will return a CGRect large enough to fit both the text and the appropriate shadow padding.
  */
-@property (nonatomic, readonly) UIEdgeInsets shadowPadding;
+@property (nonatomic, readonly) ASEdgeInsets shadowPadding;
 
 #pragma mark - Positioning
 
@@ -252,5 +252,3 @@ NS_ASSUME_NONNULL_BEGIN
 #endif
 
 NS_ASSUME_NONNULL_END
-
-

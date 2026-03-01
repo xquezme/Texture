@@ -7,18 +7,22 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface UIResponder (AsyncDisplayKit)
+#if AS_PLATFORM_MACOS
+ @interface NSResponder (AsyncDisplayKit)
+#else
+ @interface UIResponder (AsyncDisplayKit)
+#endif
 
 /**
  * The nearest view controller above this responder, if one exists.
  *
  * This property must be accessed on the main thread.
  */
-@property (nonatomic, nullable, readonly) __kindof UIViewController *asdk_associatedViewController NS_SWIFT_UI_ACTOR;
+@property (nonatomic, nullable, readonly) __kindof ASDisplayViewController *asdk_associatedViewController NS_SWIFT_UI_ACTOR;
 
 @end
 

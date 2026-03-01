@@ -9,13 +9,13 @@
 
 #import "ASHighlightOverlayLayer.h"
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import <tgmath.h>
 
 #import "ASInternalHelpers.h"
 
 static const CGFloat kCornerRadius = 2.5;
-static const UIEdgeInsets padding = {2, 4, 1.5, 4};
+static const ASEdgeInsets padding = {2, 4, 1.5, 4};
 
 @implementation ASHighlightOverlayLayer
 {
@@ -76,7 +76,7 @@ static const UIEdgeInsets padding = {2, 4, 1.5, 4};
   CALayer *targetLayer = self.targetLayer;
 
   for (NSValue *value in _rects) {
-    CGRect rect = [value CGRectValue];
+    CGRect rect = ASRectFromNSValue(value);
 
     // Don't highlight empty rects.
     if (CGRectIsEmpty(rect)) {

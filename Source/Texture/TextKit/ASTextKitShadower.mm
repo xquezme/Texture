@@ -13,14 +13,14 @@
 
 #import <tgmath.h>
 
-static inline CGSize _insetSize(CGSize size, UIEdgeInsets insets)
+static inline CGSize _insetSize(CGSize size, ASEdgeInsets insets)
 {
   size.width -= (insets.left + insets.right);
   size.height -= (insets.top + insets.bottom);
   return size;
 }
 
-static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
+static inline ASEdgeInsets _invertInsets(ASEdgeInsets insets)
 {
   return {
     .top = -insets.top,
@@ -31,11 +31,11 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
 }
 
 @implementation ASTextKitShadower {
-  UIEdgeInsets _calculatedShadowPadding;
+  ASEdgeInsets _calculatedShadowPadding;
 }
 
 + (ASTextKitShadower *)shadowerWithShadowOffset:(CGSize)shadowOffset
-                                    shadowColor:(UIColor *)shadowColor
+                                    shadowColor:(ASColor *)shadowColor
                                   shadowOpacity:(CGFloat)shadowOpacity
                                    shadowRadius:(CGFloat)shadowRadius
 {
@@ -57,7 +57,7 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
 }
 
 - (instancetype)initWithShadowOffset:(CGSize)shadowOffset
-                         shadowColor:(UIColor *)shadowColor
+                         shadowColor:(ASColor *)shadowColor
                        shadowOpacity:(CGFloat)shadowOpacity
                         shadowRadius:(CGFloat)shadowRadius
 {
@@ -66,7 +66,7 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
     _shadowColor = shadowColor;
     _shadowOpacity = shadowOpacity;
     _shadowRadius = shadowRadius;
-    _calculatedShadowPadding = UIEdgeInsetsMake(-INFINITY, -INFINITY, INFINITY, INFINITY);
+    _calculatedShadowPadding = ASEdgeInsetsMake(-INFINITY, -INFINITY, INFINITY, INFINITY);
   }
   return self;
 }
@@ -103,14 +103,14 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
 }
 
 
-- (UIEdgeInsets)shadowPadding
+- (ASEdgeInsets)shadowPadding
 {
   if (_calculatedShadowPadding.top == -INFINITY) {
     if (![self _shouldDrawShadow]) {
-      return UIEdgeInsetsZero;
+      return ASEdgeInsetsZero;
     }
 
-    UIEdgeInsets shadowPadding = UIEdgeInsetsZero;
+    ASEdgeInsets shadowPadding = ASEdgeInsetsZero;
 
     // min values are expected to be negative for most typical shadowOffset and
     // blurRadius settings:
@@ -133,7 +133,7 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
 
 - (CGRect)insetRectWithConstrainedRect:(CGRect)constrainedRect
 {
-  return UIEdgeInsetsInsetRect(constrainedRect, _invertInsets([self shadowPadding]));
+  return ASRectInsetWithEdgeInsets(constrainedRect, _invertInsets([self shadowPadding]));
 }
 
 - (CGSize)outsetSizeWithInsetSize:(CGSize)insetSize
@@ -143,7 +143,7 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
 
 - (CGRect)outsetRectWithInsetRect:(CGRect)insetRect
 {
-  return UIEdgeInsetsInsetRect(insetRect, [self shadowPadding]);
+  return ASRectInsetWithEdgeInsets(insetRect, [self shadowPadding]);
 }
 
 - (CGRect)offsetRectWithInternalRect:(CGRect)internalRect
@@ -156,7 +156,7 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
 
 - (CGPoint)offsetPointWithInternalPoint:(CGPoint)internalPoint
 {
-  UIEdgeInsets shadowPadding = [self shadowPadding];
+  ASEdgeInsets shadowPadding = [self shadowPadding];
   return (CGPoint){
     internalPoint.x + shadowPadding.left,
     internalPoint.y + shadowPadding.top
@@ -165,7 +165,7 @@ static inline UIEdgeInsets _invertInsets(UIEdgeInsets insets)
 
 - (CGPoint)offsetPointWithExternalPoint:(CGPoint)externalPoint
 {
-  UIEdgeInsets shadowPadding = [self shadowPadding];
+  ASEdgeInsets shadowPadding = [self shadowPadding];
   return (CGPoint){
     externalPoint.x - shadowPadding.left,
     externalPoint.y - shadowPadding.top

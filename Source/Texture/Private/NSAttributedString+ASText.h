@@ -6,7 +6,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import <CoreText/CoreText.h>
 
 #import "ASTextAttribute.h"
@@ -70,8 +70,8 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:6.0  ASText:6.0
  */
-@property (nullable, nonatomic, readonly) UIFont *as_font;
-- (nullable UIFont *)as_fontAtIndex:(NSUInteger)index;
+@property (nullable, nonatomic, readonly) ASFont *as_font;
+- (nullable ASFont *)as_fontAtIndex:(NSUInteger)index;
 
 /**
  A kerning adjustment. (read-only)
@@ -95,8 +95,8 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:6.0  ASText:6.0
  */
-@property (nullable, nonatomic, readonly) UIColor *as_color;
-- (nullable UIColor *)as_colorAtIndex:(NSUInteger)index;
+@property (nullable, nonatomic, readonly) ASColor *as_color;
+- (nullable ASColor *)as_colorAtIndex:(NSUInteger)index;
 
 /**
  The background color. (read-only)
@@ -105,8 +105,8 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion Get this property returns the first character's attribute.
  @since UIKit:6.0
  */
-@property (nullable, nonatomic, readonly) UIColor *as_backgroundColor;
-- (nullable UIColor *)as_backgroundColorAtIndex:(NSUInteger)index;
+@property (nullable, nonatomic, readonly) ASColor *as_backgroundColor;
+- (nullable ASColor *)as_backgroundColorAtIndex:(NSUInteger)index;
 
 /**
  The stroke width. (read-only)
@@ -128,8 +128,8 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:6.0
  */
-@property (nullable, nonatomic, readonly) UIColor *as_strokeColor;
-- (nullable UIColor *)as_strokeColorAtIndex:(NSUInteger)index;
+@property (nullable, nonatomic, readonly) ASColor *as_strokeColor;
+- (nullable ASColor *)as_strokeColorAtIndex:(NSUInteger)index;
 
 /**
  The text shadow. (read-only)
@@ -158,8 +158,8 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion Get this property returns the first character's attribute.
  @since UIKit:7.0
  */
-@property (nullable, nonatomic, readonly) UIColor *as_strikethroughColor;
-- (nullable UIColor *)as_strikethroughColorAtIndex:(NSUInteger)index;
+@property (nullable, nonatomic, readonly) ASColor *as_strikethroughColor;
+- (nullable ASColor *)as_strikethroughColorAtIndex:(NSUInteger)index;
 
 /**
  The underline style. (read-only)
@@ -178,8 +178,8 @@ NS_ASSUME_NONNULL_BEGIN
  @discussion Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:7.0
  */
-@property (nullable, nonatomic, readonly) UIColor *as_underlineColor;
-- (nullable UIColor *)as_underlineColorAtIndex:(NSUInteger)index;
+@property (nullable, nonatomic, readonly) ASColor *as_underlineColor;
+- (nullable ASColor *)as_underlineColorAtIndex:(NSUInteger)index;
 
 /**
  Ligature formation control. (read-only)
@@ -577,10 +577,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// @name Create attachment string for ASText
 ///=============================================================================
 
+#if !AS_PLATFORM_MACOS
 /**
  Creates and returns an attachment.
  
- @param content      The attachment (UIImage/UIView/CALayer).
+ @param content      The attachment (ASImage/ASDisplayView/CALayer).
  @param contentMode  The attachment's content mode.
  @param width        The attachment's container width in layout.
  @param ascent       The attachment's container ascent in layout.
@@ -614,7 +615,7 @@ NS_ASSUME_NONNULL_BEGIN
  │    ██████████████    │
  └──────────────────────┘
  
- @param content        The attachment (UIImage/UIView/CALayer).
+ @param content        The attachment (ASImage/ASDisplayView/CALayer).
  @param contentMode    The attachment's content mode in attachment holder
  @param attachmentSize The attachment holder's size in text layout.
  @param font           The attachment will align to this font.
@@ -626,7 +627,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSMutableAttributedString *)as_attachmentStringWithContent:(nullable id)content
                                                   contentMode:(UIViewContentMode)contentMode
                                                attachmentSize:(CGSize)attachmentSize
-                                                  alignToFont:(UIFont *)font
+                                                  alignToFont:(ASFont *)font
                                                     alignment:(ASTextVerticalAlignment)alignment;
 
 /**
@@ -638,8 +639,9 @@ NS_ASSUME_NONNULL_BEGIN
  @return An attributed string, or nil if an error occurs.
  @since ASText:6.0
  */
-+ (nullable NSMutableAttributedString *)as_attachmentStringWithEmojiImage:(UIImage *)image
++ (nullable NSMutableAttributedString *)as_attachmentStringWithEmojiImage:(ASImage *)image
                                                                  fontSize:(CGFloat)fontSize;
+#endif
 
 #pragma mark - Utility
 ///=============================================================================
@@ -732,8 +734,8 @@ NS_ASSUME_NONNULL_BEGIN
  Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:6.0  ASText:6.0
  */
-@property (nullable, nonatomic) UIFont *as_font;
-- (void)as_setFont:(nullable UIFont *)font range:(NSRange)range;
+@property (nullable, nonatomic) ASFont *as_font;
+- (void)as_setFont:(nullable ASFont *)font range:(NSRange)range;
 
 /**
  A kerning adjustment.
@@ -759,8 +761,8 @@ NS_ASSUME_NONNULL_BEGIN
  Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:6.0  ASText:6.0
  */
-@property (nullable, nonatomic) UIColor *as_color;
-- (void)as_setColor:(nullable UIColor *)color range:(NSRange)range;
+@property (nullable, nonatomic) ASColor *as_color;
+- (void)as_setColor:(nullable ASColor *)color range:(NSRange)range;
 
 /**
  The background color.
@@ -770,8 +772,8 @@ NS_ASSUME_NONNULL_BEGIN
  Get this property returns the first character's attribute.
  @since UIKit:6.0
  */
-@property (nullable, nonatomic) UIColor *as_backgroundColor;
-- (void)as_setBackgroundColor:(nullable UIColor *)backgroundColor range:(NSRange)range;
+@property (nullable, nonatomic) ASColor *as_backgroundColor;
+- (void)as_setBackgroundColor:(nullable ASColor *)backgroundColor range:(NSRange)range;
 
 /**
  The stroke width.
@@ -795,8 +797,8 @@ NS_ASSUME_NONNULL_BEGIN
  Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:6.0  ASText:6.0
  */
-@property (nullable, nonatomic) UIColor *as_strokeColor;
-- (void)as_setStrokeColor:(nullable UIColor *)strokeColor range:(NSRange)range;
+@property (nullable, nonatomic) ASColor *as_strokeColor;
+- (void)as_setStrokeColor:(nullable ASColor *)strokeColor range:(NSRange)range;
 
 /**
  The text shadow.
@@ -828,8 +830,8 @@ NS_ASSUME_NONNULL_BEGIN
  Get this property returns the first character's attribute.
  @since UIKit:7.0
  */
-@property (nullable, nonatomic) UIColor *as_strikethroughColor;
-- (void)as_setStrikethroughColor:(nullable UIColor *)strikethroughColor range:(NSRange)range NS_AVAILABLE_IOS(7_0);
+@property (nullable, nonatomic) ASColor *as_strikethroughColor;
+- (void)as_setStrikethroughColor:(nullable ASColor *)strikethroughColor range:(NSRange)range NS_AVAILABLE_IOS(7_0);
 
 /**
  The underline style.
@@ -850,8 +852,8 @@ NS_ASSUME_NONNULL_BEGIN
  Get this property returns the first character's attribute.
  @since CoreText:3.2  UIKit:7.0
  */
-@property (nullable, nonatomic) UIColor *as_underlineColor;
-- (void)as_setUnderlineColor:(nullable UIColor *)underlineColor range:(NSRange)range;
+@property (nullable, nonatomic) ASColor *as_underlineColor;
+- (void)as_setUnderlineColor:(nullable ASColor *)underlineColor range:(NSRange)range;
 
 /**
  Ligature formation control.
@@ -1298,8 +1300,8 @@ NS_ASSUME_NONNULL_BEGIN
  @param longPressAction long press action when user long press the highlight (pass nil to ignore)
  */
 - (void)as_setTextHighlightRange:(NSRange)range
-                           color:(nullable UIColor *)color
-                 backgroundColor:(nullable UIColor *)backgroundColor
+                           color:(nullable ASColor *)color
+                 backgroundColor:(nullable ASColor *)backgroundColor
                         userInfo:(nullable NSDictionary *)userInfo
                        tapAction:(nullable ASTextAction)tapAction
                  longPressAction:(nullable ASTextAction)longPressAction;
@@ -1313,8 +1315,8 @@ NS_ASSUME_NONNULL_BEGIN
  @param tapAction       tap action when user tap the highlight (pass nil to ignore)
  */
 - (void)as_setTextHighlightRange:(NSRange)range
-                           color:(nullable UIColor *)color
-                 backgroundColor:(nullable UIColor *)backgroundColor
+                           color:(nullable ASColor *)color
+                 backgroundColor:(nullable ASColor *)backgroundColor
                        tapAction:(nullable ASTextAction)tapAction;
 
 /**
@@ -1326,8 +1328,8 @@ NS_ASSUME_NONNULL_BEGIN
  @param userInfo        tap action when user tap the highlight (pass nil to ignore)
  */
 - (void)as_setTextHighlightRange:(NSRange)range
-                           color:(nullable UIColor *)color
-                 backgroundColor:(nullable UIColor *)backgroundColor
+                           color:(nullable ASColor *)color
+                 backgroundColor:(nullable ASColor *)backgroundColor
                         userInfo:(nullable NSDictionary *)userInfo;
 
 #pragma mark - Utilities

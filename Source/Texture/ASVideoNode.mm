@@ -25,14 +25,23 @@ static BOOL ASAssetIsEqual(AVAsset *asset1, AVAsset *asset2) {
       && ASObjectIsEqual(((AVURLAsset *)asset1).URL, ((AVURLAsset *)asset2).URL));
 }
 
-static UIViewContentMode ASContentModeFromVideoGravity(NSString *videoGravity) {
+static NSString *ASContentsGravityFromVideoGravity(NSString *videoGravity) {
   if ([videoGravity isEqualToString:AVLayerVideoGravityResizeAspectFill]) {
-    return UIViewContentModeScaleAspectFill;
+    return kCAGravityResizeAspectFill;
   } else if ([videoGravity isEqualToString:AVLayerVideoGravityResize]) {
-    return UIViewContentModeScaleToFill;
+    return kCAGravityResize;
   } else {
-    return UIViewContentModeScaleAspectFit;
+    return kCAGravityResizeAspect;
   }
+}
+
+static NSNotificationName ASVideoNodeDidBecomeActiveNotificationName(void)
+{
+#if AS_PLATFORM_MACOS
+  return NSApplicationDidBecomeActiveNotification;
+#else
+  return UIApplicationDidBecomeActiveNotification;
+#endif
 }
 
 static void *ASVideoNodeContext = &ASVideoNodeContext;
@@ -106,7 +115,7 @@ static NSString * const kRate = @"rate";
   _lastPlaybackTime = kCMTimeZero;
   
   NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
-  [notificationCenter addObserver:self selector:@selector(applicationDidBecomeActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
+  [notificationCenter addObserver:self selector:@selector(applicationDidBecomeActive:) name:ASVideoNodeDidBecomeActiveNotificationName() object:nil];
   
   return self;
 }
@@ -276,7 +285,7 @@ static NSString * const kRate = @"rate";
   ASVideoNode * __weak weakSelf = self;
   AVAsset *asset = self.asset;
 
-  [self imageAtTime:kCMTimeZero completionHandler:^(UIImage *image) {
+  [self imageAtTime:kCMTimeZero completionHandler:^(ASImage *image) {
     ASPerformBlockOnMainThread(^{
       // Ensure the asset hasn't changed since the image request was made
       if (ASAssetIsEqual(weakSelf.asset, asset)) {
@@ -286,7 +295,7 @@ static NSString * const kRate = @"rate";
   }];
 }
 
-- (void)imageAtTime:(CMTime)imageTime completionHandler:(void(^)(UIImage *image))completionHandler
+- (void)imageAtTime:(CMTime)imageTime completionHandler:(void(^)(ASImage *image))completionHandler
 {
   ASPerformBlockOnBackgroundThread(^{
     AVAsset *asset = self->_asset;
@@ -307,17 +316,35 @@ static NSString * const kRate = @"rate";
                                                   if (error != nil && result != AVAssetImageGeneratorCancelled) {
                                                     NSLog(@"Asset preview image generation failed with error: %@", error);
                                                   }
-                                                  completionHandler(image ? [UIImage imageWithCGImage:image] : nil);
+                                                  if (image == nil) {
+                                                    completionHandler(nil);
+                                                    return;
+                                                  }
+#if AS_PLATFORM_MACOS
+                                                  completionHandler([[ASImage alloc] initWithCGImage:image size:CGSizeZero]);
+#else
+                                                  completionHandler([ASImage imageWithCGImage:image]);
+#endif
                                                 }];
   });
 }
 
-- (void)setVideoPlaceholderImage:(UIImage *)image
+- (void)setVideoPlaceholderImage:(ASImage *)image
 {
   NSString *gravity = self.gravity;
   
   if (image != nil) {
-    self.contentMode = ASContentModeFromVideoGravity(gravity);
+#if AS_PLATFORM_MACOS
+    self.contentsGravity = ASContentsGravityFromVideoGravity(gravity);
+#else
+    if ([gravity isEqualToString:AVLayerVideoGravityResizeAspectFill]) {
+      self.contentMode = UIViewContentModeScaleAspectFill;
+    } else if ([gravity isEqualToString:AVLayerVideoGravityResize]) {
+      self.contentMode = UIViewContentModeScaleToFill;
+    } else {
+      self.contentMode = UIViewContentModeScaleAspectFit;
+    }
+#endif
   }
   self.image = image;
 }
@@ -631,7 +658,17 @@ static NSString * const kRate = @"rate";
   if (_playerNode.isNodeLoaded) {
     ((AVPlayerLayer *)_playerNode.layer).videoGravity = gravity;
   }
-  self.contentMode = ASContentModeFromVideoGravity(gravity);
+#if AS_PLATFORM_MACOS
+  self.contentsGravity = ASContentsGravityFromVideoGravity(gravity);
+#else
+  if ([gravity isEqualToString:AVLayerVideoGravityResizeAspectFill]) {
+    self.contentMode = UIViewContentModeScaleAspectFill;
+  } else if ([gravity isEqualToString:AVLayerVideoGravityResize]) {
+    self.contentMode = UIViewContentModeScaleToFill;
+  } else {
+    self.contentMode = UIViewContentModeScaleAspectFit;
+  }
+#endif
   _gravity = gravity;
 }
 
@@ -853,7 +890,7 @@ static NSString * const kRate = @"rate";
   [self removePlayerObservers:_player];
 
   NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
-  [notificationCenter removeObserver:self name:UIApplicationDidBecomeActiveNotification object:nil];
+  [notificationCenter removeObserver:self name:ASVideoNodeDidBecomeActiveNotificationName() object:nil];
 }
 
 @end

@@ -7,8 +7,13 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <TargetConditionals.h>
 #import "ASTableNode.h"
+
+
+#if !AS_PLATFORM_MACOS
 #import "ASTableNode+Beta.h"
+#endif
 
 #import "ASCollectionElement.h"
 #import "ASElementMap.h"
@@ -20,7 +25,10 @@
 #import "ASDisplayNode+Beta.h"
 #import "ASRangeController.h"
 #import "ASAbstractLayoutController+FrameworkPrivate.h"
+#import "ASBatchFetchingDelegate.h"
+#if !AS_PLATFORM_MACOS
 #import "ASTableView+Undeprecated.h"
+#endif
 
 #pragma mark - _ASTablePendingState
 
@@ -37,7 +45,7 @@
 @property (nonatomic) BOOL allowsMultipleSelectionDuringEditing;
 @property (nonatomic) BOOL inverted;
 @property (nonatomic) CGFloat leadingScreensForBatching;
-@property (nonatomic) UIEdgeInsets contentInset;
+@property (nonatomic) ASEdgeInsets contentInset;
 @property (nonatomic) CGPoint contentOffset;
 @property (nonatomic) BOOL animatesContentOffset;
 @property (nonatomic) BOOL automaticallyAdjustsContentOffset;
@@ -60,7 +68,7 @@
     _allowsMultipleSelectionDuringEditing = NO;
     _inverted = NO;
     _leadingScreensForBatching = 2;
-    _contentInset = UIEdgeInsetsZero;
+    _contentInset = ASEdgeInsetsZero;
     _contentOffset = CGPointZero;
     _animatesContentOffset = NO;
     _automaticallyAdjustsContentOffset = NO;
@@ -111,7 +119,7 @@
 
 #pragma mark Lifecycle
 
-- (instancetype)initWithStyle:(UITableViewStyle)style
+- (instancetype)initWithStyle:(ASTableViewStyle)style
 {
   if (self = [super init]) {
     __weak __typeof__(self) weakSelf = self;
@@ -126,14 +134,14 @@
 
 - (instancetype)init
 {
-  return [self initWithStyle:UITableViewStylePlain];
+  return [self initWithStyle:ASTableViewStylePlain];
 }
 
 #if ASDISPLAYNODE_ASSERTIONS_ENABLED
 - (void)dealloc
 {
   if (self.nodeLoaded) {
-    __weak UIView *view = self.view;
+    __weak ASDisplayView *view = self.view;
     ASPerformBlockOnMainThread(^{
       ASDisplayNodeCAssertNil(view.superview, @"Node's view should be removed from hierarchy.");
     });
@@ -164,12 +172,12 @@
     view.allowsMultipleSelectionDuringEditing = pendingState.allowsMultipleSelectionDuringEditing;
     view.automaticallyAdjustsContentOffset    = pendingState.automaticallyAdjustsContentOffset;
     view.leadingScreensForBatching            = pendingState.leadingScreensForBatching;
-#if !TARGET_OS_TV
+#if !TARGET_OS_TV && !AS_PLATFORM_MACOS
     view.pagingEnabled                        = pendingState.pagingEnabled;
 #endif
 
-    UIEdgeInsets contentInset = pendingState.contentInset;
-    if (!UIEdgeInsetsEqualToEdgeInsets(contentInset, UIEdgeInsetsZero)) {
+    ASEdgeInsets contentInset = pendingState.contentInset;
+    if (!ASEdgeInsetsEqualToEdgeInsets(contentInset, ASEdgeInsetsZero)) {
       view.contentInset = contentInset;
     }
 
@@ -219,7 +227,11 @@
   [super didEnterPreloadState];
   // Intentionally allocate the view here and trigger a layout pass on it, which in turn will trigger the intial data load.
   // We can get rid of this call later when ASDataController, ASRangeController and ASCollectionLayout can operate without the view.
+#if AS_PLATFORM_MACOS
+  [self.view layoutSubtreeIfNeeded];
+#else
   [self.view layoutIfNeeded];
+#endif
 }
 
 #if ASRangeControllerLoggingEnabled
@@ -300,7 +312,7 @@
   }
 }
 
-- (void)setContentInset:(UIEdgeInsets)contentInset
+- (void)setContentInset:(ASEdgeInsets)contentInset
 {
   _ASTablePendingState *pendingState = self.pendingState;
   if (pendingState) {
@@ -311,7 +323,7 @@
   }
 }
 
-- (UIEdgeInsets)contentInset
+- (ASEdgeInsets)contentInset
 {
   _ASTablePendingState *pendingState = self.pendingState;
   if (pendingState) {
@@ -369,7 +381,7 @@
   }
 }
 
-#if !TARGET_OS_TV
+#if !TARGET_OS_TV && !AS_PLATFORM_MACOS
 - (void)setPagingEnabled:(BOOL)pagingEnabled
 {
   _ASTablePendingState *pendingState = self.pendingState;
@@ -582,7 +594,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
 
 #pragma mark - Selection
 
-- (void)selectRowAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(UITableViewScrollPosition)scrollPosition
+- (void)selectRowAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASTableViewScrollPosition)scrollPosition
 {
   ASDisplayNodeAssertMainThread();
   ASTableView *tableView = self.view;
@@ -609,7 +621,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   }
 }
 
-- (void)scrollToRowAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(UITableViewScrollPosition)scrollPosition animated:(BOOL)animated
+- (void)scrollToRowAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASTableViewScrollPosition)scrollPosition animated:(BOOL)animated
 {
   ASDisplayNodeAssertMainThread();
   ASTableView *tableView = self.view;
@@ -631,7 +643,11 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   if (!self.dataController.initialReloadDataHasBeenCalled) {
     // Note: Just calling reloadData isn't enough here – we need to
     // ensure that _nodesConstrainedWidth is updated first.
+#if AS_PLATFORM_MACOS
+    [self.view layoutSubtreeIfNeeded];
+#else
     [self.view layoutIfNeeded];
+#endif
   }
 }
 
@@ -675,6 +691,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   return [tableView rectForRowAtIndexPath:indexPath];
 }
 
+#if !AS_PLATFORM_MACOS
 - (nullable __kindof UITableViewCell *)cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
   ASDisplayNodeAssertMainThread();
@@ -686,6 +703,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   }
   return [tableView cellForRowAtIndexPath:indexPath];
 }
+#endif
 
 - (nullable NSIndexPath *)indexPathForSelectedRow
 {
@@ -785,7 +803,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   [self performBatchAnimated:YES updates:updates completion:completion];
 }
 
-- (void)insertSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation
+- (void)insertSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation
 {
   ASDisplayNodeAssertMainThread();
   if (self.nodeLoaded) {
@@ -793,7 +811,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   }
 }
 
-- (void)deleteSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation
+- (void)deleteSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation
 {
   ASDisplayNodeAssertMainThread();
   if (self.nodeLoaded) {
@@ -801,7 +819,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   }
 }
 
-- (void)reloadSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation
+- (void)reloadSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation
 {
   ASDisplayNodeAssertMainThread();
   if (self.nodeLoaded) {
@@ -817,7 +835,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   }
 }
 
-- (void)insertRowsAtIndexPaths:(NSArray *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation
+- (void)insertRowsAtIndexPaths:(NSArray *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation
 {
   ASDisplayNodeAssertMainThread();
   if (self.nodeLoaded) {
@@ -825,7 +843,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   }
 }
 
-- (void)deleteRowsAtIndexPaths:(NSArray *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation
+- (void)deleteRowsAtIndexPaths:(NSArray *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation
 {
   ASDisplayNodeAssertMainThread();
   if (self.nodeLoaded) {
@@ -833,7 +851,7 @@ ASLayoutElementCollectionTableSetTraitCollection(_environmentStateLock)
   }
 }
 
-- (void)reloadRowsAtIndexPaths:(NSArray *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation
+- (void)reloadRowsAtIndexPaths:(NSArray *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation
 {
   ASDisplayNodeAssertMainThread();
   if (self.nodeLoaded) {

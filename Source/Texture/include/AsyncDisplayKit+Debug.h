@@ -7,8 +7,11 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import "ASControlNode.h"
+#import "ASPlatformDefines.h"
 #import "ASImageNode.h"
+#if !AS_PLATFORM_MACOS
+#import "ASControlNode.h"
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -24,6 +27,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+#if !AS_PLATFORM_MACOS
+
 @interface ASControlNode (Debugging)
 
 /**
@@ -38,6 +43,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (class, nonatomic) BOOL enableHitTestDebug;
 
 @end
+
+#endif
 
 @interface ASDisplayNode (RangeDebugging)
 

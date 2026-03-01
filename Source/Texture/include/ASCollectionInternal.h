@@ -15,9 +15,10 @@ NS_ASSUME_NONNULL_BEGIN
 @class ASCollectionNode;
 @class ASDataController;
 @class ASRangeController;
+@class _ASHierarchyChangeSet;
 
 @interface ASCollectionView ()
-- (instancetype)_initWithFrame:(CGRect)frame collectionViewLayout:(UICollectionViewLayout *)layout layoutFacilitator:(nullable id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator owningNode:(nullable ASCollectionNode *)owningNode;
+- (instancetype)_initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout layoutFacilitator:(nullable id<ASCollectionViewLayoutFacilitatorProtocol>)layoutFacilitator owningNode:(nullable ASCollectionNode *)owningNode;
 
 @property (nonatomic, weak) ASCollectionNode *collectionNode;
 @property (nonatomic, readonly) ASDataController *dataController;
@@ -31,7 +32,9 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * @see ASCollectionNode+Beta.h for full documentation.
  */
+#if !AS_PLATFORM_MACOS
 @property (nonatomic) ASCellLayoutMode cellLayoutMode;
+#endif
 
 /**
  * Attempt to get the view-layer index path for the item with the given index path.

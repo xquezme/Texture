@@ -233,19 +233,19 @@ AS_CATEGORY_IMPLEMENTABLE
                                  isRasterizing:(BOOL)isRasterizing;
 
 /**
- * @summary Delegate override to provide new layer contents as a UIImage.
+ * @summary Delegate override to provide new layer contents as an image.
  *
  * @param parameters An object describing all of the properties you need to draw. Return this from
  * -drawParametersForAsyncLayer:
  * @param isCancelledBlock Execute this block to check whether the current drawing operation has been cancelled to avoid
  * unnecessary work. A return value of YES means cancel drawing and return.
  *
- * @return A UIImage with contents that are ready to display on the main thread. Make sure that the image is already
+ * @return An image with contents that are ready to display on the main thread. Make sure that the image is already
  * decoded before returning it here.
  *
  * @note Called on the display queue and/or main queue (MUST BE THREAD SAFE)
  */
-+ (nullable UIImage *)displayWithParameters:(nullable id)parameters
++ (nullable ASImage *)displayWithParameters:(nullable id)parameters
                                 isCancelled:(AS_NOESCAPE asdisplaynode_iscancelled_block_t)isCancelledBlock;
 
 /**
@@ -390,6 +390,7 @@ AS_CATEGORY_IMPLEMENTABLE
 #pragma mark - Touch handling
 /** @name Touch handling */
 
+#if !AS_PLATFORM_MACOS
 /**
  * @abstract Tells the node when touches began in its view.
  *
@@ -421,6 +422,7 @@ AS_CATEGORY_IMPLEMENTABLE
  * @param event A UIEvent associated with the touch.
  */
 - (void)touchesCancelled:(nullable NSSet<UITouch *> *)touches withEvent:(nullable UIEvent *)event ASDISPLAYNODE_REQUIRES_SUPER;
+#endif
 
 
 #pragma mark - Managing Gesture Recognizers
@@ -431,7 +433,7 @@ AS_CATEGORY_IMPLEMENTABLE
  *
  * @param gestureRecognizer A gesture recognizer trying to recognize a gesture.
  */
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer;
+- (BOOL)gestureRecognizerShouldBegin:(ASGestureRecognizer *)gestureRecognizer;
 
 
 #pragma mark - Hit Testing
@@ -447,11 +449,15 @@ AS_CATEGORY_IMPLEMENTABLE
  * @param point A point specified in the node's local coordinate system (bounds).
  * @param event The event that warranted a call to this method.
  *
- * @return Returns a UIView, not ASDisplayNode, for two reasons:
+ * @return Returns a ASDisplayView, not ASDisplayNode, for two reasons:
  * 1) allows sending events to plain UIViews that don't have attached nodes,
  * 2) hitTest: is never called before the views are created.
  */
-- (nullable UIView *)hitTest:(CGPoint)point withEvent:(nullable UIEvent *)event;
+#if AS_PLATFORM_MACOS
+- (nullable ASDisplayView *)hitTest:(CGPoint)point withEvent:(nullable NSEvent *)event;
+#else
+- (nullable ASDisplayView *)hitTest:(CGPoint)point withEvent:(nullable UIEvent *)event;
+#endif
 
 
 #pragma mark - Placeholders
@@ -463,7 +469,7 @@ AS_CATEGORY_IMPLEMENTABLE
  *
  * @discussion
  * Subclasses may override this method and return an image to use as the placeholder. Take caution as there may be a
- * time and place where this method is called on a background thread. Note that -[UIImage imageNamed:] is not thread
+ * time and place where this method is called on a background thread. Note that -[ASImage imageNamed:] is not thread
  * safe when using image assets.
  *
  * To retrieve the CGSize to do any image drawing, use the node's calculatedSize property.
@@ -472,7 +478,7 @@ AS_CATEGORY_IMPLEMENTABLE
  *
  * @note Called on the display queue and/or main queue (MUST BE THREAD SAFE)
  */
-- (nullable UIImage *)placeholderImage;
+- (nullable ASImage *)placeholderImage;
 
 
 #pragma mark - Description

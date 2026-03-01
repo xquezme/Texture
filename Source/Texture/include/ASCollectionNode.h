@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UICollectionView.h>
+#import "ASPlatformDefines.h"
 #import "ASDisplayNode.h"
 #import "ASRangeControllerUpdateRangeProtocol+Beta.h"
 #import "ASCollectionView.h"
@@ -15,18 +15,88 @@
 #import "ASRangeManagingNode.h"
 
 @protocol ASCollectionViewLayoutFacilitatorProtocol;
+@protocol ASCollectionViewLayoutInspecting;
 @protocol ASCollectionDelegate;
 @protocol ASCollectionDataSource;
+@protocol ASSectionContext;
 @class ASCollectionView;
+@class ASCollectionNode;
 
 NS_ASSUME_NONNULL_BEGIN
+
+#if AS_PLATFORM_MACOS
+@interface ASCollectionNode : ASDisplayNode <ASRangeControllerUpdateRangeProtocol, ASRangeManagingNode>
+#else
+@interface ASCollectionNode : ASDisplayNode <ASRangeControllerUpdateRangeProtocol, ASRangeManagingNode, UIGestureRecognizerDelegate>
+#endif
+
+#if AS_PLATFORM_MACOS
+
+- (instancetype)init NS_UNAVAILABLE;
+- (instancetype)initWithCollectionViewLayout:(ASCollectionViewLayout *)layout;
+- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout;
+
+@property (readonly) ASCollectionView *view;
+@property (nullable, weak) id<ASCollectionDelegate> delegate;
+@property (nullable, weak) id<ASCollectionDataSource> dataSource;
+@property (nonatomic) CGFloat leadingScreensForBatching;
+@property (nonatomic) BOOL inverted;
+@property (nonatomic) ASCollectionViewLayout *collectionViewLayout;
+@property (nonatomic, weak) id<ASCollectionViewLayoutInspecting> layoutInspector;
+@property (nonatomic) BOOL allowsSelection;
+@property (nonatomic) BOOL allowsMultipleSelection;
+@property (nonatomic) ASEdgeInsets contentInset;
+@property (nonatomic) CGPoint contentOffset;
+@property (nonatomic, readonly) ASScrollDirection scrollDirection;
+@property (nonatomic, readonly) ASScrollDirection scrollableDirections;
+@property (nonatomic, readonly) BOOL isProcessingUpdates;
+@property (nonatomic, readonly, getter=isSynchronized) BOOL synchronized;
+@property (nonatomic, readonly) NSArray<__kindof ASCellNode *> *visibleNodes NS_SWIFT_UI_ACTOR;
+@property (nonatomic, readonly) NSInteger numberOfSections;
+@property (nullable, nonatomic, copy, readonly) NSArray<NSIndexPath *> *indexPathsForSelectedItems;
+@property (nonatomic, readonly) NSArray<NSIndexPath *> *indexPathsForVisibleItems NS_SWIFT_UI_ACTOR;
+
+- (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated;
+- (ASRangeTuningParameters)tuningParametersForRangeType:(ASLayoutRangeType)rangeType AS_WARN_UNUSED_RESULT;
+- (void)setTuningParameters:(ASRangeTuningParameters)tuningParameters forRangeType:(ASLayoutRangeType)rangeType;
+- (ASRangeTuningParameters)tuningParametersForRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType AS_WARN_UNUSED_RESULT;
+- (void)setTuningParameters:(ASRangeTuningParameters)tuningParameters forRangeMode:(ASLayoutRangeMode)rangeMode rangeType:(ASLayoutRangeType)rangeType;
+- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASCollectionViewScrollPosition)scrollPosition animated:(BOOL)animated NS_SWIFT_UI_ACTOR;
+- (void)registerSupplementaryNodeOfKind:(NSString *)elementKind;
+
+- (void)performBatchAnimated:(BOOL)animated updates:(nullable AS_NOESCAPE void (^)(void))updates completion:(nullable NS_SWIFT_UI_ACTOR void (^)(BOOL finished))completion NS_SWIFT_UI_ACTOR;
+- (void)reloadData;
+- (void)reloadDataWithCompletion:(nullable NS_SWIFT_UI_ACTOR void (^)(void))completion;
+- (void)performBatchUpdates:(nullable AS_NOESCAPE void (^)(void))updates completion:(nullable void (^)(BOOL finished))completion NS_SWIFT_UI_ACTOR;
+- (void)onDidFinishProcessingUpdates:(NS_SWIFT_UI_ACTOR void (^)(void))didFinishProcessingUpdates;
+- (void)waitUntilAllUpdatesAreProcessed;
+- (void)onDidFinishSynchronizing:(NS_SWIFT_UI_ACTOR void (^)(void))didFinishSynchronizing;
+- (void)insertSections:(NSIndexSet *)sections NS_SWIFT_UI_ACTOR;
+- (void)deleteSections:(NSIndexSet *)sections NS_SWIFT_UI_ACTOR;
+- (void)reloadSections:(NSIndexSet *)sections NS_SWIFT_UI_ACTOR;
+- (void)moveSection:(NSInteger)section toSection:(NSInteger)newSection NS_SWIFT_UI_ACTOR;
+- (void)insertItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths NS_SWIFT_UI_ACTOR;
+- (void)deleteItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths NS_SWIFT_UI_ACTOR;
+- (void)reloadItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths NS_SWIFT_UI_ACTOR;
+- (void)moveItemAtIndexPath:(NSIndexPath *)indexPath toIndexPath:(NSIndexPath *)newIndexPath NS_SWIFT_UI_ACTOR;
+- (void)relayoutItems;
+- (void)selectItemAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASCollectionViewScrollPosition)scrollPosition NS_SWIFT_UI_ACTOR;
+- (void)deselectItemAtIndexPath:(NSIndexPath *)indexPath animated:(BOOL)animated NS_SWIFT_UI_ACTOR;
+- (NSInteger)numberOfItemsInSection:(NSInteger)section AS_WARN_UNUSED_RESULT;
+- (nullable __kindof ASCellNode *)nodeForItemAtIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT;
+- (nullable id)nodeModelForItemAtIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT;
+- (nullable NSIndexPath *)indexPathForNode:(ASCellNode *)node;
+- (nullable NSIndexPath *)indexPathForItemAtPoint:(CGPoint)point AS_WARN_UNUSED_RESULT NS_SWIFT_UI_ACTOR;
+- (nullable id<ASSectionContext>)contextForSection:(NSInteger)section AS_WARN_UNUSED_RESULT;
+
+@end
+
+#else
 
 /**
  * ASCollectionNode is a node based class that wraps an ASCollectionView. It can be used
  * as a subnode of another node, and provide room for many (great) features and improvements later on.
  */
-@interface ASCollectionNode : ASDisplayNode <ASRangeControllerUpdateRangeProtocol, ASRangeManagingNode, UIGestureRecognizerDelegate>
-
 - (instancetype)init NS_UNAVAILABLE;
 
 /**
@@ -36,7 +106,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param layout The layout object to use for organizing items. The collection view stores a strong reference to the specified object. Must not be nil.
  */
-- (instancetype)initWithCollectionViewLayout:(UICollectionViewLayout *)layout;
+- (instancetype)initWithCollectionViewLayout:(ASCollectionViewLayout *)layout;
 
 /**
  * Initializes an ASCollectionNode
@@ -46,7 +116,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @param frame The frame rectangle for the collection view, measured in points. The origin of the frame is relative to the superview in which you plan to add it. This frame is passed to the superclass during initialization.
  * @param layout The layout object to use for organizing items. The collection view stores a strong reference to the specified object. Must not be nil.
  */
-- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(UICollectionViewLayout *)layout;
+- (instancetype)initWithFrame:(CGRect)frame collectionViewLayout:(ASCollectionViewLayout *)layout;
 
 /**
  * Returns the corresponding ASCollectionView
@@ -136,14 +206,14 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @discussion Assigning a new layout object to this property causes the new layout to be applied (without animations) to the node’s items.
  */
-@property (nonatomic) UICollectionViewLayout *collectionViewLayout;
+@property (nonatomic) ASCollectionViewLayout *collectionViewLayout;
 
 /**
  * Optional introspection object for the collection node's layout.
  *
  * @discussion Since supplementary and decoration nodes are controlled by the layout, this object
  * is used as a bridge to provide information to the internal data controller about the existence of these views and
- * their associated index paths. For collections using `UICollectionViewFlowLayout`, a default inspector
+ * their associated index paths. For collections using `ASCollectionViewFlowLayout`, a default inspector
  * implementation `ASCollectionViewFlowLayoutInspector` is created and set on this property by default. Custom
  * collection layout subclasses will need to provide their own implementation of an inspector object for their
  * supplementary elements to be compatible with `ASCollectionNode`'s supplementary node support.
@@ -151,9 +221,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak) id<ASCollectionViewLayoutInspecting> layoutInspector;
 
 /**
- * The distance that the content view is inset from the collection node edges. Defaults to UIEdgeInsetsZero.
+ * The distance that the content view is inset from the collection node edges. Defaults to ASEdgeInsetsZero.
  */
-@property (nonatomic) UIEdgeInsets contentInset;
+@property (nonatomic) ASEdgeInsets contentInset;
 
 /**
  * The offset of the content view's origin from the collection node's origin. Defaults to CGPointZero.
@@ -226,7 +296,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * This method must be called on the main thread.
  */
-- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(UICollectionViewScrollPosition)scrollPosition animated:(BOOL)animated NS_SWIFT_UI_ACTOR;
+- (void)scrollToItemAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASCollectionViewScrollPosition)scrollPosition animated:(BOOL)animated NS_SWIFT_UI_ACTOR;
 
 /**
  * Determines collection node's current scroll direction. Supports 2-axis collection nodes.
@@ -287,7 +357,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  *  Returns NO if ASCollectionNode is fully synchronized with the underlying UICollectionView. This
  *  means that until the next performBatchUpdates: is called, it is safe to compare UIKit values
- *  (such as from UICollectionViewLayout) with your app's data source.
+ *  (such as from ASCollectionViewLayout) with your app's data source.
  *
  *  This method will always return NO if called immediately after -waitUntilAllUpdatesAreProcessed.
  */
@@ -441,7 +511,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @discussion This method must be called from the main thread.
  */
-- (void)selectItemAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(UICollectionViewScrollPosition)scrollPosition NS_SWIFT_UI_ACTOR;
+- (void)selectItemAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASCollectionViewScrollPosition)scrollPosition NS_SWIFT_UI_ACTOR;
 
 /**
  * Deselects the item at the specified index.
@@ -543,7 +613,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * TODO: This method currently accepts @c section in the _view_ index space, but it should
  *   be in the node index space. To get the context in the view index space (e.g. for subclasses
- *   of @c UICollectionViewLayout, the user will call the same method on @c ASCollectionView.
+ *   of @c ASCollectionViewLayout, the user will call the same method on @c ASCollectionView.
  */
 - (nullable id<ASSectionContext>)contextForSection:(NSInteger)section AS_WARN_UNUSED_RESULT;
 
@@ -633,7 +703,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Asks the data source to provide a context object for the given section. This object
  * can later be retrieved by calling @c contextForSection: and is useful when implementing
- * custom @c UICollectionViewLayout subclasses. The context object is ret
+ * custom @c ASCollectionViewLayout subclasses. The context object is ret
  *
  * @param collectionNode The sender.
  * @param section The index of the section to provide context for.
@@ -909,7 +979,7 @@ NS_ASSUME_NONNULL_BEGIN
  * 3. Return nil from the nodeBlockForItem...: or nodeForItem...: method. NOTE: it is an error to return
  *    nil from within a nodeBlock, if you have returned a nodeBlock object.
  * 4. Lastly, you must implement a method to provide the size for the cell. There are two ways this is done:
- * 4a. UICollectionViewFlowLayout (incl. ASPagerNode). Implement
+ * 4a. ASCollectionViewFlowLayout (incl. ASPagerNode). Implement
  collectionNode:constrainedSizeForItemAtIndexPath:.
  * 4b. Custom collection layouts. Set .layoutInspector and have it implement
  collectionView:constrainedSizeForNodeAtIndexPath:.
@@ -952,5 +1022,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)collectionView:(UICollectionView *)collectionView didEndDisplayingSupplementaryView:(UICollectionReusableView *)view forElementOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath;
 
 @end
+
+#endif
 
 NS_ASSUME_NONNULL_END

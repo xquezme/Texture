@@ -17,6 +17,7 @@
 #import "ASTextNodeWordKerner.h"
 #import "ASThread.h"
 
+#if !AS_PLATFORM_MACOS
 /**
  @abstract Object to hold UITextView's pending UITextInputTraits
 **/
@@ -52,7 +53,9 @@
 }
 
 @end
+#endif // !AS_PLATFORM_MACOS (_ASTextInputTraitsPendingState)
 
+#if !AS_PLATFORM_MACOS
 /**
  @abstract As originally reported in rdar://14729288, when scrollEnabled = NO,
    UITextView does not calculate its contentSize. This makes it difficult 
@@ -90,22 +93,31 @@
 }
 #endif
 
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+- (BOOL)gestureRecognizerShouldBegin:(ASGestureRecognizer *)gestureRecognizer
 {
   // Never allow our pans to begin when _shouldBlockPanGesture is true.
   if (_shouldBlockPanGesture && gestureRecognizer == self.panGestureRecognizer)
     return NO;
 
   // Otherwise, proceed as usual.
+#if AS_PLATFORM_MACOS
+  return YES;
+#else
   if ([UITextView instancesRespondToSelector:_cmd])
     return [super gestureRecognizerShouldBegin:gestureRecognizer];
   return YES;
+#endif
 }
 
 @end
+#endif // !AS_PLATFORM_MACOS (ASPanningOverriddenUITextView)
 
 #pragma mark -
+#if AS_PLATFORM_MACOS
+@interface ASEditableTextNode () <NSTextViewDelegate, NSLayoutManagerDelegate>
+#else
 @interface ASEditableTextNode () <UITextViewDelegate, NSLayoutManagerDelegate>
+#endif
 {
   @private
   // Configuration.
@@ -121,9 +133,11 @@
   // Forwards NSLayoutManagerDelegate methods related to word kerning
   ASTextNodeWordKerner *_wordKerner;
   
+#if !AS_PLATFORM_MACOS
   // UITextInputTraits
   AS::RecursiveMutex _textInputTraitsLock;
   _ASTextInputTraitsPendingState *_textInputTraits;
+#endif
 
   // Misc. State.
   BOOL _displayingPlaceholder; // Defaults to YES.
@@ -135,7 +149,9 @@
   NSRange _previousSelectedRange;
 }
 
+#if !AS_PLATFORM_MACOS
 @property (nonatomic, readonly) _ASTextInputTraitsPendingState *textInputTraits;
+#endif
 
 @end
 
@@ -161,7 +177,7 @@
   _textKitComponents = textKitComponents;
   _textKitComponents.layoutManager.delegate = self;
   _wordKerner = [[ASTextNodeWordKerner alloc] init];
-  _textContainerInset = UIEdgeInsetsZero;
+  _textContainerInset = ASEdgeInsetsZero;
   
   // Create the placeholder scaffolding.
   _placeholderTextKitComponents = placeholderTextKitComponents;
@@ -175,18 +191,27 @@
 {
   [super didLoad];
 
-  void (^configureTextView)(UITextView *) = ^(UITextView *textView) {
+  void (^configureTextView)(ASTextKitComponentsTextView *) = ^(ASTextKitComponentsTextView *textView) {
     if (!self->_displayingPlaceholder || textView != self->_textKitComponents.textView) {
       // If showing the placeholder, don't propagate backgroundColor/opaque to the editable textView.  It is positioned over the placeholder to accept taps to begin editing, and if it's opaque/colored then it'll obscure the placeholder.
       textView.backgroundColor = self.backgroundColor;
+#if !AS_PLATFORM_MACOS
       textView.opaque = self.opaque;
+#endif
     } else if (self->_displayingPlaceholder && textView == self->_textKitComponents.textView) {
       // The default backgroundColor for a textView is white.  Due to the reason described above, make sure the editable textView starts out transparent.
       textView.backgroundColor = nil;
+#if !AS_PLATFORM_MACOS
       textView.opaque = NO;
+#endif
     }
+#if AS_PLATFORM_MACOS
+    textView.textContainerInset = NSMakeSize(self.textContainerInset.left, self.textContainerInset.top);
+#else
     textView.textContainerInset = self.textContainerInset;
+#endif
     
+#if !AS_PLATFORM_MACOS
     // Configure textView with UITextInputTraits
     {
       AS::MutexLocker l(self->_textInputTraitsLock);
@@ -201,7 +226,8 @@
         textView.secureTextEntry                = self->_textInputTraits.isSecureTextEntry;
       }
     }
-    
+#endif
+
     [self.view addSubview:textView];
   };
 
@@ -209,25 +235,39 @@
 
   // Create and configure the placeholder text view.
   _placeholderTextKitComponents.textView = [[ASTextKitComponentsTextView alloc] initWithFrame:CGRectZero textContainer:_placeholderTextKitComponents.textContainer];
+#if AS_PLATFORM_MACOS
+  _placeholderTextKitComponents.textView.editable = NO;
+  _placeholderTextKitComponents.textView.selectable = NO;
+#else
   _placeholderTextKitComponents.textView.userInteractionEnabled = NO;
   _placeholderTextKitComponents.textView.accessibilityElementsHidden = YES;
+#endif
   configureTextView(_placeholderTextKitComponents.textView);
 
   // Create and configure our text view.
+#if AS_PLATFORM_MACOS
+  _textKitComponents.textView = [[ASTextKitComponentsTextView alloc] initWithFrame:CGRectZero textContainer:_textKitComponents.textContainer];
+  _textKitComponents.textView.editable = YES;
+#else
   _textKitComponents.textView = [[ASPanningOverriddenUITextView alloc] initWithFrame:CGRectZero textContainer:_textKitComponents.textContainer];
   _textKitComponents.textView.scrollEnabled = _scrollEnabled;
+#endif
   _textKitComponents.textView.delegate = self;
   #if TARGET_OS_IOS
   _textKitComponents.textView.editable = YES;
   #endif
   _textKitComponents.textView.typingAttributes = _typingAttributes;
+#if !AS_PLATFORM_MACOS
   _textKitComponents.textView.accessibilityHint = _placeholderTextKitComponents.textStorage.string;
+#endif
   configureTextView(_textKitComponents.textView);
 
   [self _updateDisplayingPlaceholder];
     
   // once view is loaded, setters set directly on view
+#if !AS_PLATFORM_MACOS
   _textInputTraits = nil;
+#endif
 }
 
 - (CGSize)calculateSizeThatFits:(CGSize)constrainedSize
@@ -256,7 +296,7 @@
   [self _layoutTextView];
 }
 
-- (void)setBackgroundColor:(UIColor *)backgroundColor
+- (void)setBackgroundColor:(ASColor *)backgroundColor
 {
   [super setBackgroundColor:backgroundColor];
 
@@ -270,13 +310,19 @@
   _placeholderTextKitComponents.textView.backgroundColor = backgroundColor;
 }
 
-- (void)setTextContainerInset:(UIEdgeInsets)textContainerInset
+- (void)setTextContainerInset:(ASEdgeInsets)textContainerInset
 {
   AS::MutexLocker l(_textKitLock);
 
   _textContainerInset = textContainerInset;
+#if AS_PLATFORM_MACOS
+  NSSize insetSize = NSMakeSize(textContainerInset.left, textContainerInset.top);
+  _textKitComponents.textView.textContainerInset = insetSize;
+  _placeholderTextKitComponents.textView.textContainerInset = insetSize;
+#else
   _textKitComponents.textView.textContainerInset = textContainerInset;
   _placeholderTextKitComponents.textView.textContainerInset = textContainerInset;
+#endif
 }
 
 - (void)setOpaque:(BOOL)opaque
@@ -288,9 +334,13 @@
   // If showing the placeholder, don't propagate backgroundColor/opaque to the editable textView.  It is positioned over the placeholder to accept taps to begin editing, and if it's opaque/colored then it'll obscure the placeholder.
   // The backgroundColor/opaque will be propagated to the editable textView when editing begins.
   if (!_displayingPlaceholder) {
+#if !AS_PLATFORM_MACOS
     _textKitComponents.textView.opaque = opaque;
+#endif
   }
+#if !AS_PLATFORM_MACOS
   _placeholderTextKitComponents.textView.opaque = opaque;
+#endif
 }
 
 - (void)setLayerBacked:(BOOL)layerBacked
@@ -311,14 +361,20 @@
 {
   AS::MutexLocker l(_textKitLock);
   _scrollEnabled = scrollEnabled;
+#if !AS_PLATFORM_MACOS
   [_textKitComponents.textView setScrollEnabled:_scrollEnabled];
+#endif
 }
 
+#if AS_PLATFORM_MACOS
+- (NSTextView *)textView
+#else
 - (UITextView *)textView
+#endif
 {
   ASDisplayNodeAssertMainThread();
   [self view];
-  ASDisplayNodeAssert(_textKitComponents.textView != nil, @"UITextView must be created in -[ASEditableTextNode didLoad]");
+  ASDisplayNodeAssert(_textKitComponents.textView != nil, @"Text view must be created in -[ASEditableTextNode didLoad]");
   return _textKitComponents.textView;
 }
 
@@ -386,7 +442,9 @@
     return;
 
   [_placeholderTextKitComponents.textStorage setAttributedString:attributedPlaceholderText ? : [[NSAttributedString alloc] initWithString:@""]];
+#if !AS_PLATFORM_MACOS
   _textKitComponents.textView.accessibilityHint = attributedPlaceholderText.string;
+#endif
 }
 
 #pragma mark - Modifying User Text
@@ -408,7 +466,12 @@
 
   // If we (_cmd) are called while the text view itself is updating (-textViewDidUpdate:), you cannot update the text storage and expect perfect propagation to the text view.
   // Thus, we always update the textview directly if it's been created already.
-  if (ASObjectIsEqual((_textKitComponents.textView.attributedText ? : _textKitComponents.textStorage), attributedText))
+#if AS_PLATFORM_MACOS
+  NSAttributedString *currentText = _textKitComponents.textView ? _textKitComponents.textView.textStorage : nil;
+#else
+  NSAttributedString *currentText = _textKitComponents.textView.attributedText;
+#endif
+  if (ASObjectIsEqual((currentText ? : _textKitComponents.textStorage), attributedText))
     return;
 
   // If the cursor isn't at the end of the text, we need to preserve the selected range to avoid moving the cursor.
@@ -424,10 +487,15 @@
     attributedStringToDisplay = [[NSAttributedString alloc] initWithString:@"" attributes:self.typingAttributes];
 
   // Always prefer updating the text view directly if it's been created (see above).
-  if (_textKitComponents.textView)
+  if (_textKitComponents.textView) {
+#if AS_PLATFORM_MACOS
+    [_textKitComponents.textView.textStorage setAttributedString:attributedStringToDisplay];
+#else
     [_textKitComponents.textView setAttributedText:attributedStringToDisplay];
-  else
+#endif
+  } else {
     [_textKitComponents.textStorage setAttributedString:attributedStringToDisplay];
+  }
 
   // Calculated size depends on the seeded text.
   [self setNeedsLayout];
@@ -454,10 +522,14 @@
 
   // If hiding the placeholder, propagate backgroundColor/opaque to the editable textView.  It is positioned over the placeholder to accept taps to begin editing, and was kept transparent so it doesn't obscure the placeholder text.  Now that we're editing it and the placeholder is hidden, we can make it opaque to avoid unnecessary blending.
   if (!_displayingPlaceholder) {
+#if !AS_PLATFORM_MACOS
     _textKitComponents.textView.opaque = self.isOpaque;
+#endif
     _textKitComponents.textView.backgroundColor = self.backgroundColor;
   } else {
+#if !AS_PLATFORM_MACOS
     _textKitComponents.textView.opaque = NO;
+#endif
     _textKitComponents.textView.backgroundColor = nil;
   }
 }
@@ -474,27 +546,39 @@
   // When we resize to fit (above) the prior layout becomes invalid. For whatever reason, UITextView doesn't invalidate its layout when its frame changes on its own, so we have to do so ourselves.
   [_textKitComponents.layoutManager invalidateLayoutForCharacterRange:NSMakeRange(0, [_textKitComponents.textStorage length]) actualCharacterRange:NULL];
 
+#if !AS_PLATFORM_MACOS
   // When you type beyond UITextView's bounds it scrolls you down a line. We need to remain at the top.
   [_textKitComponents.textView setContentOffset:CGPointZero animated:NO];
+#endif
 }
 
 #pragma mark - Keyboard
+#if !AS_PLATFORM_MACOS
 @dynamic textInputMode;
 - (UITextInputMode *)textInputMode
 {
   AS::MutexLocker l(_textKitLock);
   return [_textKitComponents.textView textInputMode];
 }
+#endif
 
 - (BOOL)isFirstResponder
 {
   AS::MutexLocker l(_textKitLock);
+#if AS_PLATFORM_MACOS
+  return _textKitComponents.textView.window.firstResponder == _textKitComponents.textView;
+#else
   return [_textKitComponents.textView isFirstResponder];
+#endif
 }
 
 - (BOOL)canBecomeFirstResponder {
     AS::MutexLocker l(_textKitLock);
+#if AS_PLATFORM_MACOS
+    return _textKitComponents.textView.acceptsFirstResponder;
+#else
     return [_textKitComponents.textView canBecomeFirstResponder];
+#endif
 }
 
 - (BOOL)becomeFirstResponder
@@ -505,7 +589,11 @@
 
 - (BOOL)canResignFirstResponder {
     AS::MutexLocker l(_textKitLock);
+#if AS_PLATFORM_MACOS
+    return YES; // NSTextView always allows resigning first responder
+#else
     return [_textKitComponents.textView canResignFirstResponder];
+#endif
 }
 
 - (BOOL)resignFirstResponder
@@ -515,6 +603,7 @@
 }
 
 #pragma mark - UITextInputTraits
+#if !AS_PLATFORM_MACOS
 
 - (_ASTextInputTraitsPendingState *)textInputTraits
 {
@@ -684,73 +773,56 @@
   }
 }
 
-#pragma mark - UITextView Delegate
-- (BOOL)textViewShouldBeginEditing:(UITextView *)textView
-{
-  // Delegateify.
-  return [self _delegateShouldBeginEditing];
-}
+#endif // !AS_PLATFORM_MACOS (UITextInputTraits)
 
-- (void)textViewDidBeginEditing:(UITextView *)textView
-{
-  // Delegateify.
-  [self _delegateDidBeginEditing];
-}
-
-- (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text
-{
-  // Delegateify.
-  return [self _delegateShouldChangeTextInRange:range replacementText:text];
-}
-
-- (void)textViewDidChange:(UITextView *)textView
-{
+#pragma mark - Text View Delegate
+#if !AS_PLATFORM_MACOS
+- (BOOL)textViewShouldBeginEditing:(UITextView *)textView { return [self _delegateShouldBeginEditing]; }
+- (void)textViewDidBeginEditing:(UITextView *)textView { [self _delegateDidBeginEditing]; }
+- (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text { return [self _delegateShouldChangeTextInRange:range replacementText:text]; }
+- (void)textViewDidChange:(UITextView *)textView {
   AS::MutexLocker l(_textKitLock);
-
-  // Note we received a text changed event.
-  // This is used by _delegateDidChangeSelectionFromSelectedRange:toSelectedRange: to distinguish between selection changes that happen because of editing or pure selection changes.
   _selectionChangedForEditedText = YES;
-
-  // Update if the placeholder is visible.
   [self _updateDisplayingPlaceholder];
-
-  // Invalidate, as our calculated size depends on the textview's seeded text.
   [self invalidateCalculatedLayout];
-
-  // Delegateify.
   [self _delegateDidUpdateText];
 }
-
-- (void)textViewDidChangeSelection:(UITextView *)textView
-{
-  // Typing attributes get reset when selection changes. Reapply them so they actually obey our header.
+- (void)textViewDidChangeSelection:(UITextView *)textView {
   _textKitComponents.textView.typingAttributes = _typingAttributes;
-
-  // If we're only changing selection to preserve it, don't notify about anything.
-  if (_isPreservingSelection)
-    return;
-
-  // Note if we receive a -textDidChange: between now and when we delegatify.
-  // This is used by _delegateDidChangeSelectionFromSelectedRange:toSelectedRange: to distinguish between selection changes that happen because of editing or pure selection changes.
+  if (_isPreservingSelection) return;
   _selectionChangedForEditedText = NO;
-
   NSRange fromSelectedRange = _previousSelectedRange;
   NSRange toSelectedRange = self.selectedRange;
   _previousSelectedRange = toSelectedRange;
-
-  // Delegateify.
   [self _delegateDidChangeSelectionFromSelectedRange:fromSelectedRange toSelectedRange:toSelectedRange];
 }
-
-- (void)textViewDidEndEditing:(UITextView *)textView
-{
-  // Delegateify.
-  [self _delegateDidFinishEditing];
+- (void)textViewDidEndEditing:(UITextView *)textView { [self _delegateDidFinishEditing]; }
+#else // AS_PLATFORM_MACOS — NSTextViewDelegate
+- (BOOL)textShouldBeginEditing:(NSText *)text { return [self _delegateShouldBeginEditing]; }
+- (void)textDidBeginEditing:(NSNotification *)n { [self _delegateDidBeginEditing]; }
+- (BOOL)textView:(NSTextView *)tv shouldChangeTextInRange:(NSRange)r replacementString:(NSString *)s { return [self _delegateShouldChangeTextInRange:r replacementText:s]; }
+- (void)textDidChange:(NSNotification *)n {
+  AS::MutexLocker l(_textKitLock);
+  _selectionChangedForEditedText = YES;
+  [self _updateDisplayingPlaceholder];
+  [self invalidateCalculatedLayout];
+  [self _delegateDidUpdateText];
 }
+- (void)textViewDidChangeSelection:(NSNotification *)n {
+  _textKitComponents.textView.typingAttributes = _typingAttributes;
+  if (_isPreservingSelection) return;
+  _selectionChangedForEditedText = NO;
+  NSRange fromSelectedRange = _previousSelectedRange;
+  NSRange toSelectedRange = self.selectedRange;
+  _previousSelectedRange = toSelectedRange;
+  [self _delegateDidChangeSelectionFromSelectedRange:fromSelectedRange toSelectedRange:toSelectedRange];
+}
+- (void)textDidEndEditing:(NSNotification *)n { [self _delegateDidFinishEditing]; }
+#endif // Text View Delegate
 
 #pragma mark - NSLayoutManager Delegate
 
-- (NSUInteger)layoutManager:(NSLayoutManager *)layoutManager shouldGenerateGlyphs:(const CGGlyph *)glyphs properties:(const NSGlyphProperty *)properties characterIndexes:(const NSUInteger *)characterIndexes font:(UIFont *)aFont forGlyphRange:(NSRange)glyphRange
+- (NSUInteger)layoutManager:(NSLayoutManager *)layoutManager shouldGenerateGlyphs:(const CGGlyph *)glyphs properties:(const NSGlyphProperty *)properties characterIndexes:(const NSUInteger *)characterIndexes font:(ASFont *)aFont forGlyphRange:(NSRange)glyphRange
 {
   return [_wordKerner layoutManager:layoutManager shouldGenerateGlyphs:glyphs properties:properties characterIndexes:characterIndexes font:aFont forGlyphRange:glyphRange];
 }
@@ -844,6 +916,7 @@
 }
 
 #pragma mark - UIAccessibilityContainer
+#if !AS_PLATFORM_MACOS
 
 - (NSInteger)accessibilityElementCount
 {
@@ -876,5 +949,6 @@
 {
   return 0;
 }
+#endif // !AS_PLATFORM_MACOS (UIAccessibilityContainer)
 
 @end

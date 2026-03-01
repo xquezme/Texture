@@ -427,6 +427,7 @@
 		A4F555DE2C86B3F40050AF73 /* ASDisplayNodeExtras.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F5544C2C86B3F30050AF73 /* ASDisplayNodeExtras.mm */; };
 		A4F555DF2C86B3F40050AF73 /* ASDKNavigationController.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F5544D2C86B3F30050AF73 /* ASDKNavigationController.mm */; };
 		A4F555E02C86B3F40050AF73 /* ASDKViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F5544E2C86B3F30050AF73 /* ASDKViewController.mm */; };
+		A5B700042EAA111100000001 /* ASPlatformDefines.mm in Sources */ = {isa = PBXBuildFile; fileRef = A5B700052EAA111100000001 /* ASPlatformDefines.mm */; };
 		A4F555E12C86B3F40050AF73 /* ASEditableTextNode.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F5544F2C86B3F30050AF73 /* ASEditableTextNode.mm */; };
 		A4F555E22C86B3F40050AF73 /* ASExperimentalFeatures.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F554502C86B3F30050AF73 /* ASExperimentalFeatures.mm */; };
 		A4F555E32C86B3F40050AF73 /* ASImageNode.mm in Sources */ = {isa = PBXBuildFile; fileRef = A4F554512C86B3F30050AF73 /* ASImageNode.mm */; };
@@ -478,7 +479,8 @@
 		CC11F97A1DB181180024D77B /* ASNetworkImageNodeTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = CC11F9791DB181180024D77B /* ASNetworkImageNodeTests.mm */; };
 		CC224E962066CA6D00BBA57F /* configuration.json in Resources */ = {isa = PBXBuildFile; fileRef = CC224E952066CA6D00BBA57F /* configuration.json */; };
 		CC35CEC620DD87280006448D /* ASCollectionsTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = CC35CEC520DD87280006448D /* ASCollectionsTests.mm */; };
-		CC36C18F218B841600232F23 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC36C18E218B841600232F23 /* UIKit.framework */; };
+		A5B700012EAA111100000001 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC36C18E218B841600232F23 /* UIKit.framework */; platformFilter = tvos; };
+		CC36C18F218B841600232F23 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC36C18E218B841600232F23 /* UIKit.framework */; platformFilter = ios; };
 		CC36C191218B841A00232F23 /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC36C190218B841A00232F23 /* CoreText.framework */; };
 		CC36C193218B842E00232F23 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC36C192218B842E00232F23 /* CoreGraphics.framework */; };
 		CC36C194218B844800232F23 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 058D09AF195D04C000B7D73C /* Foundation.framework */; };
@@ -1021,6 +1023,8 @@
 		CC11F9791DB181180024D77B /* ASNetworkImageNodeTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TextureUnitTests/ASNetworkImageNodeTests.mm; sourceTree = "<group>"; };
 		CC224E952066CA6D00BBA57F /* configuration.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = configuration.json; sourceTree = "<group>"; };
 		CC35CEC520DD87280006448D /* ASCollectionsTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = TextureUnitTests/ASCollectionsTests.mm; sourceTree = "<group>"; };
+		A5B700032EAA111100000001 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		A5B700052EAA111100000001 /* ASPlatformDefines.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ASPlatformDefines.mm; sourceTree = "<group>"; };
 		CC36C18E218B841600232F23 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		CC36C190218B841A00232F23 /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
 		CC36C192218B842E00232F23 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -1108,9 +1112,7 @@
 				CC36C194218B844800232F23 /* Foundation.framework in Frameworks */,
 				CC36C193218B842E00232F23 /* CoreGraphics.framework in Frameworks */,
 				CC36C191218B841A00232F23 /* CoreText.framework in Frameworks */,
-				CC36C18F218B841600232F23 /* UIKit.framework in Frameworks */,
 				92DD2FE61BF4D05E0074C9DD /* MapKit.framework in Frameworks */,
-				B350625E1B0111780018CF92 /* AssetsLibrary.framework in Frameworks */,
 				B350625D1B0111740018CF92 /* Photos.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1167,6 +1169,7 @@
 		058D09AE195D04C000B7D73C /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A5B700032EAA111100000001 /* AppKit.framework */,
 				CD0F261B25CA03BB00735A79 /* WebKit.framework */,
 				CC36C19B218B847400232F23 /* CoreMedia.framework */,
 				CC36C199218B846F00232F23 /* CoreLocation.framework */,
@@ -1803,6 +1806,7 @@
 				A4F554522C86B3F30050AF73 /* ASImageNode+AnimatedImage.mm */,
 				A4F554532C86B3F30050AF73 /* ASInternalHelpers.mm */,
 				A4F554542C86B3F30050AF73 /* ASMainThreadDeallocation.mm */,
+				A5B700052EAA111100000001 /* ASPlatformDefines.mm */,
 				A4F554552C86B3F30050AF73 /* ASMapNode.mm */,
 				A4F554562C86B3F30050AF73 /* ASMultiplexImageNode.mm */,
 				A4F554572C86B3F30050AF73 /* ASNetworkImageLoadInfo.mm */,
@@ -2434,6 +2438,7 @@
 				A4F555C12C86B3F40050AF73 /* ASTextKitAttributes.mm in Sources */,
 				A4F555A32C86B3F40050AF73 /* ASPendingStateController.mm in Sources */,
 				A4F555E02C86B3F40050AF73 /* ASDKViewController.mm in Sources */,
+				A5B700042EAA111100000001 /* ASPlatformDefines.mm in Sources */,
 				A4F554912C86B3F30050AF73 /* ASRangeController.mm in Sources */,
 				A4F555DB2C86B3F40050AF73 /* ASDisplayNode+Layout.mm in Sources */,
 				A4F555BA2C86B3F40050AF73 /* ASTextLine.mm in Sources */,
@@ -2811,9 +2816,15 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
-				HEADER_SEARCH_PATHS = "$(inherited)";
+					GCC_PRECOMPILE_PREFIX_HEADER = YES;
+					GCC_PREPROCESSOR_DEFINITIONS = (
+						"$(inherited)",
+						"AS_USE_ASSETS_LIBRARY=1",
+						"AS_USE_MAPKIT=1",
+						"AS_USE_PHOTOS=1",
+						"AS_USE_VIDEO=1",
+					);
+					HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/Source/Texture/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -2828,6 +2839,8 @@
 					"-Wundef",
 					"-fno-exceptions",
 				);
+				"OTHER_LDFLAGS[sdk=appletv*]" = "$(inherited) -framework UIKit";
+				"OTHER_LDFLAGS[sdk=iphone*]" = "$(inherited) -framework UIKit -weak_framework AssetsLibrary";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.facebook.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = AsyncDisplayKit;
 				SKIP_INSTALL = YES;
@@ -2852,8 +2865,15 @@
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				HEADER_SEARCH_PATHS = "$(inherited)";
+					GCC_PRECOMPILE_PREFIX_HEADER = YES;
+					GCC_PREPROCESSOR_DEFINITIONS = (
+						"$(inherited)",
+						"AS_USE_ASSETS_LIBRARY=1",
+						"AS_USE_MAPKIT=1",
+						"AS_USE_PHOTOS=1",
+						"AS_USE_VIDEO=1",
+					);
+					HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/Source/Texture/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -2868,6 +2888,8 @@
 					"-Wundef",
 					"-fno-exceptions",
 				);
+				"OTHER_LDFLAGS[sdk=appletv*]" = "$(inherited) -framework UIKit";
+				"OTHER_LDFLAGS[sdk=iphone*]" = "$(inherited) -framework UIKit -weak_framework AssetsLibrary";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.facebook.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = AsyncDisplayKit;
 				SKIP_INSTALL = YES;
@@ -2993,9 +3015,16 @@
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREPROCESSOR_DEFINITIONS = "PROFILE=1";
+					GCC_NO_COMMON_BLOCKS = YES;
+					GCC_PRECOMPILE_PREFIX_HEADER = YES;
+					GCC_PREPROCESSOR_DEFINITIONS = (
+						"$(inherited)",
+						"PROFILE=1",
+						"AS_USE_ASSETS_LIBRARY=1",
+						"AS_USE_MAPKIT=1",
+						"AS_USE_PHOTOS=1",
+						"AS_USE_VIDEO=1",
+					);
 				HEADER_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/Source/Texture/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -3011,6 +3040,8 @@
 					"-Wundef",
 					"-fno-exceptions",
 				);
+				"OTHER_LDFLAGS[sdk=appletv*]" = "$(inherited) -framework UIKit";
+				"OTHER_LDFLAGS[sdk=iphone*]" = "$(inherited) -framework UIKit -weak_framework AssetsLibrary";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.facebook.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = AsyncDisplayKit;
 				SKIP_INSTALL = YES;

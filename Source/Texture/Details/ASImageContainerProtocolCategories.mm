@@ -9,9 +9,13 @@
 
 #import "ASImageContainerProtocolCategories.h"
 
-@implementation UIImage (ASImageContainerProtocol)
+#if AS_PLATFORM_MACOS
+ @implementation NSImage (ASImageContainerProtocol)
+#else
+ @implementation UIImage (ASImageContainerProtocol)
+#endif
 
-- (UIImage *)asdk_image
+- (ASImage *)asdk_image
 {
     return self;
 }
@@ -25,7 +29,7 @@
 
 @implementation NSData (ASImageContainerProtocol)
 
-- (UIImage *)asdk_image
+- (ASImage *)asdk_image
 {
     return nil;
 }

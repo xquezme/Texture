@@ -11,6 +11,7 @@
 #import "_ASAsyncTransaction.h"
 #import "_ASAsyncTransactionGroup.h"
 #import "ASAssert.h"
+#import "ASPlatformDefines.h"
 #import "ASThread.h"
 #import <list>
 #import <map>
@@ -19,7 +20,18 @@
   #warning "Texture must be compiled with std=c++11 to prevent layout issues. gnu++ is not supported. This is hopefully temporary."
 #endif
 
+#if !AS_PLATFORM_MACOS
 ASDK_EXTERN NSRunLoopMode const UITrackingRunLoopMode;
+#endif
+
+static NSRunLoopMode ASAsyncTransactionTrackingRunLoopMode(void)
+{
+#if AS_PLATFORM_MACOS
+  return @"NSEventTrackingRunLoopMode";
+#else
+  return UITrackingRunLoopMode;
+#endif
+}
 
 NSInteger const ASDefaultTransactionPriority = 0;
 
@@ -227,7 +239,7 @@ void ASAsyncTransactionQueue::GroupImpl::schedule(NSInteger priority, dispatch_q
   NSUInteger maxThreads = [NSProcessInfo processInfo].activeProcessorCount * 2;
 
   // Bit questionable maybe - we can give main thread more CPU time during tracking.
-  if ([[NSRunLoop mainRunLoop].currentMode isEqualToString:UITrackingRunLoopMode])
+  if ([[NSRunLoop mainRunLoop].currentMode isEqualToString:ASAsyncTransactionTrackingRunLoopMode()])
     --maxThreads;
 #endif
   

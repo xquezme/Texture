@@ -57,6 +57,7 @@ void _ASSetDebugNames(Class _Nonnull owningClass, NSString * _Nonnull names, ASD
   va_end(args);
 }
 
+#if !AS_PLATFORM_MACOS
 ASInterfaceState ASInterfaceStateForDisplayNode(ASDisplayNode *displayNode, UIWindow *window)
 {
     ASDisplayNodeCAssert(![displayNode isLayerBacked], @"displayNode must not be layer backed as it may have a nil window");
@@ -71,13 +72,14 @@ ASInterfaceState ASInterfaceStateForDisplayNode(ASDisplayNode *displayNode, UIWi
         return (window == nil ? ASInterfaceStateNone : (ASInterfaceStateVisible | ASInterfaceStateDisplay));
     }
 }
+#endif
 
 ASDisplayNode *ASLayerToDisplayNode(CALayer *layer)
 {
   return layer.asyncdisplaykit_node;
 }
 
-ASDisplayNode *ASViewToDisplayNode(UIView *view)
+ASDisplayNode *ASViewToDisplayNode(ASDisplayView *view)
 {
   return view.asyncdisplaykit_node;
 }
@@ -253,20 +255,22 @@ static inline BOOL _ASDisplayNodeIsAncestorOfDisplayNode(ASDisplayNode *possible
   return NO;
 }
 
+#if !AS_PLATFORM_MACOS
 UIWindow * _Nullable ASFindWindowOfLayer(CALayer *layer)
 {
-  UIView *view = ASFindClosestViewOfLayer(layer);
+  ASDisplayView *view = ASFindClosestViewOfLayer(layer);
   if (UIWindow *window = ASDynamicCast(view, UIWindow)) {
     return window;
   } else {
     return view.window;
   }
 }
+#endif
 
-UIView * _Nullable ASFindClosestViewOfLayer(CALayer *layer)
+ASDisplayView * _Nullable ASFindClosestViewOfLayer(CALayer *layer)
 {
   while (layer != nil) {
-    if (UIView *view = ASDynamicCast(layer.delegate, UIView)) {
+    if (ASDisplayView *view = ASDynamicCast(layer.delegate, ASDisplayView)) {
       return view;
     }
     layer = layer.superlayer;
@@ -302,24 +306,24 @@ ASDisplayNode *ASDisplayNodeUltimateParentOfNode(ASDisplayNode *node)
 
 #pragma mark - Placeholders
 
-UIColor *ASDisplayNodeDefaultPlaceholderColor()
+ASColor *ASDisplayNodeDefaultPlaceholderColor()
 {
-  static UIColor *defaultPlaceholderColor;
+  static ASColor *defaultPlaceholderColor;
 
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    defaultPlaceholderColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    defaultPlaceholderColor = [ASColor colorWithWhite:0.95 alpha:1.0];
   });
   return defaultPlaceholderColor;
 }
 
-UIColor *ASDisplayNodeDefaultTintColor()
+ASColor *ASDisplayNodeDefaultTintColor()
 {
-  static UIColor *defaultTintColor;
+  static ASColor *defaultTintColor;
 
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    defaultTintColor = [UIColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:1.0];
+    defaultTintColor = [ASColor colorWithRed:0.0 green:0.478 blue:1.0 alpha:1.0];
   });
   return defaultTintColor;
 }

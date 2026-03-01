@@ -8,6 +8,39 @@
 //
 
 #import "ASBaseDefines.h"
+#import "ASPlatformDefines.h"
+
+#if AS_PLATFORM_MACOS
+
+NS_ASSUME_NONNULL_BEGIN
+
+@class ASTableView;
+
+/**
+ * AppKit subset used by table data-source contracts on macOS.
+ */
+@protocol ASCommonTableDataSource <NSObject>
+@optional
+- (NSInteger)tableView:(ASTableView *)tableView numberOfRowsInSection:(NSInteger)section;
+- (NSInteger)numberOfSectionsInTableView:(ASTableView *)tableView;
+- (nullable NSArray<NSString *> *)sectionIndexTitlesForTableView:(ASTableView *)tableView;
+- (NSInteger)tableView:(ASTableView *)tableView sectionForSectionIndexTitle:(NSString *)title atIndex:(NSInteger)index;
+@end
+
+/**
+ * AppKit subset used by table delegate contracts on macOS.
+ */
+@protocol ASCommonTableViewDelegate <NSObject>
+@optional
+- (nullable NSIndexPath *)tableView:(ASTableView *)tableView willSelectRowAtIndexPath:(NSIndexPath *)indexPath;
+- (nullable NSIndexPath *)tableView:(ASTableView *)tableView willDeselectRowAtIndexPath:(NSIndexPath *)indexPath;
+- (void)tableView:(ASTableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath;
+- (void)tableView:(ASTableView *)tableView didDeselectRowAtIndexPath:(NSIndexPath *)indexPath;
+@end
+
+NS_ASSUME_NONNULL_END
+
+#else
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -50,16 +83,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 @optional
 
-- (void)tableView:(UITableView *)tableView willDisplayHeaderView:(UIView *)view forSection:(NSInteger)section;
-- (void)tableView:(UITableView *)tableView willDisplayFooterView:(UIView *)view forSection:(NSInteger)section;
-- (void)tableView:(UITableView *)tableView didEndDisplayingHeaderView:(UIView *)view forSection:(NSInteger)section;
-- (void)tableView:(UITableView *)tableView didEndDisplayingFooterView:(UIView *)view forSection:(NSInteger)section;
+- (void)tableView:(UITableView *)tableView willDisplayHeaderView:(ASDisplayView *)view forSection:(NSInteger)section;
+- (void)tableView:(UITableView *)tableView willDisplayFooterView:(ASDisplayView *)view forSection:(NSInteger)section;
+- (void)tableView:(UITableView *)tableView didEndDisplayingHeaderView:(ASDisplayView *)view forSection:(NSInteger)section;
+- (void)tableView:(UITableView *)tableView didEndDisplayingFooterView:(ASDisplayView *)view forSection:(NSInteger)section;
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section;
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section;
 
-- (nullable UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section;
-- (nullable UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section;
+- (nullable ASDisplayView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section;
+- (nullable ASDisplayView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section;
 
 - (void)tableView:(UITableView *)tableView accessoryButtonTappedForRowWithIndexPath:(NSIndexPath *)indexPath;
 
@@ -99,3 +132,5 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
+
+#endif // AS_PLATFORM_MACOS

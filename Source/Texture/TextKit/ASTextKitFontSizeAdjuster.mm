@@ -59,7 +59,7 @@
   // scale all the attributes that will change the bounding box
   [attrString enumerateAttributesInRange:NSMakeRange(0, attrString.length) options:0 usingBlock:^(NSDictionary<NSString *,id> * _Nonnull attrs, NSRange range, BOOL * _Nonnull stop) {
     if (attrs[NSFontAttributeName] != nil) {
-      UIFont *font = attrs[NSFontAttributeName];
+      ASFont *font = attrs[NSFontAttributeName];
       font = [font fontWithSize:std::round(font.pointSize * scaleFactor)];
       [attrString removeAttribute:NSFontAttributeName range:range];
       [attrString addAttribute:NSFontAttributeName value:font range:range];

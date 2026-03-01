@@ -8,10 +8,11 @@
 //
 
 #import "ASAvailability.h"
+#import "ASPlatformDefines.h"
 
 #if AS_USE_VIDEO
 
-#if TARGET_OS_IOS
+#if AS_PLATFORM_IOS || AS_PLATFORM_MACOS
 #import <CoreMedia/CoreMedia.h>
 #import "ASThread.h"
 #import "ASVideoNode.h"
@@ -123,21 +124,26 @@ NS_ASSUME_NONNULL_BEGIN
                       forTime:(CMTime)time;
 
 #pragma mark Scrubber delegate methods
-- (UIColor *)videoPlayerNodeScrubberMaximumTrackTint:(ASVideoPlayerNode *)videoPlayer;
-- (UIColor *)videoPlayerNodeScrubberMinimumTrackTint:(ASVideoPlayerNode *)videoPlayer;
-- (UIColor *)videoPlayerNodeScrubberThumbTint:(ASVideoPlayerNode *)videoPlayer;
-- (UIImage *)videoPlayerNodeScrubberThumbImage:(ASVideoPlayerNode *)videoPlayer;
+- (ASColor *)videoPlayerNodeScrubberMaximumTrackTint:(ASVideoPlayerNode *)videoPlayer;
+- (ASColor *)videoPlayerNodeScrubberMinimumTrackTint:(ASVideoPlayerNode *)videoPlayer;
+- (ASColor *)videoPlayerNodeScrubberThumbTint:(ASVideoPlayerNode *)videoPlayer;
+- (ASImage *)videoPlayerNodeScrubberThumbImage:(ASVideoPlayerNode *)videoPlayer;
 
 #pragma mark - Spinner delegate methods
-- (UIColor *)videoPlayerNodeSpinnerTint:(ASVideoPlayerNode *)videoPlayer;
+- (ASColor *)videoPlayerNodeSpinnerTint:(ASVideoPlayerNode *)videoPlayer;
+#if !AS_PLATFORM_MACOS
 - (UIActivityIndicatorViewStyle)videoPlayerNodeSpinnerStyle:(ASVideoPlayerNode *)videoPlayer;
+#endif
+#if AS_PLATFORM_MACOS
+- (NSControlSize)videoPlayerNodeSpinnerControlSize:(ASVideoPlayerNode *)videoPlayer;
+#endif
 
 #pragma mark - Playback button delegate methods
-- (UIColor *)videoPlayerNodePlaybackButtonTint:(ASVideoPlayerNode *)videoPlayer;
+- (ASColor *)videoPlayerNodePlaybackButtonTint:(ASVideoPlayerNode *)videoPlayer;
 
 #pragma mark - Fullscreen button delegate methods
 
-- (UIImage *)videoPlayerNodeFullScreenButtonImage:(ASVideoPlayerNode *)videoPlayer;
+- (ASImage *)videoPlayerNodeFullScreenButtonImage:(ASVideoPlayerNode *)videoPlayer;
 
 
 #pragma mark ASVideoNodeDelegate proxy methods
@@ -220,6 +226,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 NS_ASSUME_NONNULL_END
-#endif  // TARGET_OS_IOS
+#endif  // AS_PLATFORM_IOS || AS_PLATFORM_MACOS
 
 #endif

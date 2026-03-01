@@ -11,6 +11,7 @@
 
 #import <objc/runtime.h>
 
+#import "ASPlatformDefines.h"
 #import "ASBasicImageDownloaderInternal.h"
 #import "ASImageContainerProtocolCategories.h"
 #import "ASThread.h"
@@ -135,7 +136,7 @@ static NSMutableDictionary *currentRequests = nil;
   }
 }
 
-- (void)completeWithImage:(UIImage *)image error:(NSError *)error
+- (void)completeWithImage:(ASImage *)image error:(NSError *)error
 {
   MutexLocker l(__instanceLock__);
   for (NSDictionary *callbackData in self.callbackDatas) {
@@ -206,7 +207,7 @@ static const void *ContextKey() {
 {
   objc_setAssociatedObject(self, ContextKey(), asyncdisplaykit_context, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
-- (ASBasicImageDownloader *)asyncdisplaykit_context
+- (ASBasicImageDownloaderContext *)asyncdisplaykit_context
 {
   return objc_getAssociatedObject(self, ContextKey());
 }
@@ -337,7 +338,8 @@ static const void *ContextKey() {
   }
 
   if (context) {
-    UIImage *image = [UIImage imageWithData:[NSData dataWithContentsOfURL:location]];
+    NSData *imageData = [NSData dataWithContentsOfURL:location];
+    ASImage *image = [[ASImage alloc] initWithData:imageData];
     [context completeWithImage:image error:nil];
   }
 }

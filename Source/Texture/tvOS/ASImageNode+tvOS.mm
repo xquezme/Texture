@@ -24,7 +24,7 @@
 {
   [super touchesBegan:touches withEvent:event];
   self.isDefaultFocusAppearance = NO;
-  UIView *view = [self getView];
+  ASDisplayView *view = [self getView];
   CALayer *layer = view.layer;
   
   CGSize targetShadowOffset = CGSizeMake(0.0, self.bounds.size.height/8);
@@ -65,7 +65,7 @@
   if (!self.isDefaultFocusAppearance) {
     // This view may correspond to either self.view
     // or our superview if we are in a ASCellNode
-    UIView *view = [self getView];
+    ASDisplayView *view = [self getView];
     
     UITouch *touch = [touches anyObject];
     // Get the specific point that was touched
@@ -112,7 +112,7 @@
     CATransform3D transform = CATransform3DConcat(pitchTransform, yawTransform);
     CATransform3D scaleAndTransform = CATransform3DConcat(transform, CATransform3DMakeAffineTransform(CGAffineTransformScale(CGAffineTransformIdentity, 1.25, 1.25)));
     
-    [UIView animateWithDuration:0.5 animations:^{
+    [ASDisplayView animateWithDuration:0.5 animations:^{
       view.layer.transform = scaleAndTransform;
     }];
   } else {
@@ -130,7 +130,7 @@
 - (void)finishTouches
 {
   if (!self.isDefaultFocusAppearance) {
-    UIView *view = [self getView];
+    ASDisplayView *view = [self getView];
     CALayer *layer = view.layer;
     
     CGSize targetShadowOffset = CGSizeMake(0.0, self.bounds.size.height/8);
@@ -141,7 +141,7 @@
     }];
     [CATransaction commit];
     
-    [UIView animateWithDuration:0.4 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+    [ASDisplayView animateWithDuration:0.4 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
       view.layer.transform = targetScaleTransform;
     } completion:^(BOOL finished) {
       if (finished) {
@@ -156,19 +156,19 @@
 
 - (void)setFocusedState
 {
-  UIView *view = [self getView];
+  ASDisplayView *view = [self getView];
   CALayer *layer = view.layer;
   layer.shadowOffset = CGSizeMake(2, 10);
-  layer.shadowColor = [UIColor blackColor].CGColor;
+  layer.shadowColor = [ASColor blackColor].CGColor;
   layer.shadowRadius = 12.0;
   layer.shadowOpacity = 0.45;
-  layer.shadowPath = [UIBezierPath bezierPathWithRect:self.layer.bounds].CGPath;
+  layer.shadowPath = [ASBezierPath bezierPathWithRect:self.layer.bounds].CGPath;
   view.transform = CGAffineTransformScale(CGAffineTransformIdentity, 1.25, 1.25);
 }
 
 - (void)setDefaultFocusAppearance
 {
-  UIView *view = [self getView];
+  ASDisplayView *view = [self getView];
   CALayer *layer = view.layer;
   view.transform = CGAffineTransformIdentity;
   layer.shadowOpacity = 0;
@@ -180,7 +180,7 @@
   self.isDefaultFocusAppearance = YES;
 }
 
-- (UIView *)getView
+- (ASDisplayView *)getView
 {
   // TODO: This needs to be re-visited to handle all possibilities.
   // If we are inside a ASCellNode, then we need to apply our focus effects to the ASCellNode view/layer rather than the ASImageNode view/layer.

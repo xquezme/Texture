@@ -14,15 +14,15 @@
 #import "ASSignpost.h"
 #import "ASThread.h"
 
-static NSNumber *allowsGroupOpacityFromUIKitOrNil;
-static NSNumber *allowsEdgeAntialiasingFromUIKitOrNil;
+static NSNumber *allowsGroupOpacityOverrideOrNil;
+static NSNumber *allowsEdgeAntialiasingOverrideOrNil;
 
 BOOL ASDefaultAllowsGroupOpacity()
 {
   static BOOL groupOpacity;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    NSNumber *groupOpacityObj = allowsGroupOpacityFromUIKitOrNil ?: [NSBundle.mainBundle objectForInfoDictionaryKey:@"UIViewGroupOpacity"];
+    NSNumber *groupOpacityObj = allowsGroupOpacityOverrideOrNil ?: [NSBundle.mainBundle objectForInfoDictionaryKey:@"UIViewGroupOpacity"];
     groupOpacity = groupOpacityObj ? groupOpacityObj.boolValue : YES;
   });
   return groupOpacity;
@@ -33,7 +33,7 @@ BOOL ASDefaultAllowsEdgeAntialiasing()
   static BOOL edgeAntialiasing;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    NSNumber *antialiasingObj = allowsEdgeAntialiasingFromUIKitOrNil ?: [NSBundle.mainBundle objectForInfoDictionaryKey:@"UIViewEdgeAntialiasing"];
+    NSNumber *antialiasingObj = allowsEdgeAntialiasingOverrideOrNil ?: [NSBundle.mainBundle objectForInfoDictionaryKey:@"UIViewEdgeAntialiasing"];
     edgeAntialiasing = antialiasingObj ? antialiasingObj.boolValue : NO;
   });
   return edgeAntialiasing;
@@ -42,8 +42,8 @@ BOOL ASDefaultAllowsEdgeAntialiasing()
 #if AS_SIGNPOST_ENABLE
 void _ASInitializeSignpostObservers(void)
 {
-  // Orientation changes. Unavailable on tvOS.
-#if !TARGET_OS_TV
+  // Orientation-change signposts are iOS-only.
+#if AS_PLATFORM_IOS
   [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationWillChangeStatusBarOrientationNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
     UIInterfaceOrientation orientation = (UIInterfaceOrientation)[note.userInfo[UIApplicationStatusBarOrientationUserInfoKey] integerValue];
     ASSignpostStart(OrientationChange, (id)nil, "from %s", UIInterfaceOrientationIsPortrait(orientation) ? "portrait" : "landscape");
@@ -57,7 +57,7 @@ void _ASInitializeSignpostObservers(void)
     }];
     [CATransaction commit];
   }];
-#endif  // TARGET_OS_TV
+#endif  // AS_PLATFORM_IOS
 }
 #endif  // AS_SIGNPOST_ENABLE
 
@@ -82,9 +82,9 @@ void ASInitializeFrameworkMainThreadOnDestructor(void)
     if (ASActivateExperimentalFeature(ASExperimentalLayerDefaults)) {
       // Nop. We will gather default values on-demand in ASDefaultAllowsGroupOpacity and ASDefaultAllowsEdgeAntialiasing
     } else {
-      CALayer *layer = [[[UIView alloc] init] layer];
-      allowsGroupOpacityFromUIKitOrNil = @(layer.allowsGroupOpacity);
-      allowsEdgeAntialiasingFromUIKitOrNil = @(layer.allowsEdgeAntialiasing);
+      CALayer *layer = [[[ASDisplayView alloc] init] layer];
+      allowsGroupOpacityOverrideOrNil = @(layer.allowsGroupOpacity);
+      allowsEdgeAntialiasingOverrideOrNil = @(layer.allowsEdgeAntialiasing);
     }
   });
 }
@@ -168,7 +168,7 @@ Class _Nullable ASGetClassFromType(const char  * _Nullable type)
     return Nil;
   }
 
-  // Copy type[2..(end-1)]. So @"UIImage" -> UIImage
+  // Copy type[2..(end-1)]. So @"ASImage" -> ASImage
   size_t resultLength = typeLength - 3;
   char className[resultLength + 1];
   strncpy(className, type + 2, resultLength);
@@ -181,9 +181,13 @@ CGFloat ASScreenScale()
   static CGFloat __scale = 0.0;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
+#if AS_PLATFORM_MACOS
+    __scale = NSScreen.mainScreen != nil ? NSScreen.mainScreen.backingScaleFactor : 1.0;
+#else
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(1, 1), YES, 0);
     __scale = CGContextGetCTM(UIGraphicsGetCurrentContext()).a;
     UIGraphicsEndImageContext();
+#endif
   });
   return __scale;
 }

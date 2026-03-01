@@ -6,6 +6,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <TargetConditionals.h>
+
 #import "ASAvailability.h"
 #import "ASButtonNode+Yoga.h"
 #import "ASButtonNode+Private.h"
@@ -67,14 +69,14 @@ static void ASButtonNodeResolveVerticalAlignmentForStyle(ASLayoutElementStyle *s
     if (children.count == 2) {
       unowned ASLayoutElementStyle *firstChildStyle = children.firstObject.style;
       if (_laysOutHorizontally) {
-        firstChildStyle.margin = ASEdgeInsetsMake(UIEdgeInsetsMake(0, 0, 0, _contentSpacing));
+        firstChildStyle.margin = ASEdgeInsetsMake(ASEdgeInsetsMake(0, 0, 0, _contentSpacing));
       } else {
-        firstChildStyle.margin = ASEdgeInsetsMake(UIEdgeInsetsMake(0, 0, _contentSpacing, 0));
+        firstChildStyle.margin = ASEdgeInsetsMake(ASEdgeInsetsMake(0, 0, _contentSpacing, 0));
       }
     }
 
     // Add padding to button
-    if (UIEdgeInsetsEqualToEdgeInsets(UIEdgeInsetsZero, _contentEdgeInsets) == NO) {
+    if (ASEdgeInsetsEqualToEdgeInsets(ASEdgeInsetsZero, _contentEdgeInsets) == NO) {
       style.padding = ASEdgeInsetsMake(_contentEdgeInsets);
     }
 
@@ -84,7 +86,7 @@ static void ASButtonNodeResolveVerticalAlignmentForStyle(ASLayoutElementStyle *s
       [children insertObject:_backgroundImageNode atIndex:0];
 
       _backgroundImageNode.style.positionType = YGPositionTypeAbsolute;
-      _backgroundImageNode.style.position = ASEdgeInsetsMake(UIEdgeInsetsZero);
+      _backgroundImageNode.style.position = ASEdgeInsetsMake(ASEdgeInsetsZero);
     }
   }
 

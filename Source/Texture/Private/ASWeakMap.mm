@@ -36,7 +36,7 @@
 /**
  * Implementation details:
  *
- * The retained size of our keys is potentially very large (for example, a UIImage is commonly part of a key).
+ * The retained size of our keys is potentially very large (for example, a ASImage is commonly part of a key).
  * Unfortunately, NSMapTable does not make guarantees about how quickly it will dispose of entries where
  * either the key or the value is weak and has been disposed.  So, a NSMapTable with "strong key to weak value" is
  * unsuitable for our purpose because the strong keys are retained longer than the value and for an indefininte period of time.

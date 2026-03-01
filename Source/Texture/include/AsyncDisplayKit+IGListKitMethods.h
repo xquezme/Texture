@@ -9,16 +9,16 @@
 
 #import "ASAvailability.h"
 
-#if AS_IG_LIST_KIT
+#if AS_IG_LIST_KIT && !AS_PLATFORM_MACOS
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 #if __has_include(<IGListKit/IGListKit.h>)
 #import <IGListKit/IGListKit.h>
 #else
 #import <IGListKit.h>
-#endif
+#endif // AS_IG_LIST_KIT && !AS_PLATFORM_MACOS
 
 NS_ASSUME_NONNULL_BEGIN
 

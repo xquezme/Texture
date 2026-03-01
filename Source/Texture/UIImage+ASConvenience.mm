@@ -12,9 +12,35 @@
 
 #pragma mark - ASDKFastImageNamed
 
-@implementation UIImage (ASDKFastImageNamed)
+#if AS_PLATFORM_MACOS
+ @implementation NSImage (ASDKFastImageNamed)
+#else
+ @implementation UIImage (ASDKFastImageNamed)
+#endif
 
-UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollection) NS_RETURNS_RETAINED
+#if AS_PLATFORM_MACOS
+static ASImage *cachedImageNamed(NSString *imageName) NS_RETURNS_RETAINED
+{
+  static NSCache *imageCache = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    imageCache = [[NSCache alloc] init];
+  });
+
+  ASImage *image = nil;
+  if (imageName.length > 0) {
+    image = [imageCache objectForKey:imageName];
+    if (image == nil) {
+      image = [ASImage imageNamed:imageName];
+      if (image != nil) {
+        [imageCache setObject:image forKey:imageName];
+      }
+    }
+  }
+  return image;
+}
+#else
+static ASImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollection) NS_RETURNS_RETAINED
 {
   static NSCache *imageCache = nil;
   static dispatch_once_t onceToken;
@@ -25,7 +51,7 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
     imageCache = [[NSCache alloc] init];
   });
 
-  UIImage *image = nil;
+  ASImage *image = nil;
   if ([imageName length] > 0) {
     NSString *imageKey = imageName;
     if (traitCollection) {
@@ -36,7 +62,7 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
 
     image = [imageCache objectForKey:imageKey];
     if (!image) {
-      image =  [UIImage imageNamed:imageName inBundle:nil compatibleWithTraitCollection:traitCollection];
+      image =  [ASImage imageNamed:imageName inBundle:nil compatibleWithTraitCollection:traitCollection];
       if (image) {
         [imageCache setObject:image forKey:imageKey];
       }
@@ -44,39 +70,50 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
   }
   return image;
 }
+#endif
 
-+ (UIImage *)as_imageNamed:(NSString *)imageName NS_RETURNS_RETAINED
++ (ASImage *)as_imageNamed:(NSString *)imageName NS_RETURNS_RETAINED
 {
+#if AS_PLATFORM_MACOS
+  return cachedImageNamed(imageName);
+#else
   return cachedImageNamed(imageName, nil);
+#endif
 }
 
-+ (UIImage *)as_imageNamed:(NSString *)imageName compatibleWithTraitCollection:(UITraitCollection *)traitCollection NS_RETURNS_RETAINED
+#if !AS_PLATFORM_MACOS
++ (ASImage *)as_imageNamed:(NSString *)imageName compatibleWithTraitCollection:(UITraitCollection *)traitCollection NS_RETURNS_RETAINED
 {
   return cachedImageNamed(imageName, traitCollection);
 }
+#endif
 
 @end
 
 #pragma mark - ASDKResizableRoundedRects
 
-@implementation UIImage (ASDKResizableRoundedRects)
+#if AS_PLATFORM_MACOS
+ @implementation NSImage (ASDKResizableRoundedRects)
+#else
+ @implementation UIImage (ASDKResizableRoundedRects)
+#endif
 
-+ (UIImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
-                                          cornerColor:(UIColor *)cornerColor
-                                            fillColor:(UIColor *)fillColor NS_RETURNS_RETAINED
++ (ASImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
+                                          cornerColor:(ASColor *)cornerColor
+                                            fillColor:(ASColor *)fillColor NS_RETURNS_RETAINED
 {
   return [self as_resizableRoundedImageWithCornerRadius:cornerRadius
                                             cornerColor:cornerColor
                                               fillColor:fillColor
                                             borderColor:nil
                                             borderWidth:1.0
-                                         roundedCorners:UIRectCornerAllCorners
+                                         roundedCorners:ASRectCornerAllCorners
                                                   scale:0.0];
 }
 
-+ (UIImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
-                                          cornerColor:(UIColor *)cornerColor
-                                            fillColor:(UIColor *)fillColor
++ (ASImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
+                                          cornerColor:(ASColor *)cornerColor
+                                            fillColor:(ASColor *)fillColor
                                       traitCollection:(ASPrimitiveTraitCollection) traitCollection NS_RETURNS_RETAINED
 {
   return [self as_resizableRoundedImageWithCornerRadius:cornerRadius
@@ -84,15 +121,15 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
                                               fillColor:fillColor
                                             borderColor:nil
                                             borderWidth:1.0
-                                         roundedCorners:UIRectCornerAllCorners
+                                         roundedCorners:ASRectCornerAllCorners
                                                   scale:0.0
                                         traitCollection:traitCollection];
 }
 
-+ (UIImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
-                                          cornerColor:(UIColor *)cornerColor
-                                            fillColor:(UIColor *)fillColor
-                                          borderColor:(UIColor *)borderColor
++ (ASImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
+                                          cornerColor:(ASColor *)cornerColor
+                                            fillColor:(ASColor *)fillColor
+                                          borderColor:(ASColor *)borderColor
                                           borderWidth:(CGFloat)borderWidth
                                       traitCollection:(ASPrimitiveTraitCollection) traitCollection NS_RETURNS_RETAINED {
   return [self as_resizableRoundedImageWithCornerRadius:cornerRadius
@@ -100,16 +137,16 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
                                               fillColor:fillColor
                                             borderColor:borderColor
                                             borderWidth:borderWidth
-                                         roundedCorners:UIRectCornerAllCorners
+                                         roundedCorners:ASRectCornerAllCorners
                                                   scale:0.0
                                         traitCollection:traitCollection];
 }
 
 
-+ (UIImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
-                                          cornerColor:(UIColor *)cornerColor
-                                            fillColor:(UIColor *)fillColor
-                                          borderColor:(UIColor *)borderColor
++ (ASImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
+                                          cornerColor:(ASColor *)cornerColor
+                                            fillColor:(ASColor *)fillColor
+                                          borderColor:(ASColor *)borderColor
                                           borderWidth:(CGFloat)borderWidth NS_RETURNS_RETAINED
 {
   return [self as_resizableRoundedImageWithCornerRadius:cornerRadius
@@ -117,16 +154,16 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
                                               fillColor:fillColor
                                             borderColor:borderColor
                                             borderWidth:borderWidth
-                                         roundedCorners:UIRectCornerAllCorners
+                                         roundedCorners:ASRectCornerAllCorners
                                                   scale:0.0];
 }
 
-+ (UIImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
-                                          cornerColor:(UIColor *)cornerColor
-                                            fillColor:(UIColor *)fillColor
-                                          borderColor:(UIColor *)borderColor
++ (ASImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
+                                          cornerColor:(ASColor *)cornerColor
+                                            fillColor:(ASColor *)fillColor
+                                          borderColor:(ASColor *)borderColor
                                           borderWidth:(CGFloat)borderWidth
-                                       roundedCorners:(UIRectCorner)roundedCorners
+                                       roundedCorners:(ASRectCorner)roundedCorners
                                                 scale:(CGFloat)scale NS_RETURNS_RETAINED {
 
   return [self as_resizableRoundedImageWithCornerRadius:cornerRadius
@@ -140,12 +177,12 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
 }
 
 
-+ (UIImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
-                                          cornerColor:(UIColor *)cornerColor
-                                            fillColor:(UIColor *)fillColor
-                                          borderColor:(UIColor *)borderColor
++ (ASImage *)as_resizableRoundedImageWithCornerRadius:(CGFloat)cornerRadius
+                                          cornerColor:(ASColor *)cornerColor
+                                            fillColor:(ASColor *)fillColor
+                                          borderColor:(ASColor *)borderColor
                                           borderWidth:(CGFloat)borderWidth
-                                       roundedCorners:(UIRectCorner)roundedCorners
+                                       roundedCorners:(ASRectCorner)roundedCorners
                                                 scale:(CGFloat)scale
                                       traitCollection:(ASPrimitiveTraitCollection) traitCollection NS_RETURNS_RETAINED
 {
@@ -153,12 +190,12 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
     __pathCache = [[NSCache alloc] init];
-    // UIBezierPath objects are fairly small and these are equally sized. 20 should be plenty for many different parameters.
+    // ASBezierPath objects are fairly small and these are equally sized. 20 should be plenty for many different parameters.
     __pathCache.countLimit = 20;
   });
   
   // Treat clear background color as no background color
-  if ([cornerColor isEqual:[UIColor clearColor]]) {
+  if ([cornerColor isEqual:[ASColor clearColor]]) {
     cornerColor = nil;
   }
   
@@ -166,33 +203,51 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
   CGRect bounds = CGRectMake(0, 0, dimension, dimension);
   
   typedef struct {
-    UIRectCorner corners;
+    ASRectCorner corners;
     CGFloat radius;
   } PathKey;
   PathKey key = { roundedCorners, cornerRadius };
   NSValue *pathKeyObject = [[NSValue alloc] initWithBytes:&key objCType:@encode(PathKey)];
 
   CGSize cornerRadii = CGSizeMake(cornerRadius, cornerRadius);
-  UIBezierPath *path = [__pathCache objectForKey:pathKeyObject];
+#if AS_PLATFORM_MACOS
+  NSBezierPath *path = [__pathCache objectForKey:pathKeyObject];
   if (path == nil) {
-    path = [UIBezierPath bezierPathWithRoundedRect:bounds byRoundingCorners:roundedCorners cornerRadii:cornerRadii];
+    path = [NSBezierPath bezierPathWithRoundedRect:bounds xRadius:cornerRadii.width yRadius:cornerRadii.height];
     [__pathCache setObject:path forKey:pathKeyObject];
   }
+#else
+  ASBezierPath *path = [__pathCache objectForKey:pathKeyObject];
+  if (path == nil) {
+    path = [ASBezierPath bezierPathWithRoundedRect:bounds byRoundingCorners:roundedCorners cornerRadii:cornerRadii];
+    [__pathCache setObject:path forKey:pathKeyObject];
+  }
+#endif
   
   // We should probably check if the background color has any alpha component but that
   // might be expensive due to needing to check mulitple color spaces.
-  UIImage *result = ASGraphicsCreateImage(traitCollection, bounds.size, cornerColor != nil, scale, nil, nil, ^{
+  ASImage *result = ASGraphicsCreateImage(traitCollection, bounds.size, cornerColor != nil, scale, nil, nil, ^{
     BOOL contextIsClean = YES;
     if (cornerColor) {
       contextIsClean = NO;
       [cornerColor setFill];
+#if AS_PLATFORM_MACOS
+      NSRectFill(bounds);
+#else
       // Copy "blend" mode is extra fast because it disregards any value currently in the buffer and overrides directly.
       UIRectFillUsingBlendMode(bounds, kCGBlendModeCopy);
+#endif
     }
 
+#if AS_PLATFORM_MACOS
+    (void)contextIsClean;
+    [fillColor setFill];
+    [path fill];
+#else
     BOOL canUseCopy = contextIsClean || (CGColorGetAlpha(fillColor.CGColor) == 1);
     [fillColor setFill];
     [path fillWithBlendMode:(canUseCopy ? kCGBlendModeCopy : kCGBlendModeNormal) alpha:1];
+#endif
 
     if (borderColor) {
       [borderColor setStroke];
@@ -202,17 +257,29 @@ UIImage *cachedImageNamed(NSString *imageName, UITraitCollection *traitCollectio
 
       // It is rarer to have a stroke path, and our cache key only handles rounded rects for the exact-stretchable
       // size calculated by cornerRadius, so we won't bother caching this path.  Profiling validates this decision.
-      UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:strokeRect
+#if AS_PLATFORM_MACOS
+      NSBezierPath *strokePath = [NSBezierPath bezierPathWithRoundedRect:strokeRect
+                                                                 xRadius:cornerRadii.width
+                                                                 yRadius:cornerRadii.height];
+#else
+      ASBezierPath *strokePath = [ASBezierPath bezierPathWithRoundedRect:strokeRect
                                                        byRoundingCorners:roundedCorners
                                                              cornerRadii:cornerRadii];
+#endif
       [strokePath setLineWidth:borderWidth];
+#if AS_PLATFORM_MACOS
+      [strokePath stroke];
+#else
       BOOL canUseCopy = (CGColorGetAlpha(borderColor.CGColor) == 1);
       [strokePath strokeWithBlendMode:(canUseCopy ? kCGBlendModeCopy : kCGBlendModeNormal) alpha:1];
+#endif
     }
   });
   
+#if !AS_PLATFORM_MACOS
   UIEdgeInsets capInsets = UIEdgeInsetsMake(cornerRadius, cornerRadius, cornerRadius, cornerRadius);
   result = [result resizableImageWithCapInsets:capInsets resizingMode:UIImageResizingModeStretch];
+#endif
   
   return result;
 }

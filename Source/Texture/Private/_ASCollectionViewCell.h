@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASBaseDefines.h"
 #import "ASCellNode.h"
 
@@ -16,11 +16,15 @@
 NS_ASSUME_NONNULL_BEGIN
 
 AS_SUBCLASSING_RESTRICTED // Note: ASDynamicCastStrict is used on instances of this class based on this restriction.
+#if AS_PLATFORM_MACOS
+@interface _ASCollectionViewCell : NSView
+#else
 @interface _ASCollectionViewCell : UICollectionViewCell
+#endif
 
 @property (nonatomic, nullable) ASCollectionElement *element;
 @property (nullable, nonatomic, readonly) ASCellNode *node;
-@property (nonatomic, nullable) UICollectionViewLayoutAttributes *layoutAttributes;
+@property (nonatomic, nullable) ASCollectionViewLayoutAttributes *layoutAttributes;
 
 /**
  * Whether or not this cell is interested in cell node visibility events.
@@ -28,7 +32,7 @@ AS_SUBCLASSING_RESTRICTED // Note: ASDynamicCastStrict is used on instances of t
  */
 @property (nonatomic, readonly) BOOL consumesCellNodeVisibilityEvents;
 
-- (void)cellNodeVisibilityEvent:(ASCellNodeVisibilityEvent)event inScrollView:(UIScrollView *)scrollView;
+- (void)cellNodeVisibilityEvent:(ASCellNodeVisibilityEvent)event inScrollView:(ASScrollView *)scrollView;
 
 @end
 

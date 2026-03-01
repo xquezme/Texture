@@ -8,7 +8,7 @@
 //
 
 #import "ASDisplayNode.h"
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -19,7 +19,11 @@ NS_ASSUME_NONNULL_BEGIN
  @abstract Implements a node that supports text editing.
  @discussion Does not support layer backing.
  */
+#if AS_PLATFORM_MACOS
+@interface ASEditableTextNode : ASDisplayNode
+#else
 @interface ASEditableTextNode : ASDisplayNode <UITextInputTraits>
+#endif
 
 /**
  * @abstract Initializes an editable text node using default TextKit components.
@@ -54,7 +58,11 @@ NS_ASSUME_NONNULL_BEGIN
   @abstract Access to underlying UITextView for more configuration options.
   @warning This property should only be used on the main thread and should not be accessed before the editable text node's view is created.
  */
+#if AS_PLATFORM_MACOS
+@property (nonatomic, readonly) NSTextView *textView;
+#else
 @property (nonatomic, readonly) UITextView *textView NS_SWIFT_UI_ACTOR;
+#endif
 
 //! @abstract The attributes to apply to new text being entered by the user.
 @property (nullable, nonatomic, copy) NSDictionary<NSString *, id> *typingAttributes;
@@ -84,13 +92,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nullable, nonatomic, copy) NSAttributedString *attributedText;
 
 #pragma mark - Managing The Keyboard
+#if !AS_PLATFORM_MACOS
 //! @abstract The text input mode used by the receiver's keyboard, if it is visible. This value is undefined if the receiver is not the first responder.
 @property (nonatomic, readonly) UITextInputMode *textInputMode;
+#endif
 
 /**
- @abstract The textContainerInset of both the placeholder and typed textView. This value defaults to UIEdgeInsetsZero.
+ @abstract The textContainerInset of both the placeholder and typed textView. This value defaults to ASEdgeInsetsZero.
  */
-@property (nonatomic) UIEdgeInsets textContainerInset;
+@property (nonatomic) ASEdgeInsets textContainerInset;
 
 /**
  @abstract The maximum number of lines to display. Additional lines will require scrolling.
@@ -119,6 +129,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (CGRect)frameForTextRange:(NSRange)textRange AS_WARN_UNUSED_RESULT;
 
+#if !AS_PLATFORM_MACOS
 /**
  @abstract <UITextInputTraits> properties.
  */
@@ -130,6 +141,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) UIReturnKeyType returnKeyType;                       // default is UIReturnKeyDefault (See note under UIReturnKeyType enum)
 @property (nonatomic) BOOL enablesReturnKeyAutomatically;                  // default is NO (when YES, will automatically disable return key when text widget has zero-length contents, and will automatically enable when text widget has non-zero-length contents)
 @property (nonatomic, getter=isSecureTextEntry) BOOL secureTextEntry;      // default is NO
+#endif
 
 @end
 

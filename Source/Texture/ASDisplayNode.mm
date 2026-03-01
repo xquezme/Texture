@@ -41,7 +41,7 @@
 #else
   #define TIME_SCOPED(outVar)
 #endif
-// This is trying to merge non-rangeManaged with rangeManaged, so both range-managed and standalone nodes wait before firing their exit-visibility handlers, as UIViewController transitions now do rehosting at both start & end of animation.
+// This is trying to merge non-rangeManaged with rangeManaged, so both range-managed and standalone nodes wait before firing their exit-visibility handlers, as ASDisplayViewController transitions now do rehosting at both start & end of animation.
 // Enable this will mitigate interface updating state when coalescing disabled.
 // TODO(wsdwsd0829): Rework enabling code to ensure that interface state behavior is not altered when ASCATransactionQueue is disabled.
 #define ENABLE_NEW_EXIT_HIERARCHY_BEHAVIOR 0
@@ -50,7 +50,11 @@ using AS::MutexLocker;
 
 static ASDisplayNodeNonFatalErrorBlock _nonFatalErrorBlock = nil;
 
+#if !AS_PLATFORM_MACOS
 @interface ASDisplayNode () <UIGestureRecognizerDelegate, _ASDisplayLayerDelegate, ASCATransactionQueueObserving>
+#else
+@interface ASDisplayNode () <_ASDisplayLayerDelegate, ASCATransactionQueueObserving>
+#endif
 /**
  * See ASDisplayNodeInternal.h for ivars
  */
@@ -66,13 +70,40 @@ static ASDisplayNodeNonFatalErrorBlock _nonFatalErrorBlock = nil;
 static std::atomic_bool suppressesInvalidCollectionUpdateExceptions = ATOMIC_VAR_INIT(NO);
 static std::atomic_bool storesUnflattenedLayouts = ATOMIC_VAR_INIT(NO);
 
+static inline CGContextRef ASDisplayNodeCurrentGraphicsContext(void)
+{
+#if AS_PLATFORM_MACOS
+  return NSGraphicsContext.currentContext.CGContext;
+#else
+  return UIGraphicsGetCurrentContext();
+#endif
+}
+
+static inline CGImageRef ASDisplayNodeGetCGImage(ASImage *image)
+{
+#if AS_PLATFORM_MACOS
+  return [image CGImageForProposedRect:NULL context:nil hints:nil];
+#else
+  return image.CGImage;
+#endif
+}
+
+static inline NSValue *ASDisplayNodeValueWithRect(CGRect rect)
+{
+#if AS_PLATFORM_MACOS
+  return [NSValue valueWithRect:rect];
+#else
+  return [NSValue valueWithCGRect:rect];
+#endif
+}
+
 BOOL ASDisplayNodeSubclassOverridesSelector(Class subclass, SEL selector)
 {
   return ASSubclassOverridesSelector([ASDisplayNode class], subclass, selector);
 }
 
 // For classes like ASTableNode, ASCollectionNode, ASScrollNode and similar - we have to be sure to set certain properties
-// like setFrame: and setBackgroundColor: directly to the UIView and not apply it to the layer only.
+// like setFrame: and setBackgroundColor: directly to the ASDisplayView and not apply it to the layer only.
 BOOL ASDisplayNodeNeedsSpecialPropertiesHandling(BOOL isSynchronous, BOOL isLayerBacked)
 {
   return isSynchronous && !isLayerBacked;
@@ -307,12 +338,16 @@ __attribute__((destructor)) static void ASLoadFrameworkInitializerOnDestructor(v
   
   _defaultLayoutTransitionDuration = 0.2;
   _defaultLayoutTransitionDelay = 0.0;
+#if AS_PLATFORM_MACOS
+  _defaultLayoutTransitionOptions = 0;
+#else
   _defaultLayoutTransitionOptions = UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionTransitionNone;
+#endif
   
   _flags.canClearContentsOfLayer = YES;
   _flags.canCallSetNeedsDisplayOfLayer = YES;
 
-  _fallbackSafeAreaInsets = UIEdgeInsetsZero;
+  _fallbackSafeAreaInsets = ASEdgeInsetsZero;
   _flags.fallbackInsetsLayoutMarginsFromSafeArea = YES;
   _flags.isViewControllerRoot = NO;
 
@@ -337,7 +372,7 @@ __attribute__((destructor)) static void ASLoadFrameworkInitializerOnDestructor(v
   if (!(self = [self init]))
     return nil;
 
-  ASDisplayNodeAssert([viewClass isSubclassOfClass:[UIView class]], @"should initialize with a subclass of UIView");
+  ASDisplayNodeAssert([viewClass isSubclassOfClass:[ASDisplayView class]], @"should initialize with a subclass of ASDisplayView");
 
   _viewClass = viewClass;
   setFlag(Synchronous, ![viewClass isSubclassOfClass:[_ASDisplayView class]]);
@@ -403,7 +438,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
 - (void)setViewBlock:(ASDisplayNodeViewBlock)viewBlock
 {
   ASDisplayNodeAssertFalse(self.nodeLoaded);
-  ASDisplayNodeAssertNotNil(viewBlock, @"should initialize with a valid block that returns a UIView");
+  ASDisplayNodeAssertNotNil(viewBlock, @"should initialize with a valid block that returns a ASDisplayView");
 
   _viewBlock = viewBlock;
   setFlag(Synchronous, YES);
@@ -449,6 +484,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
   BOOL loaded = _loaded(self);
   ASPrimitiveTraitCollection primitiveTraitCollection = _primitiveTraitCollection;
   __instanceLock__.unlock();
+#if !AS_PLATFORM_MACOS
   if (primitiveTraitCollection.userInterfaceStyle != previousTraitCollection.userInterfaceStyle) {
     if (loaded) {
       // we need to run that on main thread, cause accessing CALayer properties.
@@ -457,14 +493,14 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
         self->__instanceLock__.lock();
         CGFloat cornerRadius = self->_cornerRadius;
         ASCornerRoundingType cornerRoundingType = self->_cornerRoundingType;
-        UIColor *backgroundColor = self->_backgroundColor;
+        ASColor *backgroundColor = self->_backgroundColor;
         self->__instanceLock__.unlock();
         // TODO: we should resolve color using node's trait collection
         // but Texture changes it from many places, so we may receive the wrong one.
         CGColorRef cgBackgroundColor = backgroundColor.CGColor;
         if (!CGColorEqualToColor(self->_layer.backgroundColor, cgBackgroundColor)) {
           // Background colors do not dynamically update for layer backed nodes since they utilize CGColorRef
-          // instead of UIColor. Non layer backed node also receive color to the layer (see [_ASPendingState -applyToView:withSpecialPropertiesHandling:]).
+          // instead of ASColor. Non layer backed node also receive color to the layer (see [_ASPendingState -applyToView:withSpecialPropertiesHandling:]).
           // We utilize the _backgroundColor instance variable to track the full dynamic color
           // and apply any changes here when trait collection updates occur.
           self->_layer.backgroundColor = cgBackgroundColor;
@@ -479,6 +515,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
       });
     }
   }
+#endif
 }
 
 - (void)dealloc
@@ -515,11 +552,11 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
   return !_flags.isDeallocating && !(_hierarchyState & ASHierarchyStateRasterized);
 }
 
-- (UIView *)_locked_viewToLoad
+- (ASDisplayView *)_locked_viewToLoad
 {
   DISABLED_ASAssertLocked(__instanceLock__);
   
-  UIView *view = nil;
+  ASDisplayView *view = nil;
   if (_viewBlock) {
     view = _viewBlock();
     ASDisplayNodeAssertNotNil(view, @"View block returned nil");
@@ -535,12 +572,15 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
     [self checkResponderCompatibility];
     
     // UIImageView layers. More details on the flags
+#if !AS_PLATFORM_MACOS
     if ([_viewClass isSubclassOfClass:[UIImageView class]]) {
       _flags.canClearContentsOfLayer = NO;
       _flags.canCallSetNeedsDisplayOfLayer = NO;
     }
+#endif
       
     // UIActivityIndicator
+#if !AS_PLATFORM_MACOS
     if ([_viewClass isSubclassOfClass:[UIActivityIndicatorView class]]
         || [_viewClass isSubclassOfClass:[UIVisualEffectView class]]) {
       self.opaque = NO;
@@ -550,6 +590,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
     if([[view.layer class] isSubclassOfClass:[CAEAGLLayer class]]){
       _flags.canClearContentsOfLayer = NO;
     }
+#endif
   }
 
   return view;
@@ -643,7 +684,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
 
 #pragma mark - Misc Setter / Getter
 
-- (UIView *)view
+- (ASDisplayView *)view
 {
   AS::UniqueLock l(__instanceLock__);
 
@@ -813,13 +854,13 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
   _flags.viewEverHadAGestureRecognizerAttached = YES;
 }
 
-- (UIEdgeInsets)fallbackSafeAreaInsets
+- (ASEdgeInsets)fallbackSafeAreaInsets
 {
   MutexLocker l(__instanceLock__);
   return _fallbackSafeAreaInsets;
 }
 
-- (void)setFallbackSafeAreaInsets:(UIEdgeInsets)insets
+- (void)setFallbackSafeAreaInsets:(ASEdgeInsets)insets
 {
   BOOL needsManualUpdate;
   BOOL updatesLayoutMargins;
@@ -828,7 +869,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
     MutexLocker l(__instanceLock__);
     ASDisplayNodeAssertThreadAffinity(self);
 
-    if (UIEdgeInsetsEqualToEdgeInsets(insets, _fallbackSafeAreaInsets)) {
+    if (ASEdgeInsetsEqualToEdgeInsets(insets, _fallbackSafeAreaInsets)) {
       return;
     }
 
@@ -850,12 +891,12 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
 {
   ASDisplayNodeAssertThreadAffinity(self);
 
-  UIEdgeInsets insets = self.safeAreaInsets;
+  ASEdgeInsets insets = self.safeAreaInsets;
   CGRect bounds = self.bounds;
 
   for (ASDisplayNode *child in self.subnodes) {
     if (!child.layerBacked) {
-      // In iOS 11 view-backed nodes already know what their safe area is.
+      // View-backed nodes already know what their safe area is.
       continue;
     }
 
@@ -865,7 +906,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
     }
 
     CGRect childFrame = child.frame;
-    UIEdgeInsets childInsets = UIEdgeInsetsMake(MAX(insets.top    - (CGRectGetMinY(childFrame) - CGRectGetMinY(bounds)), 0),
+    ASEdgeInsets childInsets = ASEdgeInsetsMake(MAX(insets.top    - (CGRectGetMinY(childFrame) - CGRectGetMinY(bounds)), 0),
                                                 MAX(insets.left   - (CGRectGetMinX(childFrame) - CGRectGetMinX(bounds)), 0),
                                                 MAX(insets.bottom - (CGRectGetMaxY(bounds) - CGRectGetMaxY(childFrame)), 0),
                                                 MAX(insets.right  - (CGRectGetMaxX(bounds) - CGRectGetMaxX(childFrame)), 0));
@@ -940,7 +981,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__);
   // There are certain cases we cannot handle and are not supported:
   // 1. If the _view class is not a subclass of _ASDisplayView
   if (checkFlag(Synchronous)) {
-    // 2. At least one UIResponder methods are overwritten in the node subclass
+    // 2. At least one ASResponder methods are overwritten in the node subclass
     NSString *message =  @"Overwritting %@ and having a backing view that is not an _ASDisplayView is not supported.";
     ASDisplayNodeAssert(!ASDisplayNodeSubclassOverridesSelector(self.class, @selector(canBecomeFirstResponder)), ([NSString stringWithFormat:message, @"canBecomeFirstResponder"]));
     ASDisplayNodeAssert(!ASDisplayNodeSubclassOverridesSelector(self.class, @selector(becomeFirstResponder)), ([NSString stringWithFormat:message, @"becomeFirstResponder"]));
@@ -1499,7 +1540,7 @@ void recursivelyTriggerDisplayForLayer(CALayer *layer, BOOL shouldBlock)
   }
 }
 
-- (void)_updateClipCornerLayerContentsWithRadius:(CGFloat)radius backgroundColor:(UIColor *)backgroundColor
+- (void)_updateClipCornerLayerContentsWithRadius:(CGFloat)radius backgroundColor:(ASColor *)backgroundColor
 {
   ASPerformBlockOnMainThread(^{
     for (int idx = 0; idx < NUM_CLIP_CORNER_LAYERS; idx++) {
@@ -1514,24 +1555,38 @@ void recursivelyTriggerDisplayForLayer(CALayer *layer, BOOL shouldBlock)
       BOOL isRight = (idx == 1 || idx == 3);
 
       CGSize size = CGSizeMake(radius + 1, radius + 1);
-      UIImage *newContents = ASGraphicsCreateImage(self.primitiveTraitCollection, size, NO, self.contentsScaleForDisplay, nil, nil, ^{
-        CGContextRef ctx = UIGraphicsGetCurrentContext();
+      ASImage *newContents = ASGraphicsCreateImage(self.primitiveTraitCollection, size, NO, self.contentsScaleForDisplay, nil, nil, ^{
+        CGContextRef ctx = ASDisplayNodeCurrentGraphicsContext();
         if (isRight == YES) {
           CGContextTranslateCTM(ctx, -radius + 1, 0);
         }
         if (isTop == NO) {
           CGContextTranslateCTM(ctx, 0, -radius + 1);
         }
-        UIBezierPath *roundedRect = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, radius * 2, radius * 2) cornerRadius:radius];
+#if AS_PLATFORM_MACOS
+        CGRect outerRect = CGRectMake(-1, -1, radius * 2 + 1, radius * 2 + 1);
+        CGRect roundedRectBounds = CGRectMake(0, 0, radius * 2, radius * 2);
+        CGPathRef roundedRectPath = CGPathCreateWithRoundedRect(roundedRectBounds, radius, radius, NULL);
+        CGMutablePathRef evenOddPath = CGPathCreateMutable();
+        CGPathAddRect(evenOddPath, NULL, outerRect);
+        CGPathAddPath(evenOddPath, NULL, roundedRectPath);
+        CGContextSetFillColorWithColor(ctx, backgroundColor.CGColor);
+        CGContextAddPath(ctx, evenOddPath);
+        CGContextEOFillPath(ctx);
+        CGPathRelease(evenOddPath);
+        CGPathRelease(roundedRectPath);
+#else
+        ASBezierPath *roundedRect = [ASBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, radius * 2, radius * 2) cornerRadius:radius];
         [roundedRect setUsesEvenOddFillRule:YES];
-        [roundedRect appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(-1, -1, radius * 2 + 1, radius * 2 + 1)]];
+        [roundedRect appendPath:[ASBezierPath bezierPathWithRect:CGRectMake(-1, -1, radius * 2 + 1, radius * 2 + 1)]];
         [backgroundColor setFill];
         [roundedRect fill];
+#endif
       });
 
       // No lock needed, as _clipCornerLayers is only modified on the main thread.
       unowned CALayer *clipCornerLayer = self->_clipCornerLayers[idx];
-      clipCornerLayer.contents = (id)(newContents.CGImage);
+      clipCornerLayer.contents = (__bridge id)ASDisplayNodeGetCGImage(newContents);
       clipCornerLayer.bounds = CGRectMake(0.0, 0.0, size.width, size.height);
       clipCornerLayer.anchorPoint = CGPointMake(isRight ? 1.0 : 0.0, isTop ? 0.0 : 1.0);
     }
@@ -1635,6 +1690,7 @@ void recursivelyTriggerDisplayForLayer(CALayer *layer, BOOL shouldBlock)
   });
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)updateSemanticContentAttributeWithAttribute:(UISemanticContentAttribute)attribute
 {
   __instanceLock__.lock();
@@ -1649,6 +1705,7 @@ void recursivelyTriggerDisplayForLayer(CALayer *layer, BOOL shouldBlock)
     }
   });
 }
+#endif
 
 - (void)recursivelySetDisplaySuspended:(BOOL)flag
 {
@@ -1803,7 +1860,8 @@ static void _recursivelySetDisplaySuspended(ASDisplayNode *node, CALayer *layer,
 - (id<CAAction>)actionForLayer:(CALayer *)layer forKey:(NSString *)event
 {
   // Only drive __enterHierarchy and __exitHierarchy if the node is layer-backed.
-  // View-backed nodes handle them in _ASDisplayView's -willMoveToWindow: and -didMoveToWindow.
+  // View-backed nodes handle them in _ASDisplayView window-move hooks
+  // (UIKit: -will/didMoveToWindow, AppKit: -viewWill/DidMoveToWindow).
   if (self.isLayerBacked) {
     if (event == kCAOnOrderIn) {
       [self __enterHierarchy];
@@ -1871,17 +1929,25 @@ static inline CATransform3D _calculateTransformFromReferenceToTarget(ASDisplayNo
   ASDisplayNodeAssertThreadAffinity(self);
   
   /**
-   * When passed node=nil, all methods in this family use the UIView-style
+   * When passed node=nil, all methods in this family use the ASDisplayView-style
    * behavior – that is, convert from/to window coordinates if there's a window,
    * otherwise return the point untransformed.
    */
   if (node == nil && self.nodeLoaded) {
     CALayer *layer = self.layer;
+#if AS_PLATFORM_MACOS
+    CALayer *rootLayer = layer;
+    while (rootLayer.superlayer != nil) {
+      rootLayer = rootLayer.superlayer;
+    }
+    return [layer convertPoint:point fromLayer:rootLayer];
+#else
     if (UIWindow *window = ASFindWindowOfLayer(layer)) {
       return [layer convertPoint:point fromLayer:window.layer];
     } else {
       return point;
     }
+#endif
   }
   
   // Get root node of the accessible node hierarchy, if node not specified
@@ -1902,11 +1968,19 @@ static inline CATransform3D _calculateTransformFromReferenceToTarget(ASDisplayNo
   
   if (node == nil && self.nodeLoaded) {
     CALayer *layer = self.layer;
+#if AS_PLATFORM_MACOS
+    CALayer *rootLayer = layer;
+    while (rootLayer.superlayer != nil) {
+      rootLayer = rootLayer.superlayer;
+    }
+    return [layer convertPoint:point toLayer:rootLayer];
+#else
     if (UIWindow *window = ASFindWindowOfLayer(layer)) {
       return [layer convertPoint:point toLayer:window.layer];
     } else {
       return point;
     }
+#endif
   }
   
   // Get root node of the accessible node hierarchy, if node not specified
@@ -1927,11 +2001,19 @@ static inline CATransform3D _calculateTransformFromReferenceToTarget(ASDisplayNo
   
   if (node == nil && self.nodeLoaded) {
     CALayer *layer = self.layer;
+#if AS_PLATFORM_MACOS
+    CALayer *rootLayer = layer;
+    while (rootLayer.superlayer != nil) {
+      rootLayer = rootLayer.superlayer;
+    }
+    return [layer convertRect:rect fromLayer:rootLayer];
+#else
     if (UIWindow *window = ASFindWindowOfLayer(layer)) {
       return [layer convertRect:rect fromLayer:window.layer];
     } else {
       return rect;
     }
+#endif
   }
   
   // Get root node of the accessible node hierarchy, if node not specified
@@ -1952,11 +2034,19 @@ static inline CATransform3D _calculateTransformFromReferenceToTarget(ASDisplayNo
   
   if (node == nil && self.nodeLoaded) {
     CALayer *layer = self.layer;
+#if AS_PLATFORM_MACOS
+    CALayer *rootLayer = layer;
+    while (rootLayer.superlayer != nil) {
+      rootLayer = rootLayer.superlayer;
+    }
+    return [layer convertRect:rect toLayer:rootLayer];
+#else
     if (UIWindow *window = ASFindWindowOfLayer(layer)) {
       return [layer convertRect:rect toLayer:window.layer];
     } else {
       return rect;
     }
+#endif
   }
   
   // Get root node of the accessible node hierarchy, if node not specified
@@ -2208,11 +2298,15 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
 
   // If we can use view API, do. Due to an apple bug, -insertSubview:atIndex: actually wants a LAYER index,
   // which we pass in.
+#if AS_PLATFORM_MACOS
+  [_layer insertSublayer:subnode.layer atIndex:(unsigned int)idx];
+#else
   if (canUseViewAPI(self, subnode)) {
     [_view insertSubview:subnode.view atIndex:idx];
   } else {
     [_layer insertSublayer:subnode.layer atIndex:(unsigned int)idx];
   }
+#endif
 }
 
 - (void)addSubnode:(ASDisplayNode *)subnode
@@ -2479,7 +2573,7 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
   
   __instanceLock__.lock();
     __weak ASDisplayNode *supernode = _supernode;
-    __weak UIView *view = _view;
+    __weak ASDisplayView *view = _view;
     __weak CALayer *layer = _layer;
   __instanceLock__.unlock();
 
@@ -2500,14 +2594,14 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
       return;
     }
   
-    __weak UIView *view = _view;
+    __weak ASDisplayView *view = _view;
     __weak CALayer *layer = _layer;
   __instanceLock__.unlock();
   
   [self _removeFromSupernode:supernode view:view layer:layer];
 }
 
-- (void)_removeFromSupernode:(ASDisplayNode *)supernode view:(UIView *)view layer:(CALayer *)layer
+- (void)_removeFromSupernode:(ASDisplayNode *)supernode view:(ASDisplayView *)view layer:(CALayer *)layer
 {
   // Note: we continue even if supernode is nil to ensure view/layer are removed from hierarchy.
 
@@ -2613,18 +2707,22 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
       _placeholderImage = [self placeholderImage];
     }
     if (_placeholderImage) {
-      BOOL stretchable = !UIEdgeInsetsEqualToEdgeInsets(_placeholderImage.capInsets, UIEdgeInsetsZero);
+#if AS_PLATFORM_MACOS
+      BOOL stretchable = NO;
+#else
+      BOOL stretchable = !ASEdgeInsetsEqualToEdgeInsets(_placeholderImage.capInsets, ASEdgeInsetsZero);
+#endif
       if (stretchable) {
         ASDisplayNodeSetResizableContents(_placeholderLayer, _placeholderImage);
       } else {
         _placeholderLayer.contentsScale = self.contentsScale;
-        _placeholderLayer.contents = (id)_placeholderImage.CGImage;
+        _placeholderLayer.contents = (__bridge id)ASDisplayNodeGetCGImage(_placeholderImage);
       }
     }
   }
 }
 
-- (UIImage *)placeholderImage
+- (ASImage *)placeholderImage
 {
   // Subclass hook
   return nil;
@@ -2842,7 +2940,7 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
 
   // This case is important when tearing down hierarchies.  We must deliver a visibileStateDidChange:NO callback, as part our API guarantee that this method can be used for
   // things like data analytics about user content viewing.  We cannot call the method in the dealloc as any incidental retain operations in client code would fail.
-  // Additionally, it may be that a Standard UIView which is containing us is moving between hierarchies, and we should not send the call if we will be re-added in the
+  // Additionally, it may be that a Standard ASDisplayView which is containing us is moving between hierarchies, and we should not send the call if we will be re-added in the
   // same runloop.  Strategy: strong reference (might be the last!), wait one runloop, and confirm we are still outside the hierarchy (both layer-backed and view-backed).
   // TODO: This approach could be optimized by only performing the dispatch for root elements + recursively apply the interface state change. This would require a closer
   // integration with _ASDisplayLayer to ensure that the superlayer pointer has been cleared by this stage (to check if we are root or not), or a different delegate call.
@@ -3308,6 +3406,7 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
 
 #pragma mark - Gesture Recognizing
 
+#if !AS_PLATFORM_MACOS
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
   // Subclass hook
@@ -3327,52 +3426,63 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
 {
   // Subclass hook
 }
+#endif
 
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+- (BOOL)gestureRecognizerShouldBegin:(ASGestureRecognizer *)gestureRecognizer
 {
-  // This method is only implemented on UIView on iOS 6+.
+  // This method is only implemented on ASDisplayView on iOS 6+.
   ASDisplayNodeAssertMainThread();
   
   // No locking needed as it's main thread only
-  UIView *view = _view;
+  ASDisplayView *view = _view;
   if (view == nil) {
     return YES;
   }
 
   // If we reach the base implementation, forward up the view hierarchy.
-  UIView *superview = view.superview;
+  ASDisplayView *superview = view.superview;
+#if AS_PLATFORM_MACOS
+  (void)gestureRecognizer;
+  (void)superview;
+  return YES;
+#else
   return [superview gestureRecognizerShouldBegin:gestureRecognizer];
+#endif
 }
 
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+#if !AS_PLATFORM_MACOS
+- (ASDisplayView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
   ASDisplayNodeAssertMainThread();
   return [_view hitTest:point withEvent:event];
 }
+#endif
 
-- (void)setHitTestSlop:(UIEdgeInsets)hitTestSlop
+- (void)setHitTestSlop:(ASEdgeInsets)hitTestSlop
 {
   MutexLocker l(__instanceLock__);
   _hitTestSlop = hitTestSlop;
 }
 
-- (UIEdgeInsets)hitTestSlop
+- (ASEdgeInsets)hitTestSlop
 {
   MutexLocker l(__instanceLock__);
   return _hitTestSlop;
 }
 
+#if !AS_PLATFORM_MACOS
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
 {
   ASDisplayNodeAssertMainThread();
-  UIEdgeInsets slop = self.hitTestSlop;
-  if (_view && UIEdgeInsetsEqualToEdgeInsets(slop, UIEdgeInsetsZero)) {
-    // Safer to use UIView's -pointInside:withEvent: if we can.
+  ASEdgeInsets slop = self.hitTestSlop;
+  if (_view && ASEdgeInsetsEqualToEdgeInsets(slop, ASEdgeInsetsZero)) {
+    // Safer to use ASDisplayView's -pointInside:withEvent: if we can.
     return [_view pointInside:point withEvent:event];
   } else {
-    return CGRectContainsPoint(UIEdgeInsetsInsetRect(self.bounds, slop), point);
+    return CGRectContainsPoint(ASRectInsetWithEdgeInsets(self.bounds, slop), point);
   }
 }
+#endif
 
 
 #pragma mark - Pending View State
@@ -3441,7 +3551,7 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
   }
 }
 
-// This method has proved helpful in a few rare scenarios, similar to a category extension on UIView, but assumes knowledge of _ASDisplayView.
+// This method has proved helpful in a few rare scenarios, similar to a category extension on ASDisplayView, but assumes knowledge of _ASDisplayView.
 // It's considered private API for now and its use should not be encouraged.
 - (ASDisplayNode *)_supernodeWithClass:(Class)supernodeClass checkViewHierarchy:(BOOL)checkViewHierarchy
 {
@@ -3455,7 +3565,7 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
     return nil;
   }
 
-  UIView *view = self.view.superview;
+  ASDisplayView *view = self.view.superview;
   while (view) {
     ASDisplayNode *viewNode = ((_ASDisplayView *)view).asyncdisplaykit_node;
     if (viewNode) {
@@ -3532,10 +3642,12 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
   return nil;
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIAccessibilityTraits)defaultAccessibilityTraits
 {
   return UIAccessibilityTraitNone;
 }
+#endif
 
 #pragma mark - Debugging (Private)
 
@@ -3571,7 +3683,7 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
 
   CGRect windowFrame = [self _frameInWindow];
   if (CGRectIsNull(windowFrame) == NO) {
-    [result addObject:@{ @"frameInWindow" : [NSValue valueWithCGRect:windowFrame] }];
+    [result addObject:@{ @"frameInWindow" : ASDisplayNodeValueWithRect(windowFrame) }];
   }
   
   // Attempt to find view controller.
@@ -3579,8 +3691,8 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
   // that it's run on main. Since this is a debug method, let's bypass the assertion
   // and run up the chain ourselves.
   if (_view != nil) {
-    for (UIResponder *responder in [_view asdk_responderChainEnumerator]) {
-      UIViewController *vc = ASDynamicCast(responder, UIViewController);
+    for (ASResponder *responder in [_view asdk_responderChainEnumerator]) {
+      ASDisplayViewController *vc = ASDynamicCast(responder, ASDisplayViewController);
       if (vc) {
         [result addObject:@{ @"viewController" : ASObjectDescriptionMakeTiny(vc) }];
         break;
@@ -3589,21 +3701,27 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
   }
   
   if (_view != nil) {
+#if AS_PLATFORM_MACOS
+    [result addObject:@{ @"alpha" : @(1.0) }];
+#else
     [result addObject:@{ @"alpha" : @(_view.alpha) }];
-    [result addObject:@{ @"frame" : [NSValue valueWithCGRect:_view.frame] }];
+#endif
+    [result addObject:@{ @"frame" : ASDisplayNodeValueWithRect(_view.frame) }];
   } else if (_layer != nil) {
     [result addObject:@{ @"alpha" : @(_layer.opacity) }];
-    [result addObject:@{ @"frame" : [NSValue valueWithCGRect:_layer.frame] }];
+    [result addObject:@{ @"frame" : ASDisplayNodeValueWithRect(_layer.frame) }];
   } else if (_pendingViewState != nil) {
     [result addObject:@{ @"alpha" : @(_pendingViewState.alpha) }];
-    [result addObject:@{ @"frame" : [NSValue valueWithCGRect:_pendingViewState.frame] }];
+    [result addObject:@{ @"frame" : ASDisplayNodeValueWithRect(_pendingViewState.frame) }];
   }
   
   // Check supernode so that if we are a cell node we don't find self.
+#if !AS_PLATFORM_MACOS
   ASCellNode *cellNode = [self supernodeOfClass:[ASCellNode class] includingSelf:NO];
   if (cellNode != nil) {
     [result addObject:@{ @"cellNode" : ASObjectDescriptionMakeTiny(cellNode) }];
   }
+#endif
   
   [result addObject:@{ @"interfaceState" : NSStringFromASInterfaceState(self.interfaceState)} ];
   
@@ -3719,7 +3837,7 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
   const auto props = [[NSMutableArray<NSDictionary *> alloc] init];
 
   [props addObject:@{ @"layoutVersion": @(_layoutVersion.load()) }];
-  [props addObject:@{ @"bounds": [NSValue valueWithCGRect:self.bounds] }];
+  [props addObject:@{ @"bounds": ASDisplayNodeValueWithRect(self.bounds) }];
 
   if (_calculatedDisplayNodeLayout.layout) {
     [props addObject:@{ @"calculatedLayout": _calculatedDisplayNodeLayout.layout }];
@@ -3750,7 +3868,11 @@ ASDISPLAYNODE_INLINE BOOL subtreeIsRasterized(ASDisplayNode *node) {
 
 static const char *ASDisplayNodeAssociatedNodeKey = "ASAssociatedNode";
 
-@implementation UIView (ASDisplayNodeInternal)
+ #if AS_PLATFORM_MACOS
+  @implementation NSView (ASDisplayNodeInternal)
+ #else
+  @implementation UIView (ASDisplayNodeInternal)
+ #endif
 
 - (void)setAsyncdisplaykit_node:(ASDisplayNode *)node
 {
@@ -3782,7 +3904,11 @@ static const char *ASDisplayNodeAssociatedNodeKey = "ASAssociatedNode";
 
 @end
 
-@implementation UIView (AsyncDisplayKit)
+ #if AS_PLATFORM_MACOS
+  @implementation NSView (AsyncDisplayKit)
+ #else
+  @implementation UIView (AsyncDisplayKit)
+ #endif
 
 - (void)addSubnode:(ASDisplayNode *)subnode
 {

@@ -11,10 +11,10 @@
 #import "ASAssert.h"
 
 @implementation ASResponderChainEnumerator {
-  UIResponder *_currentResponder;
+  ASResponder *_currentResponder;
 }
 
-- (instancetype)initWithResponder:(UIResponder *)responder
+- (instancetype)initWithResponder:(ASResponder *)responder
 {
   ASDisplayNodeAssertMainThread();
   if (self = [super init]) {
@@ -35,9 +35,13 @@
 
 @end
 
+#if AS_PLATFORM_MACOS
+@implementation NSResponder (ASResponderChainEnumerator)
+#else
 @implementation UIResponder (ASResponderChainEnumerator)
+#endif
 
-- (NSEnumerator *)asdk_responderChainEnumerator
+- (ASResponderChainEnumerator *)asdk_responderChainEnumerator
 {
   return [[ASResponderChainEnumerator alloc] initWithResponder:self];
 }

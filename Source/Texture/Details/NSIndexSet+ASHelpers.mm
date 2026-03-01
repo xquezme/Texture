@@ -7,10 +7,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-// UIKit indexPath helpers
-#import <UIKit/UIKit.h>
-
 #import "NSIndexSet+ASHelpers.h"
+#import "ASPlatformDefines.h"
 
 @implementation NSIndexSet (ASHelpers)
 
@@ -43,8 +41,8 @@
 {
   NSMutableIndexSet *result = [[NSMutableIndexSet alloc] init];
   for (NSIndexPath *indexPath in indexPaths) {
-    if (indexPath.section == section) {
-      [result addIndex:indexPath.item];
+    if (indexPath.as_section == (NSInteger)section) {
+      [result addIndex:indexPath.as_item];
     }
   }
   return result;
@@ -83,7 +81,7 @@
 {
   NSMutableIndexSet *result = [[NSMutableIndexSet alloc] init];
   for (NSIndexPath *indexPath in indexPaths) {
-    [result addIndex:indexPath.section];
+    [result addIndex:indexPath.as_section];
   }
   return result;
 }

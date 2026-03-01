@@ -6,7 +6,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 @class ASTextDebugOption;
 
@@ -36,17 +36,17 @@ NS_ASSUME_NONNULL_BEGIN
  The debug option for ASText.
  */
 @interface ASTextDebugOption : NSObject <NSCopying>
-@property (nullable, nonatomic) UIColor *baselineColor;      ///< baseline color
-@property (nullable, nonatomic) UIColor *CTFrameBorderColor; ///< CTFrame path border color
-@property (nullable, nonatomic) UIColor *CTFrameFillColor;   ///< CTFrame path fill color
-@property (nullable, nonatomic) UIColor *CTLineBorderColor;  ///< CTLine bounds border color
-@property (nullable, nonatomic) UIColor *CTLineFillColor;    ///< CTLine bounds fill color
-@property (nullable, nonatomic) UIColor *CTLineNumberColor;  ///< CTLine line number color
-@property (nullable, nonatomic) UIColor *CTRunBorderColor;   ///< CTRun bounds border color
-@property (nullable, nonatomic) UIColor *CTRunFillColor;     ///< CTRun bounds fill color
-@property (nullable, nonatomic) UIColor *CTRunNumberColor;   ///< CTRun number color
-@property (nullable, nonatomic) UIColor *CGGlyphBorderColor; ///< CGGlyph bounds border color
-@property (nullable, nonatomic) UIColor *CGGlyphFillColor;   ///< CGGlyph bounds fill color
+@property (nullable, nonatomic) ASColor *baselineColor;      ///< baseline color
+@property (nullable, nonatomic) ASColor *CTFrameBorderColor; ///< CTFrame path border color
+@property (nullable, nonatomic) ASColor *CTFrameFillColor;   ///< CTFrame path fill color
+@property (nullable, nonatomic) ASColor *CTLineBorderColor;  ///< CTLine bounds border color
+@property (nullable, nonatomic) ASColor *CTLineFillColor;    ///< CTLine bounds fill color
+@property (nullable, nonatomic) ASColor *CTLineNumberColor;  ///< CTLine line number color
+@property (nullable, nonatomic) ASColor *CTRunBorderColor;   ///< CTRun bounds border color
+@property (nullable, nonatomic) ASColor *CTRunFillColor;     ///< CTRun bounds fill color
+@property (nullable, nonatomic) ASColor *CTRunNumberColor;   ///< CTRun number color
+@property (nullable, nonatomic) ASColor *CGGlyphBorderColor; ///< CGGlyph bounds border color
+@property (nullable, nonatomic) ASColor *CGGlyphFillColor;   ///< CGGlyph bounds fill color
 
 - (BOOL)needDrawDebug; ///< `YES`: at least one debug color is visible. `NO`: all debug color is invisible/nil.
 - (void)clear; ///< Set all debug color to nil.

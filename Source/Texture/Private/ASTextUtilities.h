@@ -6,7 +6,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import <QuartzCore/QuartzCore.h>
 #import <CoreText/CoreText.h>
 #import <tgmath.h>
@@ -175,9 +175,107 @@ static inline CGFloat ASTextCGAffineTransformGetRotation(CGAffineTransform trans
   return atan2(transform.b, transform.a);
 }
 
-/// Negates/inverts a UIEdgeInsets.
-static inline UIEdgeInsets ASTextUIEdgeInsetsInvert(UIEdgeInsets insets) {
-  return UIEdgeInsetsMake(-insets.top, -insets.left, -insets.bottom, -insets.right);
+/// Negates/inverts edge insets.
+static inline ASEdgeInsets ASTextUIEdgeInsetsInvert(ASEdgeInsets insets) {
+  return ASEdgeInsetsMake(-insets.top, -insets.left, -insets.bottom, -insets.right);
+}
+
+static inline NSValue *ASValueWithCGSize(CGSize size) {
+#if AS_PLATFORM_MACOS
+  return [NSValue valueWithSize:size];
+#else
+  return [NSValue valueWithCGSize:size];
+#endif
+}
+
+static inline CGSize ASSizeFromValue(NSValue *value) {
+#if AS_PLATFORM_MACOS
+  return value.sizeValue;
+#else
+  return value.CGSizeValue;
+#endif
+}
+
+static inline NSValue *ASValueWithCGRect(CGRect rect) {
+#if AS_PLATFORM_MACOS
+  return [NSValue valueWithRect:rect];
+#else
+  return [NSValue valueWithCGRect:rect];
+#endif
+}
+
+static inline CGRect ASCGRectFromValue(NSValue *value) {
+#if AS_PLATFORM_MACOS
+  return value.rectValue;
+#else
+  return value.CGRectValue;
+#endif
+}
+
+static inline NSValue *ASValueWithEdgeInsets(ASEdgeInsets insets) {
+#if AS_PLATFORM_MACOS
+  return [NSValue valueWithEdgeInsets:insets];
+#else
+  return [NSValue valueWithUIEdgeInsets:insets];
+#endif
+}
+
+static inline ASEdgeInsets ASEdgeInsetsFromValue(NSValue *value) {
+#if AS_PLATFORM_MACOS
+  return value.edgeInsetsValue;
+#else
+  return value.UIEdgeInsetsValue;
+#endif
+}
+
+static inline NSString *ASStringFromEdgeInsets(ASEdgeInsets insets) {
+#if AS_PLATFORM_MACOS
+  return [NSString stringWithFormat:@"{%g, %g, %g, %g}", insets.top, insets.left, insets.bottom, insets.right];
+#else
+  return NSStringFromUIEdgeInsets(insets);
+#endif
+}
+
+static inline NSValue *ASValueWithCGAffineTransform(CGAffineTransform transform) {
+  return [NSValue valueWithBytes:&transform objCType:@encode(CGAffineTransform)];
+}
+
+static inline CGAffineTransform ASCGAffineTransformFromValue(NSValue *value) {
+  CGAffineTransform transform = CGAffineTransformIdentity;
+  [value getValue:&transform];
+  return transform;
+}
+
+static inline NSTextAlignment ASTextAlignmentFromCTTextAlignment(CTTextAlignment alignment) {
+  switch (alignment) {
+    case kCTTextAlignmentRight:
+      return NSTextAlignmentRight;
+    case kCTTextAlignmentCenter:
+      return NSTextAlignmentCenter;
+    case kCTTextAlignmentJustified:
+      return NSTextAlignmentJustified;
+    case kCTTextAlignmentNatural:
+      return NSTextAlignmentNatural;
+    case kCTTextAlignmentLeft:
+    default:
+      return NSTextAlignmentLeft;
+  }
+}
+
+static inline CTTextAlignment ASTextAlignmentToCTTextAlignment(NSTextAlignment alignment) {
+  switch (alignment) {
+    case NSTextAlignmentRight:
+      return kCTTextAlignmentRight;
+    case NSTextAlignmentCenter:
+      return kCTTextAlignmentCenter;
+    case NSTextAlignmentJustified:
+      return kCTTextAlignmentJustified;
+    case NSTextAlignmentNatural:
+      return kCTTextAlignmentNatural;
+    case NSTextAlignmentLeft:
+    default:
+      return kCTTextAlignmentLeft;
+  }
 }
 
 /**
@@ -189,7 +287,9 @@ static inline UIEdgeInsets ASTextUIEdgeInsetsInvert(UIEdgeInsets insets) {
  @return A rectangle for the given content mode.
  @discussion UIViewContentModeRedraw is same as UIViewContentModeScaleToFill.
  */
+#if !AS_PLATFORM_MACOS
 CGRect ASTextCGRectFitWithContentMode(CGRect rect, CGSize size, UIViewContentMode mode);
+#endif
 
 /// Returns the center for the rectangle.
 static inline CGPoint ASTextCGRectGetCenter(CGRect rect) {
@@ -282,16 +382,34 @@ static inline CGRect ASTextCGRectPixelHalf(CGRect rect) {
 }
 
 
-static inline UIFont * _Nullable ASTextFontWithBold(UIFont *font) {
-  return [UIFont fontWithDescriptor:[font.fontDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitBold] size:font.pointSize];
+#if AS_PLATFORM_MACOS
+static inline NSFontDescriptorSymbolicTraits ASTextFontDescriptorBoldTrait(void) {
+  return NSFontDescriptorTraitBold;
+#else
+static inline UIFontDescriptorSymbolicTraits ASTextFontDescriptorBoldTrait(void) {
+  return UIFontDescriptorTraitBold;
+#endif
 }
 
-static inline UIFont * _Nullable ASTextFontWithItalic(UIFont *font) {
-  return [UIFont fontWithDescriptor:[font.fontDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitItalic] size:font.pointSize];
+#if AS_PLATFORM_MACOS
+static inline NSFontDescriptorSymbolicTraits ASTextFontDescriptorItalicTrait(void) {
+  return NSFontDescriptorTraitItalic;
+#else
+static inline UIFontDescriptorSymbolicTraits ASTextFontDescriptorItalicTrait(void) {
+  return UIFontDescriptorTraitItalic;
+#endif
 }
 
-static inline UIFont * _Nullable ASTextFontWithBoldItalic(UIFont *font) {
-  return [UIFont fontWithDescriptor:[font.fontDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitBold | UIFontDescriptorTraitItalic] size:font.pointSize];
+static inline ASFont * _Nullable ASTextFontWithBold(ASFont *font) {
+  return [ASFont fontWithDescriptor:[font.fontDescriptor fontDescriptorWithSymbolicTraits:ASTextFontDescriptorBoldTrait()] size:font.pointSize];
+}
+
+static inline ASFont * _Nullable ASTextFontWithItalic(ASFont *font) {
+  return [ASFont fontWithDescriptor:[font.fontDescriptor fontDescriptorWithSymbolicTraits:ASTextFontDescriptorItalicTrait()] size:font.pointSize];
+}
+
+static inline ASFont * _Nullable ASTextFontWithBoldItalic(ASFont *font) {
+  return [ASFont fontWithDescriptor:[font.fontDescriptor fontDescriptorWithSymbolicTraits:ASTextFontDescriptorBoldTrait() | ASTextFontDescriptorItalicTrait()] size:font.pointSize];
 }
 
 

@@ -7,8 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
-
+#import "ASPlatformDefines.h"
 #import "ASTextNode.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -28,7 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
  This property can be useful for handling text which does not fit within the view by default. An example: like UILabel,
  ASTextNode will clip the left and right of the string "judar" if it's rendered in an italicised font.
  */
-@property (nonatomic) UIEdgeInsets textContainerInset;
+@property (nonatomic) ASEdgeInsets textContainerInset;
 
 /**
  * Returns YES if this node is using the experimental implementation. NO otherwise. Will not change.

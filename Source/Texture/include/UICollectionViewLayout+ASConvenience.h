@@ -7,16 +7,20 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UICollectionViewLayout.h>
+#import "ASPlatformDefines.h"
 
 @protocol ASCollectionViewLayoutInspecting;
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface UICollectionViewLayout (ASLayoutInspectorProviding)
+#if AS_PLATFORM_MACOS
+ @interface NSCollectionViewLayout (ASLayoutInspectorProviding)
+#else
+ @interface UICollectionViewLayout (ASLayoutInspectorProviding)
+#endif
 
 /**
- * You can override this method on your @c UICollectionViewLayout subclass to
+ * You can override this method on your @c ASCollectionViewLayout subclass to
  * return a layout inspector tailored to your layout.
  *
  * It's fine to return @c self. You must not return @c nil.

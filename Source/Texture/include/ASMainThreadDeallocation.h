@@ -31,9 +31,10 @@ NS_ASSUME_NONNULL_BEGIN
  * You do not access this property yourself.
  *
  * The NSObject implementation returns YES if the class name has
- * a prefix UI, AV, or CA. This property is also overridden to
- * return fixed values for other common classes, such as UIImage,
- * UIGestureRecognizer, and UIResponder.
+ * a prefix AV or CA, plus platform UI prefixes (`UI` on iOS/tvOS
+ * and `NS` on macOS). This property is also overridden to
+ * return fixed values for other common classes, such as ASImage,
+ * ASGestureRecognizer, and ASResponder.
  */
 @property (class, readonly) BOOL needsMainThreadDeallocation;
 

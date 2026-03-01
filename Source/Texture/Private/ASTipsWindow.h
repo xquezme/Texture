@@ -10,7 +10,7 @@
 #import "ASDKViewController.h"
 #import "ASBaseDefines.h"
 
-#if AS_ENABLE_TIPS
+#if AS_ENABLE_TIPS && !AS_PLATFORM_MACOS
 
 @class ASDisplayNode, ASDisplayNodeTipState;
 
@@ -33,4 +33,4 @@ AS_SUBCLASSING_RESTRICTED
 
 NS_ASSUME_NONNULL_END
 
-#endif
+#endif // AS_ENABLE_TIPS && !AS_PLATFORM_MACOS

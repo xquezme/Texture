@@ -8,7 +8,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASScrollDirection.h"
 
 @class ASElementMap, ASCollectionLayoutContext, ASCollectionLayoutState;

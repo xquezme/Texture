@@ -324,7 +324,11 @@ static std::atomic_bool static_retainsSublayoutLayoutElements = ATOMIC_VAR_INIT(
 - (NSMutableArray <NSDictionary *> *)propertiesForDescription
 {
   NSMutableArray *result = [NSMutableArray array];
+#if AS_PLATFORM_MACOS
+  [result addObject:@{ @"size" : [NSValue valueWithSize:self.size] }];
+#else
   [result addObject:@{ @"size" : [NSValue valueWithCGSize:self.size] }];
+#endif
 
   if (id<ASLayoutElement> layoutElement = self.layoutElement) {
     [result addObject:@{ @"layoutElement" : layoutElement }];
@@ -332,7 +336,11 @@ static std::atomic_bool static_retainsSublayoutLayoutElements = ATOMIC_VAR_INIT(
 
   const auto pos = self.position;
   if (!ASPointIsNull(pos)) {
+#if AS_PLATFORM_MACOS
+    [result addObject:@{ @"position" : [NSValue valueWithPoint:pos] }];
+#else
     [result addObject:@{ @"position" : [NSValue valueWithCGPoint:pos] }];
+#endif
   }
   return result;
 }

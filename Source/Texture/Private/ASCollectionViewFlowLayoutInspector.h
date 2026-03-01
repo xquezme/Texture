@@ -12,18 +12,17 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class ASCollectionView;
-@class UICollectionViewFlowLayout;
 
 /**
- * A layout inspector implementation specific for the sizing behavior of UICollectionViewFlowLayouts
+ * A layout inspector implementation specific for the sizing behavior of ASCollectionViewFlowLayout.
  */
 AS_SUBCLASSING_RESTRICTED
 @interface ASCollectionViewFlowLayoutInspector : NSObject <ASCollectionViewLayoutInspecting>
 
-@property (nonatomic, weak, readonly) UICollectionViewFlowLayout *layout;
+@property (nonatomic, weak, readonly) ASCollectionViewFlowLayout *layout;
 
 - (instancetype)init NS_UNAVAILABLE;
-- (instancetype)initWithFlowLayout:(UICollectionViewFlowLayout *)flowLayout NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithFlowLayout:(ASCollectionViewFlowLayout *)flowLayout NS_DESIGNATED_INITIALIZER;
 
 @end
 

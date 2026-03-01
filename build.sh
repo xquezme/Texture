@@ -88,16 +88,18 @@ function cleanup {
 function build_spm_package {
     package_path="$1"
     scheme="$2"
+    build_sdk="${3:-$SDK}"
+    build_destination="${4:-$PLATFORM}"
 
-    echo "Building SPM package: $package_path (scheme: $scheme)"
+    echo "Building SPM package: $package_path (scheme: $scheme, sdk: $build_sdk, destination: $build_destination)"
 
     xcodeproj=$(find "${package_path}" -maxdepth 1 -name "*.xcodeproj" -type d 2>/dev/null | head -1)
     if [ -n "$xcodeproj" ]; then
         set -o pipefail && xcodebuild \
             -project "$xcodeproj" \
             -scheme "$scheme" \
-            -sdk "$SDK" \
-            -destination "$PLATFORM" \
+            -sdk "$build_sdk" \
+            -destination "$build_destination" \
             build
     else
         # Run in a subshell so the cd is scoped and the trap still fires on failure.
@@ -105,8 +107,8 @@ function build_spm_package {
             cd "$package_path"
             set -o pipefail && xcodebuild \
                 -scheme "${scheme}-Package" \
-                -sdk "$SDK" \
-                -destination "$PLATFORM" \
+                -sdk "$build_sdk" \
+                -destination "$build_destination" \
                 build
         )
     fi
@@ -314,6 +316,7 @@ spm-smoke-tests|all)
     build_spm_package "smoke-tests/SwiftPackageManagerIntegration" "SwiftPackageManagerIntegration"
     build_spm_package "smoke-tests/YogaIntegration" "YogaIntegration"
     build_spm_package "smoke-tests/IGListKitIntegration" "IGListKitIntegration"
+    build_spm_package "smoke-tests/MacAppIntegration" "MacAppIntegration" "macosx" "platform=macOS"
 
     success="1"
     ;;

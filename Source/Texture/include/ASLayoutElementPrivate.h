@@ -8,7 +8,6 @@
 //
 
 #import "ASDimension.h"
-#import <UIKit/UIGeometry.h>
 
 @protocol ASLayoutElement;
 @class ASLayoutElementStyle;
@@ -70,7 +69,7 @@ typedef struct ASLayoutElementStyleExtensions {
   // Values to store extensions
   BOOL boolExtensions[kMaxLayoutElementBoolExtensions];
   NSInteger integerExtensions[kMaxLayoutElementStateIntegerExtensions];
-  UIEdgeInsets edgeInsetsExtensions[kMaxLayoutElementStateEdgeInsetExtensions];
+  ASEdgeInsets edgeInsetsExtensions[kMaxLayoutElementStateEdgeInsetExtensions];
 } ASLayoutElementStyleExtensions;
 
 #define ASLayoutElementStyleExtensibilityForwarding \
@@ -94,13 +93,12 @@ typedef struct ASLayoutElementStyleExtensions {
   return [self.style layoutOptionExtensionIntegerAtIndex:idx];\
 }\
 \
-- (void)setLayoutOptionExtensionEdgeInsets:(UIEdgeInsets)value atIndex:(int)idx\
+- (void)setLayoutOptionExtensionEdgeInsets:(ASEdgeInsets)value atIndex:(int)idx\
 {\
   [self.style setLayoutOptionExtensionEdgeInsets:value atIndex:idx];\
 }\
 \
-- (UIEdgeInsets)layoutOptionExtensionEdgeInsetsAtIndex:(int)idx\
+- (ASEdgeInsets)layoutOptionExtensionEdgeInsetsAtIndex:(int)idx\
 {\
   return [self.style layoutOptionExtensionEdgeInsetsAtIndex:idx];\
 }\
-

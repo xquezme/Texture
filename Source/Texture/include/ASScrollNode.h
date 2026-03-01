@@ -12,17 +12,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class UIScrollView;
-
 /**
- * Simple node that wraps UIScrollView.
+ * Simple node that wraps ASScrollView.
  */
 @interface ASScrollNode : ASDisplayNode
 
 /**
- * @abstract The node's UIScrollView.
+ * @abstract The node's ASScrollView.
  */
-@property (readonly) UIScrollView *view;
+@property (readonly) ASScrollView *view;
 
 /**
  * @abstract When enabled, the size calculated by the node's layout spec is used as

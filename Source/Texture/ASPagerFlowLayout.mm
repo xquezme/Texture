@@ -17,7 +17,7 @@
 
 @end
 
-//TODO make this an ASCollectionViewLayout
+// TODO make this an ASCollectionViewLayout
 @implementation ASPagerFlowLayout
 
 - (ASCollectionView *)asCollectionView
@@ -38,7 +38,12 @@
 {
   // Don't mess around if the user is interacting with the page node. Although if just a rotation happened we should
   // try to use the current index path to not end up setting the target content offset to something in between pages
-  if (!self.collectionView.decelerating && !self.collectionView.tracking) {
+#if AS_PLATFORM_MACOS
+  BOOL userIsInteracting = NO; // NSCollectionView has no decelerating/tracking; always snap.
+#else
+  BOOL userIsInteracting = self.collectionView.decelerating || self.collectionView.tracking;
+#endif
+  if (!userIsInteracting) {
     NSIndexPath *indexPath = [self.asCollectionView indexPathForNode:_currentCellNode];
     if (indexPath) {
       return [self _targetContentOffsetForItemAtIndexPath:indexPath proposedContentOffset:proposedContentOffset];
@@ -48,13 +53,14 @@
   return [super targetContentOffsetForProposedContentOffset:proposedContentOffset];
 }
 
-- (CGPoint)_targetContentOffsetForItemAtIndexPath:(NSIndexPath *)indexPath proposedContentOffset:(CGPoint)proposedContentOffset
+- (CGPoint)_targetContentOffsetForItemAtIndexPath:(NSIndexPath *)indexPath
+                            proposedContentOffset:(CGPoint)proposedContentOffset
 {
   if ([self _dataSourceIsEmpty]) {
     return proposedContentOffset;
   }
-  
-  UICollectionViewLayoutAttributes *attributes = [self layoutAttributesForItemAtIndexPath:indexPath];
+
+  ASCollectionViewLayoutAttributes *attributes = [self layoutAttributesForItemAtIndexPath:indexPath];
   if (attributes == nil) {
     return proposedContentOffset;
   }
@@ -65,8 +71,7 @@
 
 - (BOOL)_dataSourceIsEmpty
 {
-  return ([self.collectionView numberOfSections] == 0 ||
-          [self.collectionView numberOfItemsInSection:0] == 0);
+  return ([self.collectionView numberOfSections] == 0 || [self.collectionView numberOfItemsInSection:0] == 0);
 }
 
 - (void)_updateCurrentNode
@@ -80,7 +85,7 @@
       return;
     }
   }
-  
+
   CGRect bounds = self.collectionView.bounds;
   CGRect rect = CGRectMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds), 1, 1);
 
@@ -99,12 +104,24 @@
   return [super shouldInvalidateLayoutForBoundsChange:newBounds];
 }
 
-- (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
+#if AS_PLATFORM_MACOS
+- (NSCollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
 {
-  UICollectionViewFlowLayoutInvalidationContext *ctx = (UICollectionViewFlowLayoutInvalidationContext *)[super invalidationContextForBoundsChange:newBounds];
+  NSCollectionViewFlowLayoutInvalidationContext *ctx =
+      (NSCollectionViewFlowLayoutInvalidationContext *)[super invalidationContextForBoundsChange:newBounds];
   ctx.invalidateFlowLayoutDelegateMetrics = YES;
   ctx.invalidateFlowLayoutAttributes = YES;
   return ctx;
 }
+#else
+- (UICollectionViewLayoutInvalidationContext *)invalidationContextForBoundsChange:(CGRect)newBounds
+{
+  UICollectionViewFlowLayoutInvalidationContext *ctx =
+      (UICollectionViewFlowLayoutInvalidationContext *)[super invalidationContextForBoundsChange:newBounds];
+  ctx.invalidateFlowLayoutDelegateMetrics = YES;
+  ctx.invalidateFlowLayoutAttributes = YES;
+  return ctx;
+}
+#endif
 
 @end

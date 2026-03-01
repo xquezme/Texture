@@ -7,8 +7,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
 #import "ASBaseDefines.h"
+#import "ASPlatformDefines.h"
 
 AS_SUBCLASSING_RESTRICTED
 @interface ASLayoutManager : NSLayoutManager

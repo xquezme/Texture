@@ -7,9 +7,12 @@
 //
 
 #import "ASPagerNode.h"
+#import "ASPlatformDefines.h"
 
 @interface ASPagerNode (Beta)
 
+#if !AS_PLATFORM_MACOS
 - (instancetype)initUsingAsyncCollectionLayout;
+#endif
 
 @end

@@ -61,6 +61,7 @@ NSCharacterSet *ASTextVerticalFormRotateAndMoveCharacterSet() {
   return set;
 }
 
+#if !AS_PLATFORM_MACOS
 CGRect ASTextCGRectFitWithContentMode(CGRect rect, CGSize size, UIViewContentMode mode) {
   rect = CGRectStandardize(rect);
   size.width = size.width < 0 ? -size.width : size.width;
@@ -140,3 +141,4 @@ CGRect ASTextCGRectFitWithContentMode(CGRect rect, CGSize size, UIViewContentMod
   }
   return rect;
 }
+#endif

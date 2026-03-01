@@ -37,11 +37,11 @@
   return [self as_attributesAtIndex:0];
 }
 
-- (UIFont *)as_font {
+- (ASFont *)as_font {
   return [self as_fontAtIndex:0];
 }
 
-- (UIFont *)as_fontAtIndex:(NSUInteger)index {
+- (ASFont *)as_fontAtIndex:(NSUInteger)index {
   return [self as_attribute:NSFontAttributeName atIndex:index];
 }
 
@@ -53,19 +53,19 @@
   return [self as_attribute:NSKernAttributeName atIndex:index];
 }
 
-- (UIColor *)as_color {
+- (ASColor *)as_color {
   return [self as_colorAtIndex:0];
 }
 
-- (UIColor *)as_colorAtIndex:(NSUInteger)index {
-  UIColor *color = [self as_attribute:NSForegroundColorAttributeName atIndex:index];
+- (ASColor *)as_colorAtIndex:(NSUInteger)index {
+  ASColor *color = [self as_attribute:NSForegroundColorAttributeName atIndex:index];
   if (!color) {
     CGColorRef ref = (__bridge CGColorRef)([self as_attribute:(NSString *)kCTForegroundColorAttributeName atIndex:index]);
-    color = [UIColor colorWithCGColor:ref];
+    color = [ASColor colorWithCGColor:ref];
   }
-  if (color && ![color isKindOfClass:[UIColor class]]) {
+  if (color && ![color isKindOfClass:[ASColor class]]) {
     if (CFGetTypeID((__bridge CFTypeRef)(color)) == CGColorGetTypeID()) {
-      color = [UIColor colorWithCGColor:(__bridge CGColorRef)(color)];
+      color = [ASColor colorWithCGColor:(__bridge CGColorRef)(color)];
     } else {
       color = nil;
     }
@@ -73,11 +73,11 @@
   return color;
 }
 
-- (UIColor *)as_backgroundColor {
+- (ASColor *)as_backgroundColor {
   return [self as_backgroundColorAtIndex:0];
 }
 
-- (UIColor *)as_backgroundColorAtIndex:(NSUInteger)index {
+- (ASColor *)as_backgroundColorAtIndex:(NSUInteger)index {
   return [self as_attribute:NSBackgroundColorAttributeName atIndex:index];
 }
 
@@ -89,15 +89,15 @@
   return [self as_attribute:NSStrokeWidthAttributeName atIndex:index];
 }
 
-- (UIColor *)as_strokeColor {
+- (ASColor *)as_strokeColor {
   return [self as_strokeColorAtIndex:0];
 }
 
-- (UIColor *)as_strokeColorAtIndex:(NSUInteger)index {
-  UIColor *color = [self as_attribute:NSStrokeColorAttributeName atIndex:index];
+- (ASColor *)as_strokeColorAtIndex:(NSUInteger)index {
+  ASColor *color = [self as_attribute:NSStrokeColorAttributeName atIndex:index];
   if (!color) {
     CGColorRef ref = (__bridge CGColorRef)([self as_attribute:(NSString *)kCTStrokeColorAttributeName atIndex:index]);
-    color = [UIColor colorWithCGColor:ref];
+    color = [ASColor colorWithCGColor:ref];
   }
   return color;
 }
@@ -119,11 +119,11 @@
   return (NSUnderlineStyle)style.integerValue;
 }
 
-- (UIColor *)as_strikethroughColor {
+- (ASColor *)as_strikethroughColor {
   return [self as_strikethroughColorAtIndex:0];
 }
 
-- (UIColor *)as_strikethroughColorAtIndex:(NSUInteger)index {
+- (ASColor *)as_strikethroughColorAtIndex:(NSUInteger)index {
   return [self as_attribute:NSStrikethroughColorAttributeName atIndex:index];
 }
 
@@ -136,15 +136,15 @@
   return (NSUnderlineStyle)style.integerValue;
 }
 
-- (UIColor *)as_underlineColor {
+- (ASColor *)as_underlineColor {
   return [self as_underlineColorAtIndex:0];
 }
 
-- (UIColor *)as_underlineColorAtIndex:(NSUInteger)index {
-  UIColor *color = [self as_attribute:NSUnderlineColorAttributeName atIndex:index];
+- (ASColor *)as_underlineColorAtIndex:(NSUInteger)index {
+  ASColor *color = [self as_attribute:NSUnderlineColorAttributeName atIndex:index];
   if (!color) {
     CGColorRef ref = (__bridge CGColorRef)([self as_attribute:(NSString *)kCTUnderlineColorAttributeName atIndex:index]);
-    color = [UIColor colorWithCGColor:ref];
+    color = [ASColor colorWithCGColor:ref];
   }
   return color;
 }
@@ -424,7 +424,7 @@ return style. _attr_;
 - (CGAffineTransform)as_textGlyphTransformAtIndex:(NSUInteger)index {
   NSValue *value = [self as_attribute:ASTextGlyphTransformAttributeName atIndex:index];
   if (!value) return CGAffineTransformIdentity;
-  return [value CGAffineTransformValue];
+  return ASCGAffineTransformFromValue(value);
 }
 
 - (NSString *)as_plainTextForRange:(NSRange)range {
@@ -443,6 +443,7 @@ return style. _attr_;
   return result;
 }
 
+#if !AS_PLATFORM_MACOS
 + (NSMutableAttributedString *)as_attachmentStringWithContent:(id)content
                                                   contentMode:(UIViewContentMode)contentMode
                                                         width:(CGFloat)width
@@ -469,7 +470,7 @@ return style. _attr_;
 + (NSMutableAttributedString *)as_attachmentStringWithContent:(id)content
                                                   contentMode:(UIViewContentMode)contentMode
                                                attachmentSize:(CGSize)attachmentSize
-                                                  alignToFont:(UIFont *)font
+                                                  alignToFont:(ASFont *)font
                                                     alignment:(ASTextVerticalAlignment)alignment {
   NSMutableAttributedString *atr = [[NSMutableAttributedString alloc] initWithString:ASTextAttachmentToken];
   
@@ -520,7 +521,7 @@ return style. _attr_;
   return atr;
 }
 
-+ (NSMutableAttributedString *)as_attachmentStringWithEmojiImage:(UIImage *)image
++ (NSMutableAttributedString *)as_attachmentStringWithEmojiImage:(ASImage *)image
                                                         fontSize:(CGFloat)fontSize {
   if (!image || fontSize <= 0) return nil;
   
@@ -547,10 +548,16 @@ return style. _attr_;
   attachment.contentInsets = UIEdgeInsetsMake(ascent - (bounding.size.height + bounding.origin.y), bounding.origin.x, descent + bounding.origin.y, bounding.origin.x);
   if (hasAnim) {
     Class imageClass = NSClassFromString(@"ASAnimatedImageView");
-    if (!imageClass) imageClass = [UIImageView class];
-    UIImageView *view = (id)[imageClass new];
+    if (!imageClass) {
+#if AS_PLATFORM_MACOS
+      imageClass = [NSImageView class];
+#else
+      imageClass = [UIImageView class];
+#endif
+    }
+    ASDisplayView *view = (id)[imageClass new];
     view.frame = bounding;
-    view.image = image;
+    [(id)view setImage:image];
     view.contentMode = UIViewContentModeScaleAspectFit;
     attachment.content = view;
   } else {
@@ -565,6 +572,7 @@ return style. _attr_;
   
   return atr;
 }
+#endif
 
 - (NSRange)as_rangeOfAll {
   return NSMakeRange(0, self.length);
@@ -597,7 +605,7 @@ return style. _attr_;
   dispatch_once(&onceToken, ^{
     failSet = [NSMutableSet new];
     [failSet addObject:(id)kCTGlyphInfoAttributeName];
-#if TARGET_OS_IOS
+#if !AS_PLATFORM_MACOS
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     [failSet addObject:(id)kCTCharacterShapeAttributeName];
@@ -672,15 +680,15 @@ return style. _attr_;
 
 #pragma mark - Property Setter
 
-- (void)setAs_font:(UIFont *)font {
+- (void)setAs_font:(ASFont *)font {
   /*
-   In iOS7 and later, UIFont is toll-free bridged to CTFontRef,
+   In iOS7 and later, ASFont is toll-free bridged to CTFontRef,
    although Apple does not mention it in documentation.
    
-   In iOS6, UIFont is a wrapper for CTFontRef, so CoreText can alse use UIfont,
+   In iOS6, ASFont is a wrapper for CTFontRef, so CoreText can alse use UIfont,
    but UILabel/UITextView cannot use CTFontRef.
    
-   We use UIFont for both CoreText and UIKit.
+   We use ASFont for both CoreText and UIKit.
    */
   [self as_setFont:font range:NSMakeRange(0, self.length)];
 }
@@ -689,11 +697,11 @@ return style. _attr_;
   [self as_setKern:kern range:NSMakeRange(0, self.length)];
 }
 
-- (void)setAs_color:(UIColor *)color {
+- (void)setAs_color:(ASColor *)color {
   [self as_setColor:color range:NSMakeRange(0, self.length)];
 }
 
-- (void)setAs_backgroundColor:(UIColor *)backgroundColor {
+- (void)setAs_backgroundColor:(ASColor *)backgroundColor {
   [self as_setBackgroundColor:backgroundColor range:NSMakeRange(0, self.length)];
 }
 
@@ -701,7 +709,7 @@ return style. _attr_;
   [self as_setStrokeWidth:strokeWidth range:NSMakeRange(0, self.length)];
 }
 
-- (void)setAs_strokeColor:(UIColor *)strokeColor {
+- (void)setAs_strokeColor:(ASColor *)strokeColor {
   [self as_setStrokeColor:strokeColor range:NSMakeRange(0, self.length)];
 }
 
@@ -713,7 +721,7 @@ return style. _attr_;
   [self as_setStrikethroughStyle:strikethroughStyle range:NSMakeRange(0, self.length)];
 }
 
-- (void)setAs_strikethroughColor:(UIColor *)strikethroughColor {
+- (void)setAs_strikethroughColor:(ASColor *)strikethroughColor {
   [self as_setStrikethroughColor:strikethroughColor range:NSMakeRange(0, self.length)];
 }
 
@@ -721,7 +729,7 @@ return style. _attr_;
   [self as_setUnderlineStyle:underlineStyle range:NSMakeRange(0, self.length)];
 }
 
-- (void)setAs_underlineColor:(UIColor *)underlineColor {
+- (void)setAs_underlineColor:(ASColor *)underlineColor {
   [self as_setUnderlineColor:underlineColor range:NSMakeRange(0, self.length)];
 }
 
@@ -859,7 +867,7 @@ return style. _attr_;
 
 #pragma mark - Range Setter
 
-- (void)as_setFont:(UIFont *)font range:(NSRange)range {
+- (void)as_setFont:(ASFont *)font range:(NSRange)range {
   [self as_setAttribute:NSFontAttributeName value:font range:range];
 }
 
@@ -867,12 +875,12 @@ return style. _attr_;
   [self as_setAttribute:NSKernAttributeName value:kern range:range];
 }
 
-- (void)as_setColor:(UIColor *)color range:(NSRange)range {
+- (void)as_setColor:(ASColor *)color range:(NSRange)range {
   [self as_setAttribute:(id)kCTForegroundColorAttributeName value:(id)color.CGColor range:range];
   [self as_setAttribute:NSForegroundColorAttributeName value:color range:range];
 }
 
-- (void)as_setBackgroundColor:(UIColor *)backgroundColor range:(NSRange)range {
+- (void)as_setBackgroundColor:(ASColor *)backgroundColor range:(NSRange)range {
   [self as_setAttribute:NSBackgroundColorAttributeName value:backgroundColor range:range];
 }
 
@@ -880,7 +888,7 @@ return style. _attr_;
   [self as_setAttribute:NSStrokeWidthAttributeName value:strokeWidth range:range];
 }
 
-- (void)as_setStrokeColor:(UIColor *)strokeColor range:(NSRange)range {
+- (void)as_setStrokeColor:(ASColor *)strokeColor range:(NSRange)range {
   [self as_setAttribute:(id)kCTStrokeColorAttributeName value:(id)strokeColor.CGColor range:range];
   [self as_setAttribute:NSStrokeColorAttributeName value:strokeColor range:range];
 }
@@ -894,7 +902,7 @@ return style. _attr_;
   [self as_setAttribute:NSStrikethroughStyleAttributeName value:style range:range];
 }
 
-- (void)as_setStrikethroughColor:(UIColor *)strikethroughColor range:(NSRange)range {
+- (void)as_setStrikethroughColor:(ASColor *)strikethroughColor range:(NSRange)range {
   [self as_setAttribute:NSStrikethroughColorAttributeName value:strikethroughColor range:range];
 }
 
@@ -903,7 +911,7 @@ return style. _attr_;
   [self as_setAttribute:NSUnderlineStyleAttributeName value:style range:range];
 }
 
-- (void)as_setUnderlineColor:(UIColor *)underlineColor range:(NSRange)range {
+- (void)as_setUnderlineColor:(ASColor *)underlineColor range:(NSRange)range {
   [self as_setAttribute:(id)kCTUnderlineColorAttributeName value:(id)underlineColor.CGColor range:range];
   [self as_setAttribute:NSUnderlineColorAttributeName value:underlineColor range:range];
 }
@@ -1130,13 +1138,13 @@ style. _attr_ = _attr_; \
 }
 
 - (void)as_setTextGlyphTransform:(CGAffineTransform)textGlyphTransform range:(NSRange)range {
-  NSValue *value = CGAffineTransformIsIdentity(textGlyphTransform) ? nil : [NSValue valueWithCGAffineTransform:textGlyphTransform];
+  NSValue *value = CGAffineTransformIsIdentity(textGlyphTransform) ? nil : ASValueWithCGAffineTransform(textGlyphTransform);
   [self as_setAttribute:ASTextGlyphTransformAttributeName value:value range:range];
 }
 
 - (void)as_setTextHighlightRange:(NSRange)range
-                           color:(UIColor *)color
-                 backgroundColor:(UIColor *)backgroundColor
+                           color:(ASColor *)color
+                 backgroundColor:(ASColor *)backgroundColor
                         userInfo:(NSDictionary *)userInfo
                        tapAction:(ASTextAction)tapAction
                  longPressAction:(ASTextAction)longPressAction {
@@ -1149,8 +1157,8 @@ style. _attr_ = _attr_; \
 }
 
 - (void)as_setTextHighlightRange:(NSRange)range
-                           color:(UIColor *)color
-                 backgroundColor:(UIColor *)backgroundColor
+                           color:(ASColor *)color
+                 backgroundColor:(ASColor *)backgroundColor
                        tapAction:(ASTextAction)tapAction {
   [self as_setTextHighlightRange:range
                            color:color
@@ -1161,8 +1169,8 @@ style. _attr_ = _attr_; \
 }
 
 - (void)as_setTextHighlightRange:(NSRange)range
-                           color:(UIColor *)color
-                 backgroundColor:(UIColor *)backgroundColor
+                           color:(ASColor *)color
+                 backgroundColor:(ASColor *)backgroundColor
                         userInfo:(NSDictionary *)userInfo {
   [self as_setTextHighlightRange:range
                            color:color

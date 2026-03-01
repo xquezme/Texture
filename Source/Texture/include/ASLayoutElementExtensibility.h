@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIGeometry.h>
+#import "ASPlatformDefines.h"
 
 #import <objc/runtime.h>
 
@@ -24,8 +24,8 @@
 - (void)setLayoutOptionExtensionInteger:(NSInteger)value atIndex:(int)idx;
 - (NSInteger)layoutOptionExtensionIntegerAtIndex:(int)idx;
 
-- (void)setLayoutOptionExtensionEdgeInsets:(UIEdgeInsets)value atIndex:(int)idx;
-- (UIEdgeInsets)layoutOptionExtensionEdgeInsetsAtIndex:(int)idx;
+- (void)setLayoutOptionExtensionEdgeInsets:(ASEdgeInsets)value atIndex:(int)idx;
+- (ASEdgeInsets)layoutOptionExtensionEdgeInsetsAtIndex:(int)idx;
 
 @end
 

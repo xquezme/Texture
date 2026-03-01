@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import <CoreText/CoreText.h>
 
 #import "ASTextDebugOption.h"
@@ -54,10 +54,10 @@ ASDK_EXTERN const CGSize ASTextContainerMaxSize;
 + (instancetype)containerWithSize:(CGSize)size NS_RETURNS_RETAINED;
 
 /// Creates a container with the specified size and insets. @param size The size. @param insets The text insets.
-+ (instancetype)containerWithSize:(CGSize)size insets:(UIEdgeInsets)insets NS_RETURNS_RETAINED;
++ (instancetype)containerWithSize:(CGSize)size insets:(ASEdgeInsets)insets NS_RETURNS_RETAINED;
 
 /// Creates a container with the specified path. @param path The path.
-+ (instancetype)containerWithPath:(nullable UIBezierPath *)path NS_RETURNS_RETAINED;
++ (instancetype)containerWithPath:(nullable ASBezierPath *)path NS_RETURNS_RETAINED;
 
 /// Mark this immutable, so you get free copies going forward.
 - (void)makeImmutable;
@@ -66,13 +66,13 @@ ASDK_EXTERN const CGSize ASTextContainerMaxSize;
 @property CGSize size;
 
 /// The insets for constrained size. The inset value should not be negative. Default is UIEdgeInsetsZero.
-@property UIEdgeInsets insets;
+@property ASEdgeInsets insets;
 
 /// Custom constrained path. Set this property to ignore `size` and `insets`. Default is nil.
-@property (nullable, copy) UIBezierPath *path;
+@property (nullable, copy) ASBezierPath *path;
 
-/// An array of `UIBezierPath` for path exclusion. Default is nil.
-@property (nullable, copy) NSArray<UIBezierPath *> *exclusionPaths;
+/// An array of `ASBezierPath` for path exclusion. Default is nil.
+@property (nullable, copy) NSArray<ASBezierPath *> *exclusionPaths;
 
 /// Path line width. Default is 0;
 @property CGFloat pathLineWidth;
@@ -232,7 +232,7 @@ ASDK_EXTERN const CGSize ASTextContainerMaxSize;
 @property (nullable, nonatomic, readonly) NSArray<NSValue *> *attachmentRanges;
 ///< Array of CGRect(wrapped by NSValue) in container
 @property (nullable, nonatomic, readonly) NSArray<NSValue *> *attachmentRects;
-///< Set of Attachment (UIImage/UIView/CALayer)
+///< Set of Attachment (ASImage/ASDisplayView/CALayer)
 @property (nullable, nonatomic, readonly) NSSet *attachmentContentsSet;
 ///< Number of rows
 @property (nonatomic, readonly) NSUInteger rowCount;
@@ -411,9 +411,11 @@ ASDK_EXTERN const CGSize ASTextContainerMaxSize;
  @return A text-range object that represents the distance from position to the
  farthest extent in direction. Or nil if an error occurs.
  */
+#if !AS_PLATFORM_MACOS
 - (nullable ASTextRange *)textRangeByExtendingPosition:(ASTextPosition *)position
                                            inDirection:(UITextLayoutDirection)direction
                                                 offset:(NSInteger)offset;
+#endif
 
 /**
  Returns the line index for a given text position.
@@ -508,7 +510,7 @@ ASDK_EXTERN const CGSize ASTextContainerMaxSize;
  layers will add to this `layer`.
  
  @warning This method should be called on main thread if `view` or `layer` parameter
- is not nil and there's UIView or CALayer attachments in layout.
+ is not nil and there's ASDisplayView or CALayer attachments in layout.
  Otherwise, it can be called on any thread.
  
  @param context The draw context. Pass nil to avoid text and image drawing.
@@ -524,7 +526,7 @@ ASDK_EXTERN const CGSize ASTextContainerMaxSize;
 - (void)drawInContext:(nullable CGContextRef)context
                  size:(CGSize)size
                 point:(CGPoint)point
-                 view:(nullable UIView *)view
+                 view:(nullable ASDisplayView *)view
                 layer:(nullable CALayer *)layer
                 debug:(nullable ASTextDebugOption *)debug
                cancel:(nullable BOOL (^)(void))cancel;

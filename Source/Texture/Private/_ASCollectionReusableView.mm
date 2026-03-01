@@ -22,11 +22,13 @@
 - (void)setElement:(ASCollectionElement *)element
 {
   ASDisplayNodeAssertMainThread();
-  element.node.layoutAttributes = _layoutAttributes;
+  if (element.node != nil) {
+    element.node.layoutAttributes = _layoutAttributes;
+  }
   _element = element;
 }
 
-- (void)setLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+- (void)setLayoutAttributes:(ASCollectionViewLayoutAttributes *)layoutAttributes
 {
   _layoutAttributes = layoutAttributes;
   self.node.layoutAttributes = layoutAttributes;
@@ -38,9 +40,12 @@
   
   // Need to clear element before UIKit calls setSelected:NO / setHighlighted:NO on its cells
   self.element = nil;
+#if !AS_PLATFORM_MACOS
   [super prepareForReuse];
+#endif
 }
 
+#if !AS_PLATFORM_MACOS
 /**
  * In the initial case, this is called by UICollectionView during cell dequeueing, before
  *   we get a chance to assign a node to it, so we must be sure to set these layout attributes
@@ -48,19 +53,28 @@
  *   have our node assigned e.g. during a layout update for existing cells, we also attempt
  *   to update it now.
  */
-- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+- (void)applyLayoutAttributes:(ASCollectionViewLayoutAttributes *)layoutAttributes
 {
   self.layoutAttributes = layoutAttributes;
 }
+#endif
 
 /**
  * Keep our node filling our content view.
  */
+#if AS_PLATFORM_MACOS
+- (void)layout
+{
+  [super layout];
+  self.node.frame = self.bounds;
+}
+#else
 - (void)layoutSubviews
 {
   [super layoutSubviews];
   self.node.frame = self.bounds;
 }
+#endif
 
 @end
 
@@ -70,7 +84,7 @@
  * We don't need to do anything to bind the view model – the cell node
  * serves the same purpose.
  */
-#if __has_include(<IGListKit/IGListBindable.h>) || __has_include(<IGListBindable.h>)
+#if !AS_PLATFORM_MACOS && (__has_include(<IGListKit/IGListBindable.h>) || __has_include(<IGListBindable.h>))
 
 #if __has_include(<IGListKit/IGListBindable.h>)
 #import <IGListKit/IGListBindable.h>

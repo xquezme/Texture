@@ -26,7 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ASTableNode : ASDisplayNode <ASRangeControllerUpdateRangeProtocol, ASRangeManagingNode>
 
 - (instancetype)init; // UITableViewStylePlain
-- (instancetype)initWithStyle:(UITableViewStyle)style NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithStyle:(ASTableViewStyle)style NS_DESIGNATED_INITIALIZER;
 
 @property (readonly) ASTableView *view;
 
@@ -48,9 +48,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) BOOL inverted;
 
 /**
- * The distance that the content view is inset from the table node edges. Defaults to UIEdgeInsetsZero.
+ * The distance that the content view is inset from the table node edges. Defaults to ASEdgeInsetsZero.
  */
-@property (nonatomic) UIEdgeInsets contentInset;
+@property (nonatomic) ASEdgeInsets contentInset;
 
 /**
  * The offset of the content view's origin from the table node's origin. Defaults to CGPointZero.
@@ -81,7 +81,9 @@ NS_ASSUME_NONNULL_BEGIN
  * A Boolean value that determines whether paging is enabled for the scroll view.
  * The default value of this property is NO.
  */
+#if !AS_PLATFORM_MACOS
 @property (nonatomic, getter=isPagingEnabled) BOOL pagingEnabled __TVOS_PROHIBITED;
+#endif
 
 /*
  * A Boolean value that determines whether users can select a row.
@@ -161,7 +163,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * This method must be called on the main thread.
  */
-- (void)scrollToRowAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(UITableViewScrollPosition)scrollPosition animated:(BOOL)animated NS_SWIFT_UI_ACTOR;
+- (void)scrollToRowAtIndexPath:(NSIndexPath *)indexPath atScrollPosition:(ASTableViewScrollPosition)scrollPosition animated:(BOOL)animated NS_SWIFT_UI_ACTOR;
 
 /**
  * Reload everything from scratch, destroying the working range and all cached nodes.
@@ -217,7 +219,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  *  Returns NO if ASCollectionNode is fully synchronized with the underlying UICollectionView. This
  *  means that until the next performBatchUpdates: is called, it is safe to compare UIKit values
- *  (such as from UICollectionViewLayout) with your app's data source.
+ *  (such as from ASCollectionViewLayout) with your app's data source.
  *
  *  This method will always return NO if called immediately after -waitUntilAllUpdatesAreProcessed.
  */
@@ -248,36 +250,36 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param sections An index set that specifies the sections to insert.
  *
- * @param animation A constant that indicates how the insertion is to be animated. See UITableViewRowAnimation.
+ * @param animation A constant that indicates how the insertion is to be animated. See ASTableViewRowAnimation.
  *
  * @discussion This method must be called from the main thread. The asyncDataSource must be updated to reflect the changes
  * before this method is called.
  */
-- (void)insertSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
+- (void)insertSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
 
 /**
  * Deletes one or more sections, with an option to animate the deletion.
  *
  * @param sections An index set that specifies the sections to delete.
  *
- * @param animation A constant that indicates how the deletion is to be animated. See UITableViewRowAnimation.
+ * @param animation A constant that indicates how the deletion is to be animated. See ASTableViewRowAnimation.
  *
  * @discussion This method must be called from the main thread. The asyncDataSource must be updated to reflect the changes
  * before this method is called.
  */
-- (void)deleteSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
+- (void)deleteSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
 
 /**
  * Reloads the specified sections using a given animation effect.
  *
  * @param sections An index set that specifies the sections to reload.
  *
- * @param animation A constant that indicates how the reloading is to be animated. See UITableViewRowAnimation.
+ * @param animation A constant that indicates how the reloading is to be animated. See ASTableViewRowAnimation.
  *
  * @discussion This method must be called from the main thread. The asyncDataSource must be updated to reflect the changes
  * before this method is called.
  */
-- (void)reloadSections:(NSIndexSet *)sections withRowAnimation:(UITableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
+- (void)reloadSections:(NSIndexSet *)sections withRowAnimation:(ASTableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
 
 /**
  * Moves a section to a new location.
@@ -296,36 +298,36 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param indexPaths An array of NSIndexPath objects, each representing a row index and section index that together identify a row.
  *
- * @param animation A constant that indicates how the insertion is to be animated. See UITableViewRowAnimation.
+ * @param animation A constant that indicates how the insertion is to be animated. See ASTableViewRowAnimation.
  *
  * @discussion This method must be called from the main thread. The asyncDataSource must be updated to reflect the changes
  * before this method is called.
  */
-- (void)insertRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
+- (void)insertRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
 
 /**
  * Deletes the rows specified by an array of index paths, with an option to animate the deletion.
  *
  * @param indexPaths An array of NSIndexPath objects identifying the rows to delete.
  *
- * @param animation A constant that indicates how the deletion is to be animated. See UITableViewRowAnimation.
+ * @param animation A constant that indicates how the deletion is to be animated. See ASTableViewRowAnimation.
  *
  * @discussion This method must be called from the main thread. The asyncDataSource must be updated to reflect the changes
  * before this method is called.
  */
-- (void)deleteRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
+- (void)deleteRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
 
 /**
  * Reloads the specified rows using a given animation effect.
  *
  * @param indexPaths An array of NSIndexPath objects identifying the rows to reload.
  *
- * @param animation A constant that indicates how the reloading is to be animated. See UITableViewRowAnimation.
+ * @param animation A constant that indicates how the reloading is to be animated. See ASTableViewRowAnimation.
  *
  * @discussion This method must be called from the main thread. The asyncDataSource must be updated to reflect the changes
  * before this method is called.
  */
-- (void)reloadRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(UITableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
+- (void)reloadRowsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths withRowAnimation:(ASTableViewRowAnimation)animation NS_SWIFT_UI_ACTOR;
 
 /**
  * Moves the row at a specified location to a destination location.
@@ -349,11 +351,11 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @param animated Specify YES to animate the change in the selection or NO to make the change without animating it.
  *
- * @param scrollPosition A constant that identifies a relative position in the table view (top, middle, bottom) for the row when scrolling concludes. See `UITableViewScrollPosition` for descriptions of valid constants.
+ * @param scrollPosition A constant that identifies a relative position in the table view (top, middle, bottom) for the row when scrolling concludes. See `ASTableViewScrollPosition` for descriptions of valid constants.
  *
  * @discussion This method must be called from the main thread.
  */
-- (void)selectRowAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(UITableViewScrollPosition)scrollPosition  NS_SWIFT_UI_ACTOR;
+- (void)selectRowAtIndexPath:(nullable NSIndexPath *)indexPath animated:(BOOL)animated scrollPosition:(ASTableViewScrollPosition)scrollPosition  NS_SWIFT_UI_ACTOR;
 
 /*
  * Deselects a given row identified by index path, with an option to animate the deselection.
@@ -421,6 +423,7 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (CGRect)rectForRowAtIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT NS_SWIFT_UI_ACTOR;
 
+#if !AS_PLATFORM_MACOS
 /**
  * Similar to -[UITableView cellForRowAtIndexPath:]
  *
@@ -431,6 +434,7 @@ NS_ASSUME_NONNULL_BEGIN
  * @discussion This method must be called from the main thread.
  */
 - (nullable __kindof UITableViewCell *)cellForRowAtIndexPath:(NSIndexPath *)indexPath AS_WARN_UNUSED_RESULT NS_SWIFT_UI_ACTOR;
+#endif
 
 /**
  * Similar to UITableView.indexPathForSelectedRow

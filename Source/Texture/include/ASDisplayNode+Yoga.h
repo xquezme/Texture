@@ -25,7 +25,9 @@ ASDK_EXTERN void ASDisplayNodePerformBlockOnEveryYogaChild(ASDisplayNode * _Null
 - (void)removeYogaChild:(ASDisplayNode *)child;
 - (void)insertYogaChild:(ASDisplayNode *)child atIndex:(NSUInteger)index;
 
+#if !AS_PLATFORM_MACOS
 - (void)semanticContentAttributeDidChange:(UISemanticContentAttribute)attribute;
+#endif
 
 @property BOOL yogaLayoutInProgress;
 // TODO: Make this atomic (lock).

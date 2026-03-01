@@ -9,7 +9,7 @@
 
 #pragma once
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASBlockTypes.h"
 #import "ASDimension.h"
 #ifdef __cplusplus
@@ -114,7 +114,7 @@ ASDK_EXTERN NSString * const ASCollectionInvalidUpdateException;
  *
  * @discussion The updates block must always be executed or the data controller will get into a bad state.
  * It should be called at the time the backing view is ready to process the updates,
- * i.e inside the updates block of `-[UICollectionView performBatchUpdates:completion:] or after calling `-[UITableView beginUpdates]`.
+ * i.e inside the updates block of the backing view's batched update entrypoint.
  */
 - (void)dataController:(ASDataController *)dataController updateWithChangeSet:(_ASHierarchyChangeSet *)changeSet updates:(dispatch_block_t)updates;
 
@@ -168,7 +168,7 @@ ASDK_EXTERN NSString * const ASCollectionInvalidUpdateException;
 @property (nullable, nonatomic, weak, readonly) id<ASRangeManagingNode> node;
 
 /**
- * The map that is currently displayed. The "UIKit index space."
+ * The map that is currently displayed. The backing-view index space.
  *
  * This property will only be changed on the main thread.
  */

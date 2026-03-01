@@ -22,6 +22,15 @@
 static const CGFloat ASTextKitRendererGlyphTouchHitSlop = 5.0;
 static const CGFloat ASTextKitRendererTextCapHeightPadding = 1.3;
 
+static inline NSValue *ASRectValue(CGRect rect)
+{
+#if AS_PLATFORM_MACOS
+  return [NSValue valueWithRect:rect];
+#else
+  return [NSValue valueWithCGRect:rect];
+#endif
+}
+
 @implementation ASTextKitRenderer (Tracking)
 
 - (NSArray *)rectsForTextRange:(NSRange)textRange measureOption:(ASTextKitRendererMeasureOption)measureOption
@@ -111,7 +120,7 @@ static const CGFloat ASTextKitRendererTextCapHeightPadding = 1.3;
       } else {
         // If the block option isn't being used then each line is being treated
         // individually.
-        [mutableTextRects addObject:[NSValue valueWithCGRect:[self.shadower offsetRectWithInternalRect:lineRect]]];
+        [mutableTextRects addObject:ASRectValue([self.shadower offsetRectWithInternalRect:lineRect])];
       }
     }
   }];
@@ -143,13 +152,13 @@ static const CGFloat ASTextKitRendererTextCapHeightPadding = 1.3;
         lastRect.size.width += lastRectNudgeAmount;
       }
 
-      [mutableTextRects addObject:[NSValue valueWithCGRect:[self.shadower offsetRectWithInternalRect:firstRect]]];
+      [mutableTextRects addObject:ASRectValue([self.shadower offsetRectWithInternalRect:firstRect])];
     }
     if (!CGRectIsNull(blockRect)) {
-      [mutableTextRects addObject:[NSValue valueWithCGRect:[self.shadower offsetRectWithInternalRect:blockRect]]];
+      [mutableTextRects addObject:ASRectValue([self.shadower offsetRectWithInternalRect:blockRect])];
     }
     if (!CGRectIsNull(lastRect)) {
-      [mutableTextRects addObject:[NSValue valueWithCGRect:[self.shadower offsetRectWithInternalRect:lastRect]]];
+      [mutableTextRects addObject:ASRectValue([self.shadower offsetRectWithInternalRect:lastRect])];
     }
   }
 
@@ -190,7 +199,7 @@ static const CGFloat ASTextKitRendererTextCapHeightPadding = 1.3;
                                                                atIndex:charIndex
                                                         effectiveRange:NULL];
   if (font == nil) {
-    font = (__bridge_retained CTFontRef)[UIFont systemFontOfSize:12.0];
+    font = (__bridge_retained CTFontRef)[ASFont systemFontOfSize:12.0];
   }
 
   //                                    Glyph Advance

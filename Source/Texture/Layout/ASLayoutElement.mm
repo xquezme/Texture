@@ -569,7 +569,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__)
   return _extensions.integerExtensions[idx];
 }
 
-- (void)setLayoutOptionExtensionEdgeInsets:(UIEdgeInsets)value atIndex:(int)idx
+- (void)setLayoutOptionExtensionEdgeInsets:(ASEdgeInsets)value atIndex:(int)idx
 {
   NSCAssert(idx < kMaxLayoutElementStateEdgeInsetExtensions, @"Setting index outside of max edge insets extensions space");
   
@@ -577,7 +577,7 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__)
   _extensions.edgeInsetsExtensions[idx] = value;
 }
 
-- (UIEdgeInsets)layoutOptionExtensionEdgeInsetsAtIndex:(int)idx
+- (ASEdgeInsets)layoutOptionExtensionEdgeInsetsAtIndex:(int)idx
 {
   NSCAssert(idx < kMaxLayoutElementStateEdgeInsetExtensions, @"Accessing index outside of max edge insets extensions space");
   
@@ -648,7 +648,11 @@ ASSynthesizeLockingMethodsWithMutex(__instanceLock__)
   }
   
   if (CGPointEqualToPoint(self.layoutPosition, CGPointZero) == NO) {
+#if AS_PLATFORM_MACOS
+    [result addObject:@{ @"layoutPosition" : [NSValue valueWithPoint:self.layoutPosition] }];
+#else
     [result addObject:@{ @"layoutPosition" : [NSValue valueWithCGPoint:self.layoutPosition] }];
+#endif
   }
 
   return result;

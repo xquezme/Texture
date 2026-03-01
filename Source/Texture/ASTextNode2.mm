@@ -6,6 +6,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <TargetConditionals.h>
+
 #import "ASTextNode2.h"
 #import "ASTextNode.h"  // Definition of ASTextNodeDelegate
 
@@ -23,6 +25,8 @@
 #import "ASEqualityHelpers.h"
 
 #import "ASTextLayout.h"
+#import "ASTextUtilities.h"
+#import "ASTextNodeMacOSInteractionHelpers.h"
 
 @interface ASTextCacheValue : NSObject {
   @package
@@ -95,7 +99,7 @@ static NS_RETURNS_RETAINED ASTextLayout *ASTextNodeCompatibleLayoutWithContainer
 
       // Now check container params.
       ASTextContainer *otherContainer = layout.container;
-      if (!UIEdgeInsetsEqualToEdgeInsets(container.insets, otherContainer.insets)) {
+      if (!ASEdgeInsetsEqualToEdgeInsets(container.insets, otherContainer.insets)) {
         continue;
       }
       if (!ASObjectIsEqual(container.exclusionPaths, otherContainer.exclusionPaths)) {
@@ -143,7 +147,11 @@ static NSString *ASTextNodeTruncationTokenAttributeName = @"ASTextNodeTruncation
 #define AS_TN2_CLASSNAME ASTextNode
 #endif
 
+#if AS_PLATFORM_MACOS
+@interface AS_TN2_CLASSNAME () <NSGestureRecognizerDelegate>
+#else
 @interface AS_TN2_CLASSNAME () <UIGestureRecognizerDelegate>
+#endif
 
 @end
 
@@ -165,15 +173,24 @@ static NSString *ASTextNodeTruncationTokenAttributeName = @"ASTextNodeTruncation
   id _highlightedLinkAttributeValue;
   NSRange _highlightRange;
   ASHighlightOverlayLayer *_activeHighlightLayer;
-  UIColor *_placeholderColor;
-  
-  UILongPressGestureRecognizer *_longPressGestureRecognizer;
+  ASColor *_placeholderColor;
+#if AS_PLATFORM_MACOS
+  NSTrackingArea *_trackingArea;
+  BOOL _isHoveringInteractiveText;
+  NSString *_keyboardFocusedLinkAttributeName;
+  id _keyboardFocusedLinkAttributeValue;
+  NSRange _keyboardFocusRange;
+#endif
+  ASGestureRecognizer *_clickGestureRecognizer;
+  ASGestureRecognizer *_longPressGestureRecognizer;
   ASTextNodeHighlightStyle _highlightStyle;
   BOOL _longPressCancelsTouches;
   BOOL _passthroughNonlinkTouches;
   BOOL _alwaysHandleTruncationTokenTap;
 }
 @dynamic placeholderEnabled;
+@synthesize delegate = _delegate;
+@synthesize linkAttributeNames = _linkAttributeNames;
 
 static NSArray *DefaultLinkAttributeNames() {
   static NSArray *names;
@@ -202,19 +219,21 @@ static NSArray *DefaultLinkAttributeNames() {
     
     // The common case is for a text node to be non-opaque and blended over some background.
     self.opaque = NO;
-    self.backgroundColor = [UIColor clearColor];
+    self.backgroundColor = [ASColor clearColor];
 
     self.linkAttributeNames = DefaultLinkAttributeNames();
 
     // Accessibility
     self.isAccessibilityElement = YES;
+#if !AS_PLATFORM_MACOS
     self.accessibilityTraits = self.defaultAccessibilityTraits;
+#endif
     
     // Placeholders
     // Disabled by default in ASDisplayNode, but add a few options for those who toggle
     // on the special placeholder behavior of ASTextNode.
     _placeholderColor = ASDisplayNodeDefaultPlaceholderColor();
-    _placeholderInsets = UIEdgeInsetsMake(1.0, 0.0, 1.0, 0.0);
+    _placeholderInsets = ASEdgeInsetsMake(1.0, 0.0, 1.0, 0.0);
   }
   
   return self;
@@ -266,12 +285,43 @@ static NSArray *DefaultLinkAttributeNames() {
   // Locking is not needed, as all instance variables used are main-thread-only.
   SEL longPressCallback = @selector(textNode:longPressedLinkAttribute:value:atPoint:textRange:);
   if (!self.isLayerBacked && [self.delegate respondsToSelector:longPressCallback]) {
+  #if AS_PLATFORM_MACOS
+    _longPressGestureRecognizer = [[NSPressGestureRecognizer alloc] initWithTarget:self action:@selector(_handleLongPress:)];
+  #else
     _longPressGestureRecognizer = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(_handleLongPress:)];
     _longPressGestureRecognizer.cancelsTouchesInView = self.longPressCancelsTouches;
+  #endif
     _longPressGestureRecognizer.delegate = self;
     [self.view addGestureRecognizer:_longPressGestureRecognizer];
   }
+
+#if AS_PLATFORM_MACOS
+  if (!self.isLayerBacked) {
+    _clickGestureRecognizer = [[NSClickGestureRecognizer alloc] initWithTarget:self action:@selector(_handleClick:)];
+    _clickGestureRecognizer.delegate = self;
+    [self.view addGestureRecognizer:_clickGestureRecognizer];
+    [self _updateMacOSTrackingArea];
+  }
+#endif
 }
+
+- (void)layout
+{
+  [super layout];
+
+#if AS_PLATFORM_MACOS
+  if (!self.isLayerBacked && self.nodeLoaded) {
+    [self _updateMacOSTrackingArea];
+  }
+#endif
+}
+
+#if AS_PLATFORM_MACOS
+- (BOOL)canBecomeFirstResponder
+{
+  return !self.isLayerBacked && self.userInteractionEnabled;
+}
+#endif
 
 - (BOOL)supportsLayerBacking
 {
@@ -305,22 +355,24 @@ static NSArray *DefaultLinkAttributeNames() {
   return _attributedText.string;
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIAccessibilityTraits)defaultAccessibilityTraits
 {
   return UIAccessibilityTraitStaticText;
 }
+#endif
 
 #pragma mark - Layout and Sizing
 
-- (void)setTextContainerInset:(UIEdgeInsets)textContainerInset
+- (void)setTextContainerInset:(ASEdgeInsets)textContainerInset
 {
   ASLockScopeSelf();
-  if (ASCompareAssignCustom(_textContainer.insets, textContainerInset, UIEdgeInsetsEqualToEdgeInsets)) {
+  if (ASCompareAssignCustom(_textContainer.insets, textContainerInset, ASEdgeInsetsEqualToEdgeInsets)) {
     [self setNeedsLayout];
   }
 }
 
-- (UIEdgeInsets)textContainerInset
+- (ASEdgeInsets)textContainerInset
 {
   // textContainer is invariant and has an atomic accessor.
   return _textContainer.insets;
@@ -367,12 +419,17 @@ static NSArray *DefaultLinkAttributeNames() {
 // Returns the ascender of the first character in attributedString by also including the line height if specified in paragraph style.
 + (CGFloat)ascenderWithAttributedString:(NSAttributedString *)attributedString
 {
-  UIFont *font = [attributedString attribute:NSFontAttributeName atIndex:0 effectiveRange:NULL];
+  ASFont *font = [attributedString attribute:NSFontAttributeName atIndex:0 effectiveRange:NULL];
   NSParagraphStyle *paragraphStyle = [attributedString attribute:NSParagraphStyleAttributeName atIndex:0 effectiveRange:NULL];
   if (!paragraphStyle) {
     return font.ascender;
   }
-  CGFloat lineHeight = MAX(font.lineHeight, paragraphStyle.minimumLineHeight);
+#if AS_PLATFORM_MACOS
+  CGFloat fontLineHeight = font.ascender - font.descender + font.leading;
+#else
+  CGFloat fontLineHeight = font.lineHeight;
+#endif
+  CGFloat lineHeight = MAX(fontLineHeight, paragraphStyle.minimumLineHeight);
   if (paragraphStyle.maximumLineHeight > 0) {
     lineHeight = MIN(lineHeight, paragraphStyle.maximumLineHeight);
   }
@@ -399,6 +456,11 @@ static NSArray *DefaultLinkAttributeNames() {
   if (!ASCompareAssignCopy(_attributedText, attributedText)) {
     return;
   }
+#if AS_PLATFORM_MACOS
+  _keyboardFocusedLinkAttributeName = nil;
+  _keyboardFocusedLinkAttributeValue = nil;
+  _keyboardFocusRange = NSMakeRange(0, 0);
+#endif
 
   // Since truncation text matches style of attributedText, invalidate it now.
   [self _locked_invalidateTruncationText];
@@ -502,10 +564,10 @@ static NSArray *DefaultLinkAttributeNames() {
     NSShadow *shadow = [[NSShadow alloc] init];
     if (_shadowOpacity != 1) {
       CGColorRef shadowColorRef = CGColorCreateCopyWithAlpha(_shadowColor, _shadowOpacity * CGColorGetAlpha(_shadowColor));
-      shadow.shadowColor = [UIColor colorWithCGColor:shadowColorRef];
+      shadow.shadowColor = [ASColor colorWithCGColor:shadowColorRef];
       CGColorRelease(shadowColorRef);
     } else {
-      shadow.shadowColor = [UIColor colorWithCGColor:_shadowColor];
+      shadow.shadowColor = [ASColor colorWithCGColor:_shadowColor];
     }
     shadow.shadowOffset = _shadowOffset;
     shadow.shadowBlurRadius = _shadowRadius;
@@ -542,10 +604,10 @@ static NSArray *DefaultLinkAttributeNames() {
     // Apply tint color if specified and if foreground color is undefined for attributedString
     NSRange limit = NSMakeRange(0, mutableText.length);
     // Look for previous attributes that define foreground color
-    UIColor *attributeValue = (UIColor *)[mutableText attribute:NSForegroundColorAttributeName atIndex:limit.location effectiveRange:NULL];
+    ASColor *attributeValue = (ASColor *)[mutableText attribute:NSForegroundColorAttributeName atIndex:limit.location effectiveRange:NULL];
     
     // we need to unlock before accessing tintColor
-    UIColor *tintColor = self.tintColor;
+    ASColor *tintColor = self.tintColor;
     if (attributeValue == nil && tintColor) {
       // None are found, apply tint color if available. Fallback to "black" text color
       [mutableText addAttributes:@{ NSForegroundColorAttributeName : tintColor } range:limit];
@@ -563,7 +625,7 @@ static NSArray *DefaultLinkAttributeNames() {
 {
   ASTextContainer *container = layoutDict[@"container"];
   NSAttributedString *text = layoutDict[@"text"];
-  UIColor *bgColor = layoutDict[@"bgColor"];
+  ASColor *bgColor = layoutDict[@"bgColor"];
   ASTextLayout *layout = ASTextNodeCompatibleLayoutWithContainerAndText(container, text);
   
   if (isCancelledBlock()) {
@@ -579,10 +641,21 @@ static NSArray *DefaultLinkAttributeNames() {
   // so unfortunately we have to use the normal blend mode, not copy.
   if (bgColor && CGColorGetAlpha(bgColor.CGColor) > 0) {
     [bgColor setFill];
+#if AS_PLATFORM_MACOS
+    CGContextRef backgroundContext = NSGraphicsContext.currentContext.CGContext;
+    CGContextSetFillColorWithColor(backgroundContext, bgColor.CGColor);
+    CGContextFillRect(backgroundContext, bounds);
+#else
     UIRectFillUsingBlendMode(bounds, kCGBlendModeNormal);
+#endif
   }
   
-  CGContextRef context = UIGraphicsGetCurrentContext();
+  CGContextRef context =
+#if AS_PLATFORM_MACOS
+  NSGraphicsContext.currentContext.CGContext;
+#else
+  UIGraphicsGetCurrentContext();
+#endif
   ASDisplayNodeAssert(context, @"This is no good without a context.");
   
   [layout drawInContext:context size:bounds.size point:bounds.origin view:nil layer:nil debug:[ASTextDebugOption sharedDebugOption] cancel:isCancelledBlock];
@@ -769,7 +842,7 @@ static NSArray *DefaultLinkAttributeNames() {
 
 #pragma mark - UIGestureRecognizerDelegate
 
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+- (BOOL)gestureRecognizerShouldBegin:(ASGestureRecognizer *)gestureRecognizer
 {
   ASDisplayNodeAssertMainThread();
   ASLockScopeSelf(); // Protect usage of _highlight* ivars.
@@ -779,6 +852,12 @@ static NSArray *DefaultLinkAttributeNames() {
     if ([self _pendingTruncationTap]) {
       return NO;
     }
+
+#if AS_PLATFORM_MACOS
+    if (![self _updateHighlightForInteractionAtPoint:[gestureRecognizer locationInView:self.view]]) {
+      return NO;
+    }
+#endif
     
     // Ask our delegate if a long-press on an attribute is relevant
     id<ASTextNodeDelegate> delegate = self.delegate;
@@ -794,7 +873,9 @@ static NSArray *DefaultLinkAttributeNames() {
   }
   
   if (([self _pendingLinkTap] || [self _pendingTruncationTap])
+#if !AS_PLATFORM_MACOS
       && [gestureRecognizer isKindOfClass:[UITapGestureRecognizer class]]
+#endif
       && CGRectContainsPoint(self.threadSafeBounds, [gestureRecognizer locationInView:self.view])) {
     return NO;
   }
@@ -833,6 +914,50 @@ static NSArray *DefaultLinkAttributeNames() {
 - (void)setHighlightRange:(NSRange)highlightRange animated:(BOOL)animated
 {
   [self _setHighlightRange:highlightRange forAttributeName:nil value:nil animated:animated];
+}
+
+- (id<ASTextNodeDelegate>)delegate
+{
+  ASLockScopeSelf();
+  return _delegate;
+}
+
+- (void)setDelegate:(id<ASTextNodeDelegate>)delegate
+{
+  NSArray<NSString *> *linkAttributeNames = nil;
+  BOOL alwaysHandleTruncationTokenTap = NO;
+  {
+    ASLockScopeSelf();
+    _delegate = delegate;
+    linkAttributeNames = _linkAttributeNames;
+    alwaysHandleTruncationTokenTap = _alwaysHandleTruncationTokenTap;
+  }
+  ASTextNodeApplyAutoEnableUserInteractionIfNeeded(self, delegate, linkAttributeNames, alwaysHandleTruncationTokenTap);
+}
+
+- (NSArray<NSString *> *)linkAttributeNames
+{
+  ASLockScopeSelf();
+  return _linkAttributeNames;
+}
+
+- (void)setLinkAttributeNames:(NSArray<NSString *> *)linkAttributeNames
+{
+  linkAttributeNames = ASTextNodeNormalizedLinkAttributeNames(linkAttributeNames);
+  id<ASTextNodeDelegate> delegate = nil;
+  BOOL alwaysHandleTruncationTokenTap = NO;
+  BOOL didUpdate = NO;
+  {
+    ASLockScopeSelf();
+    if (ASCompareAssignCopy(_linkAttributeNames, linkAttributeNames)) {
+      delegate = _delegate;
+      alwaysHandleTruncationTokenTap = _alwaysHandleTruncationTokenTap;
+      didUpdate = YES;
+    }
+  }
+  if (didUpdate) {
+    ASTextNodeApplyAutoEnableUserInteractionIfNeeded(self, delegate, linkAttributeNames, alwaysHandleTruncationTokenTap);
+  }
 }
 
 - (void)_setHighlightRange:(NSRange)highlightRange forAttributeName:(NSString *)highlightedAttributeName value:(id)highlightedAttributeValue animated:(BOOL)animated
@@ -909,7 +1034,7 @@ static NSArray *DefaultLinkAttributeNames() {
         NSMutableArray *converted = [NSMutableArray arrayWithCapacity:highlightRects.count];
 
         CALayer *layer = self.layer;
-        UIEdgeInsets shadowPadding = self.shadowPadding;
+        ASEdgeInsets shadowPadding = self.shadowPadding;
         for (ASTextSelectionRect *rectValue in highlightRects) {
           // Adjust shadow padding
           CGRect rendererRect = ASTextNodeAdjustRenderRectForShadowPadding(rectValue.rect, shadowPadding);
@@ -919,14 +1044,13 @@ static NSArray *DefaultLinkAttributeNames() {
           // Offset highlight rects to avoid double-counting target layer's bounds.origin.
           highlightedRect.origin.x -= highlightTargetLayer.bounds.origin.x;
           highlightedRect.origin.y -= highlightTargetLayer.bounds.origin.y;
-          [converted addObject:[NSValue valueWithCGRect:highlightedRect]];
+          [converted addObject:ASValueWithCGRect(highlightedRect)];
         }
 
         ASHighlightOverlayLayer *overlayLayer = [[ASHighlightOverlayLayer alloc] initWithRects:converted];
-        overlayLayer.highlightColor = [[self class] _highlightColorForStyle:self.highlightStyle];
         overlayLayer.frame = highlightTargetLayer.bounds;
         overlayLayer.masksToBounds = NO;
-        overlayLayer.opacity = [[self class] _highlightOpacityForStyle:self.highlightStyle];
+        [self _updateActiveHighlightLayerAppearance:overlayLayer];
         [highlightTargetLayer addSublayer:overlayLayer];
 
         if (animated) {
@@ -958,7 +1082,7 @@ static NSArray *DefaultLinkAttributeNames() {
 
 + (CGColorRef)_highlightColorForStyle:(ASTextNodeHighlightStyle)style
 {
-  return [UIColor colorWithWhite:(style == ASTextNodeHighlightStyleLight ? 0.0 : 1.0) alpha:1.0].CGColor;
+  return [ASColor colorWithWhite:(style == ASTextNodeHighlightStyleLight ? 0.0 : 1.0) alpha:1.0].CGColor;
 }
 
 + (CGFloat)_highlightOpacityForStyle:(ASTextNodeHighlightStyle)style
@@ -966,9 +1090,27 @@ static NSArray *DefaultLinkAttributeNames() {
   return (style == ASTextNodeHighlightStyleLight) ? ASTextNodeHighlightLightOpacity : ASTextNodeHighlightDarkOpacity;
 }
 
+- (void)_updateActiveHighlightLayerAppearance:(ASHighlightOverlayLayer *)overlayLayer
+{
+#if AS_PLATFORM_MACOS
+  BOOL highlightRepresentsKeyboardFocus = (_keyboardFocusRange.length > 0)
+                                       && NSEqualRanges(_highlightRange, _keyboardFocusRange)
+                                       && ASObjectIsEqual(_highlightedLinkAttributeName, _keyboardFocusedLinkAttributeName)
+                                       && ASObjectIsEqual(_highlightedLinkAttributeValue, _keyboardFocusedLinkAttributeValue);
+  if (highlightRepresentsKeyboardFocus) {
+    overlayLayer.highlightColor = [ASColor keyboardFocusIndicatorColor].CGColor;
+    overlayLayer.opacity = 0.3;
+    return;
+  }
+#endif
+
+  overlayLayer.highlightColor = [[self class] _highlightColorForStyle:self.highlightStyle];
+  overlayLayer.opacity = [[self class] _highlightOpacityForStyle:self.highlightStyle];
+}
+
 #pragma mark - Text rects
 
-static CGRect ASTextNodeAdjustRenderRectForShadowPadding(CGRect rendererRect, UIEdgeInsets shadowPadding) {
+static CGRect ASTextNodeAdjustRenderRectForShadowPadding(CGRect rendererRect, ASEdgeInsets shadowPadding) {
   rendererRect.origin.x -= shadowPadding.left;
   rendererRect.origin.y -= shadowPadding.top;
   return rendererRect;
@@ -1000,12 +1142,12 @@ static CGRect ASTextNodeAdjustRenderRectForShadowPadding(CGRect rendererRect, UI
 
 #pragma mark - Placeholders
 
-- (UIColor *)placeholderColor
+- (ASColor *)placeholderColor
 {
   return ASLockedSelf(_placeholderColor);
 }
 
-- (void)setPlaceholderColor:(UIColor *)placeholderColor
+- (void)setPlaceholderColor:(ASColor *)placeholderColor
 {
   ASLockScopeSelf();
   if (ASCompareAssignCopy(_placeholderColor, placeholderColor)) {
@@ -1013,13 +1155,270 @@ static CGRect ASTextNodeAdjustRenderRectForShadowPadding(CGRect rendererRect, UI
   }
 }
 
-- (UIImage *)placeholderImage
+- (ASImage *)placeholderImage
 {
   AS_TEXT_ALERT_UNIMPLEMENTED_FEATURE();
   return nil;
 }
 
 #pragma mark - Touch Handling
+
+#if AS_PLATFORM_MACOS
+
+- (NSArray<NSDictionary<NSString *, id> *> *)_interactiveItemsForKeyboardNavigation
+{
+  ASDisplayNodeAssertMainThread();
+
+  ASLockScopeSelf();
+  [self _ensureTruncationText];
+
+  if (_attributedText.length == 0) {
+    return @[];
+  }
+
+  ASTextContainer *containerCopy = [_textContainer copy];
+  containerCopy.size = self.calculatedSize;
+  ASTextLayout *layout = ASTextNodeCompatibleLayoutWithContainerAndText(containerCopy, _attributedText);
+  NSRange visibleRange = layout.visibleRange;
+  NSRange truncationMessageRange = [self _additionalTruncationMessageRangeWithVisibleRange:visibleRange];
+  return ASTextNodeMacOSInteractiveItemsForNavigation(_attributedText, _linkAttributeNames, visibleRange, truncationMessageRange, ASTextNodeTruncationTokenAttributeName);
+}
+
+- (BOOL)_moveFocusToAdjacentInteractiveTextForward:(BOOL)forward
+{
+  ASDisplayNodeAssertMainThread();
+
+  NSArray<NSDictionary<NSString *, id> *> *items = [self _interactiveItemsForKeyboardNavigation];
+  if (items.count == 0) {
+    return NO;
+  }
+
+  NSString *highlightedLinkAttributeName = nil;
+  id highlightedLinkAttributeValue = nil;
+  NSRange highlightRange = NSMakeRange(0, 0);
+  {
+    ASLockScopeSelf();
+    if (_keyboardFocusRange.length > 0) {
+      highlightedLinkAttributeName = _keyboardFocusedLinkAttributeName;
+      highlightedLinkAttributeValue = _keyboardFocusedLinkAttributeValue;
+      highlightRange = _keyboardFocusRange;
+    } else {
+      highlightedLinkAttributeName = _highlightedLinkAttributeName;
+      highlightedLinkAttributeValue = _highlightedLinkAttributeValue;
+      highlightRange = _highlightRange;
+    }
+  }
+
+  NSInteger nextIndex = ASTextNodeMacOSNextInteractiveItemIndex(items, highlightRange, highlightedLinkAttributeName, highlightedLinkAttributeValue, forward);
+  NSDictionary<NSString *, id> *nextItem = items[(NSUInteger)nextIndex];
+  NSRange nextRange = [nextItem[ASTextNodeInteractiveItemRangeKey] rangeValue];
+  NSString *nextAttributeName = nextItem[ASTextNodeInteractiveItemAttributeNameKey];
+  id nextAttributeValue = nextItem[ASTextNodeInteractiveItemAttributeValueKey];
+  _keyboardFocusedLinkAttributeName = nextAttributeName;
+  _keyboardFocusedLinkAttributeValue = nextAttributeValue;
+  _keyboardFocusRange = nextRange;
+  [self _setHighlightRange:nextRange forAttributeName:nextAttributeName value:nextAttributeValue animated:YES];
+  if (_activeHighlightLayer != nil) {
+    [self _updateActiveHighlightLayerAppearance:_activeHighlightLayer];
+    [_activeHighlightLayer setNeedsDisplay];
+  }
+  [self becomeFirstResponder];
+  return YES;
+}
+
+- (void)_updateMacOSTrackingArea
+{
+  ASDisplayNodeAssertMainThread();
+
+  if (!self.nodeLoaded || self.isLayerBacked) {
+    ASTextNodeMacOSResetTrackingArea(&_trackingArea, nil, self);
+    return;
+  }
+
+  ASTextNodeMacOSResetTrackingArea(&_trackingArea, self.view, self);
+}
+
+- (BOOL)_updateHoverForInteractionAtPoint:(CGPoint)point
+{
+  BOOL hasInteractiveText = [self _updateHighlightForInteractionAtPoint:point];
+  if (_activeHighlightLayer != nil) {
+    [self _updateActiveHighlightLayerAppearance:_activeHighlightLayer];
+    [_activeHighlightLayer setNeedsDisplay];
+  }
+
+  if (!hasInteractiveText) {
+    [self _clearHighlightIfNecessary];
+  }
+
+  ASTextNodeMacOSUpdateCursorForInteractiveText(hasInteractiveText, &_isHoveringInteractiveText);
+
+  return hasInteractiveText;
+}
+
+- (void)_forwardUnhandledKeyEvent:(NSEvent *)event
+{
+  ASTextNodeMacOSForwardUnhandledKeyEvent(self.view, event);
+}
+
+- (void)_clearKeyboardFocusAndRestoreHighlight
+{
+  ASTextNodeMacOSClearKeyboardFocusAndRestoreHighlight(&_keyboardFocusedLinkAttributeName, &_keyboardFocusedLinkAttributeValue, &_keyboardFocusRange, _isHoveringInteractiveText, ^{
+    if (_activeHighlightLayer != nil) {
+      [self _updateActiveHighlightLayerAppearance:_activeHighlightLayer];
+      [_activeHighlightLayer setNeedsDisplay];
+    }
+  }, ^{
+    [self _clearHighlightIfNecessary];
+  });
+}
+
+- (void)mouseEntered:(NSEvent *)event
+{
+  [self _updateHoverForInteractionAtPoint:[self.view convertPoint:event.locationInWindow fromView:nil]];
+}
+
+- (void)mouseMoved:(NSEvent *)event
+{
+  [self _updateHoverForInteractionAtPoint:[self.view convertPoint:event.locationInWindow fromView:nil]];
+}
+
+- (void)mouseExited:(NSEvent *)event
+{
+  (void)event;
+
+  ASTextNodeMacOSUpdateCursorForInteractiveText(NO, &_isHoveringInteractiveText);
+  if (_keyboardFocusRange.length > 0) {
+    [self _setHighlightRange:_keyboardFocusRange
+            forAttributeName:_keyboardFocusedLinkAttributeName
+                       value:_keyboardFocusedLinkAttributeValue
+                    animated:NO];
+    if (_activeHighlightLayer != nil) {
+      [self _updateActiveHighlightLayerAppearance:_activeHighlightLayer];
+      [_activeHighlightLayer setNeedsDisplay];
+    }
+  } else {
+    [self _clearHighlightIfNecessary];
+  }
+}
+
+- (void)keyDown:(NSEvent *)event
+{
+  ASDisplayNodeAssertMainThread();
+
+  NSString *characters = event.characters;
+  NSString *charactersIgnoringModifiers = event.charactersIgnoringModifiers;
+  if (characters.length == 0 && charactersIgnoringModifiers.length == 0) {
+    [self _forwardUnhandledKeyEvent:event];
+    return;
+  }
+
+  ASTextNodeMacOSKeyCommand command = ASTextNodeMacOSParseKeyCommand(event);
+  if (command.isForwardTab || command.isReverseTab) {
+    if (![self _moveFocusToAdjacentInteractiveTextForward:!command.isReverseTab]) {
+      [self _forwardUnhandledKeyEvent:event];
+    }
+    return;
+  }
+
+  if (command.isEscape) {
+    if (_keyboardFocusRange.length > 0) {
+      [self _clearKeyboardFocusAndRestoreHighlight];
+    } else {
+      [self _forwardUnhandledKeyEvent:event];
+    }
+    return;
+  }
+
+  if (!command.isActivationKey) {
+    [self _forwardUnhandledKeyEvent:event];
+    return;
+  }
+
+  BOOL pendingLinkTap = NO;
+  BOOL pendingTruncationTap = NO;
+  NSRange highlightRange = NSMakeRange(0, 0);
+  NSString *highlightedLinkAttributeName = nil;
+  id highlightedLinkAttributeValue = nil;
+  id<ASTextNodeDelegate> delegate = nil;
+  {
+    ASLockScopeSelf();
+    if (_keyboardFocusRange.length > 0) {
+      pendingLinkTap = (_keyboardFocusedLinkAttributeValue != nil && ![_keyboardFocusedLinkAttributeName isEqualToString:ASTextNodeTruncationTokenAttributeName]) && _delegate != nil;
+      pendingTruncationTap = [_keyboardFocusedLinkAttributeName isEqualToString:ASTextNodeTruncationTokenAttributeName];
+      highlightRange = _keyboardFocusRange;
+      highlightedLinkAttributeName = _keyboardFocusedLinkAttributeName;
+      highlightedLinkAttributeValue = _keyboardFocusedLinkAttributeValue;
+    } else {
+      pendingLinkTap = (_highlightedLinkAttributeValue != nil && ![_highlightedLinkAttributeName isEqualToString:ASTextNodeTruncationTokenAttributeName]) && _delegate != nil;
+      pendingTruncationTap = [_highlightedLinkAttributeName isEqualToString:ASTextNodeTruncationTokenAttributeName];
+      highlightRange = _highlightRange;
+      highlightedLinkAttributeName = _highlightedLinkAttributeName;
+      highlightedLinkAttributeValue = _highlightedLinkAttributeValue;
+    }
+    delegate = _delegate;
+  }
+
+  if (!pendingLinkTap && !pendingTruncationTap) {
+    [self _forwardUnhandledKeyEvent:event];
+    return;
+  }
+
+  CGPoint point = CGPointZero;
+  if (highlightRange.length > 0) {
+    point = [self frameForTextRange:highlightRange].origin;
+  }
+
+  if (pendingLinkTap && [delegate respondsToSelector:@selector(textNode:tappedLinkAttribute:value:atPoint:textRange:)]) {
+    [delegate textNode:(ASTextNode *)self tappedLinkAttribute:highlightedLinkAttributeName value:highlightedLinkAttributeValue atPoint:point textRange:highlightRange];
+  }
+
+  if (pendingTruncationTap && [delegate respondsToSelector:@selector(textNodeTappedTruncationToken:)]) {
+    [delegate textNodeTappedTruncationToken:(ASTextNode *)self];
+  }
+}
+
+#endif
+
+- (BOOL)_updateHighlightForInteractionAtPoint:(CGPoint)point
+{
+  ASDisplayNodeAssertMainThread();
+
+  NSRange range = NSMakeRange(0, 0);
+  NSString *linkAttributeName = nil;
+  BOOL inAdditionalTruncationMessage = NO;
+
+  id linkAttributeValue = [self _linkAttributeValueAtPoint:point
+                                             attributeName:&linkAttributeName
+                                                     range:&range
+                             inAdditionalTruncationMessage:&inAdditionalTruncationMessage
+                                           forHighlighting:YES];
+
+  NSUInteger lastCharIndex = NSIntegerMax;
+  BOOL linkCrossesVisibleRange = (lastCharIndex > range.location) && (lastCharIndex < NSMaxRange(range) - 1);
+
+  if (inAdditionalTruncationMessage) {
+    NSRange visibleRange = NSMakeRange(0, 0);
+    {
+      ASLockScopeSelf();
+      ASTextContainer *containerCopy = [_textContainer copy];
+      containerCopy.size = self.calculatedSize;
+      ASTextLayout *layout = ASTextNodeCompatibleLayoutWithContainerAndText(containerCopy, _attributedText);
+      visibleRange = layout.visibleRange;
+    }
+    NSRange truncationMessageRange = [self _additionalTruncationMessageRangeWithVisibleRange:visibleRange];
+    [self _setHighlightRange:truncationMessageRange forAttributeName:ASTextNodeTruncationTokenAttributeName value:nil animated:YES];
+    return YES;
+  }
+
+  if (range.length > 0 && !linkCrossesVisibleRange && linkAttributeValue != nil && linkAttributeName != nil) {
+    [self _setHighlightRange:range forAttributeName:linkAttributeName value:linkAttributeValue animated:YES];
+    return YES;
+  }
+
+  return NO;
+}
+
+#if !AS_PLATFORM_MACOS
 
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
 {
@@ -1152,18 +1551,72 @@ static CGRect ASTextNodeAdjustRenderRectForShadowPadding(CGRect rendererRect, UI
   }
 }
 
-- (void)_handleLongPress:(UILongPressGestureRecognizer *)longPressRecognizer
+#endif
+
+- (void)_handleClick:(ASGestureRecognizer *)clickRecognizer
+{
+  ASDisplayNodeAssertMainThread();
+
+#if AS_PLATFORM_MACOS
+  if (clickRecognizer.state != NSGestureRecognizerStateEnded) {
+    return;
+  }
+#endif
+
+  CGPoint point = [clickRecognizer locationInView:self.view];
+  if (![self _updateHighlightForInteractionAtPoint:point]) {
+    [self _clearHighlightIfNecessary];
+    return;
+  }
+#if AS_PLATFORM_MACOS
+  _keyboardFocusedLinkAttributeName = _highlightedLinkAttributeName;
+  _keyboardFocusedLinkAttributeValue = _highlightedLinkAttributeValue;
+  _keyboardFocusRange = _highlightRange;
+  if (_activeHighlightLayer != nil) {
+    [self _updateActiveHighlightLayerAppearance:_activeHighlightLayer];
+    [_activeHighlightLayer setNeedsDisplay];
+  }
+#endif
+
+#if AS_PLATFORM_MACOS
+  [self becomeFirstResponder];
+#endif
+
+  ASLockScopeSelf();
+  id<ASTextNodeDelegate> delegate = self.delegate;
+
+  if ([self _pendingLinkTap] && [delegate respondsToSelector:@selector(textNode:tappedLinkAttribute:value:atPoint:textRange:)]) {
+    [delegate textNode:(ASTextNode *)self tappedLinkAttribute:_highlightedLinkAttributeName value:_highlightedLinkAttributeValue atPoint:point textRange:_highlightRange];
+  }
+
+  if ([self _pendingTruncationTap] && [delegate respondsToSelector:@selector(textNodeTappedTruncationToken:)]) {
+    [delegate textNodeTappedTruncationToken:(ASTextNode *)self];
+  }
+
+#if !AS_PLATFORM_MACOS
+  [self _clearHighlightIfNecessary];
+#endif
+}
+
+- (void)_handleLongPress:(ASGestureRecognizer *)longPressRecognizer
 {
   ASDisplayNodeAssertMainThread();
   
   // Respond to long-press when it begins, not when it ends.
+#if AS_PLATFORM_MACOS
+  if (longPressRecognizer.state == NSGestureRecognizerStateBegan) {
+#else
   if (longPressRecognizer.state == UIGestureRecognizerStateBegan) {
+#endif
     id<ASTextNodeDelegate> delegate = self.delegate;
     if ([delegate respondsToSelector:@selector(textNode:longPressedLinkAttribute:value:atPoint:textRange:)]) {
       ASLockScopeSelf(); // Protect usage of _highlight* ivars.
       CGPoint touchPoint = [_longPressGestureRecognizer locationInView:self.view];
       [delegate textNode:(ASTextNode *)self longPressedLinkAttribute:_highlightedLinkAttributeName value:_highlightedLinkAttributeValue atPoint:touchPoint textRange:_highlightRange];
     }
+#if AS_PLATFORM_MACOS
+    [self _clearHighlightIfNecessary];
+#endif
   }
 }
 
@@ -1187,8 +1640,15 @@ static CGRect ASTextNodeAdjustRenderRectForShadowPadding(CGRect rendererRect, UI
 
 - (void)setAlwaysHandleTruncationTokenTap:(BOOL)alwaysHandleTruncationTokenTap
 {
-  ASLockScopeSelf();
-  _alwaysHandleTruncationTokenTap = alwaysHandleTruncationTokenTap;
+  id<ASTextNodeDelegate> delegate = nil;
+  NSArray<NSString *> *linkAttributeNames = nil;
+  {
+    ASLockScopeSelf();
+    _alwaysHandleTruncationTokenTap = alwaysHandleTruncationTokenTap;
+    delegate = _delegate;
+    linkAttributeNames = _linkAttributeNames;
+  }
+  ASTextNodeApplyAutoEnableUserInteractionIfNeeded(self, delegate, linkAttributeNames, alwaysHandleTruncationTokenTap);
 }
   
 #pragma mark - Shadow Properties
@@ -1253,10 +1713,10 @@ static CGRect ASTextNodeAdjustRenderRectForShadowPadding(CGRect rendererRect, UI
   }
 }
 
-- (UIEdgeInsets)shadowPadding
+- (ASEdgeInsets)shadowPadding
 {
   AS_TEXT_ALERT_UNIMPLEMENTED_FEATURE();
-  return UIEdgeInsetsZero;
+  return ASEdgeInsetsZero;
 }
 
 - (void)setPointSizeScaleFactors:(NSArray<NSNumber *> *)scaleFactors
@@ -1500,7 +1960,7 @@ static NSAttributedString *DefaultTruncationAttributedString()
 + (void)enableDebugging
 {
   ASTextDebugOption *debugOption = [[ASTextDebugOption alloc] init];
-  debugOption.CTLineFillColor = [UIColor colorWithRed:0 green:0.3 blue:1 alpha:0.1];
+  debugOption.CTLineFillColor = [ASColor colorWithRed:0 green:0.3 blue:1 alpha:0.1];
   [ASTextDebugOption setSharedDebugOption:debugOption];
 }
 

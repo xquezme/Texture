@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASControlNode.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -21,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * @return A transformed image.
  */
-typedef UIImage * _Nullable (^asimagenode_modification_block_t)(UIImage *image, ASPrimitiveTraitCollection traitCollection);
+typedef ASImage * _Nullable (^asimagenode_modification_block_t)(ASImage *image, ASPrimitiveTraitCollection traitCollection);
 
 /**
  * @abstract Draws images.
@@ -36,12 +36,12 @@ typedef UIImage * _Nullable (^asimagenode_modification_block_t)(UIImage *image, 
  * the layer's contentsCenter property.  Non-stretchable images work too, of
  * course.
  */
-@property (nullable) UIImage *image;
+@property (nullable) ASImage *image;
 
 /**
  @abstract The placeholder color.
  */
-@property (nullable, copy) UIColor *placeholderColor;
+@property (nullable, copy) ASColor *placeholderColor;
 
 /**
  * @abstract Indicates whether efficient cropping of the receiver is enabled.
@@ -195,10 +195,10 @@ typedef UIImage * _Nullable (^asimagenode_modification_block_t)(UIImage *image, 
  *
  * @return An ASImageNode image modification block.
  */
-ASDK_EXTERN asimagenode_modification_block_t ASImageNodeRoundBorderModificationBlock(CGFloat borderWidth, UIColor * _Nullable borderColor);
+ASDK_EXTERN asimagenode_modification_block_t ASImageNodeRoundBorderModificationBlock(CGFloat borderWidth, ASColor * _Nullable borderColor);
 
 /**
- * @abstract Image modification block that applies a tint color à la UIImage configured with
+ * @abstract Image modification block that applies a tint color à la ASImage configured with
  * renderingMode set to UIImageRenderingModeAlwaysTemplate.
  *
  * @param color The color to tint the image.
@@ -207,6 +207,6 @@ ASDK_EXTERN asimagenode_modification_block_t ASImageNodeRoundBorderModificationB
  *
  * @return An ASImageNode image modification block.
  */
-ASDK_EXTERN asimagenode_modification_block_t ASImageNodeTintColorModificationBlock(UIColor *color);
+ASDK_EXTERN asimagenode_modification_block_t ASImageNodeTintColorModificationBlock(ASColor *color);
 
 NS_ASSUME_NONNULL_END

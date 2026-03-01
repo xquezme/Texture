@@ -61,7 +61,7 @@ typedef NS_ENUM(NSUInteger, ASMultiplexImageNodeErrorCode) {
  * @abstract ASMultiplexImageNode is an image node that can load and display multiple versions of an image.  For
  * example, it can display a low-resolution version of an image while the high-resolution version is loading.
  *
- * @discussion ASMultiplexImageNode begins loading images when its resource can either return a UIImage directly, or a URL the image node should load.
+ * @discussion ASMultiplexImageNode begins loading images when its resource can either return a ASImage directly, or a URL the image node should load.
  */
 @interface ASMultiplexImageNode : ASImageNode
 
@@ -105,7 +105,7 @@ typedef NS_ENUM(NSUInteger, ASMultiplexImageNodeErrorCode) {
 @property (nonatomic, copy) NSArray<ASImageIdentifier> *imageIdentifiers;
 
 /**
- * @abstract Notify the receiver SSAA that its data source has new UIImages or NSURLs available for <imageIdentifiers>.
+ * @abstract Notify the receiver SSAA that its data source has new images or URLs available for <imageIdentifiers>.
  *
  * @discussion If a higher-quality image than is currently displayed is now available, it will be loaded.
  */
@@ -141,7 +141,7 @@ typedef NS_ENUM(NSUInteger, ASMultiplexImageNodeErrorCode) {
 
  * @see `+[NSURL URLWithAssetLocalIdentifier:targetSize:contentMode:options:]` below.
  */
-@property (nullable, nonatomic) PHImageManager *imageManager API_AVAILABLE(ios(8.0), tvos(10.0));
+@property (nullable, nonatomic) PHImageManager *imageManager API_AVAILABLE(ios(8.0), tvos(10.0), macos(10.13));
 
 @end
 
@@ -192,9 +192,9 @@ didFinishDownloadingImageWithIdentifier:(ASImageIdentifier)imageIdentifier
  * @see <[ASMultiplexImageNodeDelegate multiplexImageNode:didDisplayUpdatedImage:withIdentifier:]>.
  */
 - (void)multiplexImageNode:(ASMultiplexImageNode *)imageNode
-            didUpdateImage:(nullable UIImage *)image
+            didUpdateImage:(nullable ASImage *)image
             withIdentifier:(nullable ASImageIdentifier)imageIdentifier
-                 fromImage:(nullable UIImage *)previousImage
+                 fromImage:(nullable ASImage *)previousImage
             withIdentifier:(nullable ASImageIdentifier)previousImageIdentifier;
 
 /**
@@ -205,7 +205,7 @@ didFinishDownloadingImageWithIdentifier:(ASImageIdentifier)imageIdentifier
  * @discussion This method is only called when `image` changes, and not on subsequent redisplays of the same image.
  */
 - (void)multiplexImageNode:(ASMultiplexImageNode *)imageNode
-    didDisplayUpdatedImage:(nullable UIImage *)image
+    didDisplayUpdatedImage:(nullable ASImage *)image
             withIdentifier:(nullable ASImageIdentifier)imageIdentifier;
 
 /**
@@ -232,9 +232,9 @@ didFinishDownloadingImageWithIdentifier:(ASImageIdentifier)imageIdentifier
  * @param imageIdentifier The identifier for the image that should be returned.
  * @discussion If the image is already available to the data source, this method should be used in lieu of providing the
  * URL to the image via -multiplexImageNode:URLForImageIdentifier:.
- * @return A UIImage corresponding to `imageIdentifier`, or nil if none is available.
+ * @return A ASImage corresponding to `imageIdentifier`, or nil if none is available.
  */
-- (nullable UIImage *)multiplexImageNode:(ASMultiplexImageNode *)imageNode imageForImageIdentifier:(ASImageIdentifier)imageIdentifier;
+- (nullable ASImage *)multiplexImageNode:(ASMultiplexImageNode *)imageNode imageForImageIdentifier:(ASImageIdentifier)imageIdentifier;
 
 /**
  * @abstract An image URL for the specified identifier.
@@ -259,7 +259,7 @@ didFinishDownloadingImageWithIdentifier:(ASImageIdentifier)imageIdentifier
  * @note This method may be called from any thread.
  * @return A PHAsset corresponding to `assetLocalIdentifier`, or nil if none is available.
  */
-- (nullable PHAsset *)multiplexImageNode:(ASMultiplexImageNode *)imageNode assetForLocalIdentifier:(NSString *)assetLocalIdentifier API_AVAILABLE(ios(8.0), tvos(10.0));
+- (nullable PHAsset *)multiplexImageNode:(ASMultiplexImageNode *)imageNode assetForLocalIdentifier:(NSString *)assetLocalIdentifier API_AVAILABLE(ios(8.0), tvos(10.0), macos(10.13));
 @end
 
 #pragma mark -
@@ -279,7 +279,7 @@ didFinishDownloadingImageWithIdentifier:(ASImageIdentifier)imageIdentifier
 + (NSURL *)URLWithAssetLocalIdentifier:(NSString *)assetLocalIdentifier
                             targetSize:(CGSize)targetSize
                            contentMode:(PHImageContentMode)contentMode
-                               options:(PHImageRequestOptions *)options NS_RETURNS_RETAINED AS_WARN_UNUSED_RESULT API_AVAILABLE(ios(8.0), tvos(10.0));
+                               options:(PHImageRequestOptions *)options NS_RETURNS_RETAINED AS_WARN_UNUSED_RESULT API_AVAILABLE(ios(8.0), tvos(10.0), macos(10.13));
 
 @end
 

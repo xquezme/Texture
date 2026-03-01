@@ -9,7 +9,7 @@
 
 #pragma once
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 #import "ASAvailability.h"
 
@@ -59,18 +59,18 @@ struct ASTextKitAttributes {
    */
   NSUInteger maximumNumberOfLines;
   /**
-   An array of UIBezierPath objects representing the exclusion paths inside the receiver's bounding rectangle. Default value: nil.
+   An array of ASBezierPath objects representing the exclusion paths inside the receiver's bounding rectangle. Default value: nil.
    */
-  NSArray<UIBezierPath *> *exclusionPaths;
+  NSArray<ASBezierPath *> *exclusionPaths;
   /**
-   The shadow offset for any shadows applied to the text.  The coordinate space for this is the same as UIKit, so a
-   positive width means towards the right, and a positive height means towards the bottom.
+   The shadow offset for any shadows applied to the text. A positive width means towards the right,
+   and a positive height means towards the bottom.
    */
   CGSize shadowOffset;
   /**
    The color to use in drawing the text's shadow.
    */
-  UIColor *shadowColor;
+  ASColor *shadowColor;
   /**
    The opacity of the shadow from 0 to 1.
    */
@@ -87,7 +87,7 @@ struct ASTextKitAttributes {
   /**
    The tint color to use in drawing the text foreground color. Only applied if the attributedString does not define foreground color
    */
-  UIColor *tintColor;
+  ASColor *tintColor;
   /**
    We provide an explicit copy function so we can use aggregate initializer syntax while providing copy semantics for
    the NSObjects inside.

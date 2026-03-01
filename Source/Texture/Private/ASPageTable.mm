@@ -109,13 +109,13 @@ NSPointerArray *ASPageCoordinatesForPagesThatIntersectRect(CGRect rect, CGSize c
 + (ASPageToLayoutAttributesTable *)pageTableWithLayoutAttributes:(id<NSFastEnumeration>)layoutAttributesEnumerator contentSize:(CGSize)contentSize pageSize:(CGSize)pageSize NS_RETURNS_RETAINED
 {
   ASPageToLayoutAttributesTable *result = [ASPageTable pageTableForStrongObjectPointers];
-  for (UICollectionViewLayoutAttributes *attrs in layoutAttributesEnumerator) {
+  for (ASCollectionViewLayoutAttributes *attrs in layoutAttributesEnumerator) {
     // This attrs may span multiple pages. Make sure it's registered to all of them
     NSPointerArray *pages = ASPageCoordinatesForPagesThatIntersectRect(attrs.frame, contentSize, pageSize);
     
     for (id pagePtr in pages) {
       ASPageCoordinate page = (ASPageCoordinate)pagePtr;
-      NSMutableArray<UICollectionViewLayoutAttributes *> *attrsInPage = [result objectForPage:page];
+      NSMutableArray<ASCollectionViewLayoutAttributes *> *attrsInPage = [result objectForPage:page];
       if (attrsInPage == nil) {
         attrsInPage = [[NSMutableArray alloc] init];
         [result setObject:attrsInPage forPage:page];

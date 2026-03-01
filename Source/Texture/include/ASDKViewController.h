@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASDisplayNode.h"
 #import "ASVisibilityProtocols.h"
 
@@ -15,18 +15,20 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#if !AS_PLATFORM_MACOS
 typedef ASTraitCollection * _Nonnull (^ASDisplayTraitsForTraitCollectionBlock)(UITraitCollection *traitCollection);
+#endif
 typedef ASTraitCollection * _Nonnull (^ASDisplayTraitsForTraitWindowSizeBlock)(CGSize windowSize);
 
 /**
  * ASDKViewController allows you to have a completely node backed hierarchy. It automatically
  * handles @c ASVisibilityDepth, automatic range mode and propogating @c ASDisplayTraits to contained nodes.
  *
- * You can opt-out of node backed hierarchy and use it like a normal UIViewController.
+ * You can opt-out of node backed hierarchy and use it like a normal ASDisplayViewController.
  * More importantly, you can use it as a base class for all of your view controllers among which some use a node hierarchy and some don't.
  * See examples/ASDKgram project for actual implementation.
  */
-@interface ASDKViewController<__covariant DisplayNodeType : ASDisplayNode *> : UIViewController <ASVisibilityDepth>
+@interface ASDKViewController<__covariant DisplayNodeType : ASDisplayNode *> : ASDisplayViewController <ASVisibilityDepth>
 
 /**
  * ASDKViewController initializer.
@@ -41,7 +43,7 @@ typedef ASTraitCollection * _Nonnull (^ASDisplayTraitsForTraitWindowSizeBlock)(C
 /**
 * ASDKViewController initializer. Useful for interoperability with normal UIViewControllers.
 *
-* @return An ASDKViewController instance with a nil node whose root view will be backed by a standard UIView as with a normal UIViewController.
+* @return An ASDKViewController instance with a nil node whose root view will be backed by a standard ASDisplayView as with a normal ASDisplayViewController.
 *
 * @see ASVisibilityDepth
 */
@@ -59,7 +61,9 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Set this block to customize the ASDisplayTraits returned when the VC transitions to the given traitCollection.
  */
+#if !AS_PLATFORM_MACOS
 @property (nonatomic, copy) ASDisplayTraitsForTraitCollectionBlock overrideDisplayTraitsWithTraitCollection;
+#endif
 
 /**
  * Set this block to customize the ASDisplayTraits returned when the VC transitions to the given window size.
@@ -79,10 +83,10 @@ NS_ASSUME_NONNULL_BEGIN
 // Refer to examples/SynchronousConcurrency, AsyncViewController.m
 @property (nonatomic) BOOL neverShowPlaceholders;
 
-/* Custom container UIViewController subclasses can use this property to add to the overlay
- that UIViewController calculates for the safeAreaInsets for contained view controllers.
+/* Custom container ASDisplayViewController subclasses can use this property to add to the overlay
+ that ASDisplayViewController calculates for the safeAreaInsets for contained view controllers.
  */
-@property(nonatomic) UIEdgeInsets additionalSafeAreaInsets;
+@property(nonatomic) ASEdgeInsets additionalSafeAreaInsets;
 
 @end
 

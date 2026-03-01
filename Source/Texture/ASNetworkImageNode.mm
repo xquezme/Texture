@@ -15,7 +15,9 @@
 #import "ASEqualityHelpers.h"
 #import "ASInternalHelpers.h"
 #import "ASImageNode+Private.h"
+#if !AS_PLATFORM_MACOS
 #import "ASImageNode+AnimatedImagePrivate.h"
+#endif
 #import "ASImageContainerProtocolCategories.h"
 #import "ASNetworkImageLoadInfo+Private.h"
 #import "ASDefaultImageDownloader.h"
@@ -26,7 +28,7 @@
   __weak id<ASNetworkImageNodeDelegate> _delegate;
 
   NSURL *_URL;
-  UIImage *_defaultImage;
+  ASImage *_defaultImage;
 
   NSInteger _cacheSentinel;
   id _downloadIdentifier;
@@ -90,7 +92,11 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
   
   _networkImageNodeFlags.downloaderImplementsSetProgress = [downloader respondsToSelector:@selector(setProgressImageBlock:callbackQueue:withDownloadIdentifier:)];
   _networkImageNodeFlags.downloaderImplementsSetPriority = [downloader respondsToSelector:@selector(setPriority:withDownloadIdentifier:)];
+#if !AS_PLATFORM_MACOS
   _networkImageNodeFlags.downloaderImplementsAnimatedImage = [downloader respondsToSelector:@selector(animatedImageWithData:)];
+#else
+  _networkImageNodeFlags.downloaderImplementsAnimatedImage = NO;
+#endif
   _networkImageNodeFlags.downloaderImplementsCancelWithResume = [downloader respondsToSelector:@selector(cancelImageDownloadWithResumePossibilityForIdentifier:)];
   _networkImageNodeFlags.downloaderImplementsDownloadWithPriority = [downloader respondsToSelector:@selector(downloadImageWithURL:shouldRetry:priority:callbackQueue:downloadProgress:completion:)];
 
@@ -123,13 +129,13 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
 #pragma mark - Public methods -- must lock
 
 /// Setter for public image property. It has the side effect of setting an internal _networkImageNodeFlags.imageWasSetExternally that prevents setting an image internally. Setting an image internally should happen with the _setImage: method
-- (void)setImage:(UIImage *)image
+- (void)setImage:(ASImage *)image
 {
   ASLockScopeSelf();
   [self _locked_setImage:image];
 }
 
-- (void)_locked_setImage:(UIImage *)image
+- (void)_locked_setImage:(ASImage *)image
 {
   DISABLED_ASAssertLocked(__instanceLock__);
   
@@ -152,13 +158,13 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
 }
 
 /// Setter for private image property. See @c _locked_setImage why this is needed
-- (void)_setImage:(UIImage *)image
+- (void)_setImage:(ASImage *)image
 {
   ASLockScopeSelf();
   [self _locked__setImage:image];
 }
 
-- (void)_locked__setImage:(UIImage *)image
+- (void)_locked__setImage:(ASImage *)image
 {
   DISABLED_ASAssertLocked(__instanceLock__);
   [super _locked_setImage:image];
@@ -209,7 +215,9 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
     if (reset || hadURL) {
       [self _setCurrentImageQuality:(hadURL ? 0.0 : 1.0)];
       [self _locked__setImage:_defaultImage];
+#if !AS_PLATFORM_MACOS
       [self _locked_setAnimatedImage:nil];
+#endif
     }
   }
 
@@ -221,14 +229,14 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
   return ASLockedSelf(_URL);
 }
 
-- (void)setDefaultImage:(UIImage *)defaultImage
+- (void)setDefaultImage:(ASImage *)defaultImage
 {
   ASLockScopeSelf();
 
   [self _locked_setDefaultImage:defaultImage];
 }
 
-- (void)_locked_setDefaultImage:(UIImage *)defaultImage
+- (void)_locked_setDefaultImage:(ASImage *)defaultImage
 {
   if (ASObjectIsEqual(defaultImage, _defaultImage)) {
     return;
@@ -242,7 +250,7 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
   }
 }
 
-- (UIImage *)defaultImage
+- (ASImage *)defaultImage
 {
   return ASLockedSelf(_defaultImage);
 }
@@ -382,7 +390,7 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
 
     NSURL *url = _URL;
     if (_networkImageNodeFlags.imageLoaded == NO && url && _downloadIdentifier == nil) {
-      UIImage *result = [[_cache synchronouslyFetchedCachedImageWithURL:url] asdk_image];
+      ASImage *result = [[_cache synchronouslyFetchedCachedImageWithURL:url] asdk_image];
       if (result) {
         [self _setCurrentImageQuality:1.0];
         [self _setDownloadProgress:1.0];
@@ -472,7 +480,7 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
   [self _setDownloadProgress:progress];
 }
 
-- (void)handleProgressImage:(UIImage *)progressImage progress:(CGFloat)progress downloadIdentifier:(nullable id)downloadIdentifier
+- (void)handleProgressImage:(ASImage *)progressImage progress:(CGFloat)progress downloadIdentifier:(nullable id)downloadIdentifier
 {
   ASLockScopeSelf();
   
@@ -528,7 +536,7 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
   if (newDownloadIDForProgressBlock != nil) {
     __weak __typeof(self) weakSelf = self;
     as_log_verbose(ASImageLoadingLog(), "Enabled progress images for %@ id: %@", self, newDownloadIDForProgressBlock);
-    [_downloader setProgressImageBlock:^(UIImage * _Nonnull progressImage, CGFloat progress, id  _Nullable downloadIdentifier) {
+    [_downloader setProgressImageBlock:^(ASImage * _Nonnull progressImage, CGFloat progress, id  _Nullable downloadIdentifier) {
       [weakSelf handleProgressImage:progressImage progress:progress downloadIdentifier:downloadIdentifier];
     } callbackQueue:[self callbackQueue] withDownloadIdentifier:newDownloadIDForProgressBlock];
   }
@@ -566,7 +574,9 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
   
   [self _locked_cancelImageDownloadWithResumePossibility:storeResume];
   
+#if !AS_PLATFORM_MACOS
   [self _locked_setAnimatedImage:nil];
+#endif
   [self _setCurrentImageQuality:0.0];
   [self _setDownloadProgress:0.0];
   [self _locked__setImage:_defaultImage];
@@ -728,17 +738,17 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
         }
         
         if (self->_networkImageNodeFlags.shouldCacheImage) {
-          [self _locked__setImage:[UIImage imageNamed:URL.path.lastPathComponent]];
+          [self _locked__setImage:[ASImage imageNamed:URL.path.lastPathComponent]];
         } else {
           // First try to load the path directly, for efficiency assuming a developer who
           // doesn't want caching is trying to be as minimal as possible.
-          auto nonAnimatedImage = [[UIImage alloc] initWithContentsOfFile:URL.path];
+          auto nonAnimatedImage = [[ASImage alloc] initWithContentsOfFile:URL.path];
           if (nonAnimatedImage == nil) {
             // If we couldn't find it, execute an -imageNamed:-like search so we can find resources even if the
             // extension is not provided in the path.  This allows the same path to work regardless of shouldCacheImage.
             NSString *filename = [[NSBundle mainBundle] pathForResource:URL.path.lastPathComponent ofType:nil];
             if (filename != nil) {
-              nonAnimatedImage = [[UIImage alloc] initWithContentsOfFile:filename];
+              nonAnimatedImage = [[ASImage alloc] initWithContentsOfFile:filename];
               // Update URL to point to newly-resolved file URL for animated image load.
               URL = nonAnimatedImage ? [NSURL URLWithString:filename] : URL;
             }
@@ -758,7 +768,11 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
           }
 
           if (animatedImage != nil) {
+#if !AS_PLATFORM_MACOS
             [self _locked_setAnimatedImage:animatedImage];
+#else
+            [self _locked__setImage:nonAnimatedImage];
+#endif
           } else {
             [self _locked__setImage:nonAnimatedImage];
           }
@@ -804,14 +818,19 @@ static std::atomic_bool _useMainThreadDelegateCallbacks(true);
             return;
           }
           
-          UIImage *newImage;
+          ASImage *newImage;
           if (imageContainer != nil) {
             [strongSelf _setCurrentImageQuality:1.0];
             [strongSelf _setDownloadProgress:1.0];
             NSData *animatedImageData = [imageContainer asdk_animatedImageData];
             if (animatedImageData && strongSelf->_networkImageNodeFlags.downloaderImplementsAnimatedImage) {
+#if !AS_PLATFORM_MACOS
               id animatedImage = [strongSelf->_downloader animatedImageWithData:animatedImageData];
               [strongSelf _locked_setAnimatedImage:animatedImage];
+#else
+              newImage = [imageContainer asdk_image];
+              [strongSelf _locked__setImage:newImage];
+#endif
             } else {
               newImage = [imageContainer asdk_image];
               [strongSelf _locked__setImage:newImage];

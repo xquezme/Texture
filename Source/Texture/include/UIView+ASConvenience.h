@@ -7,7 +7,7 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -39,7 +39,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) CGFloat borderWidth;
 @property (nonatomic, getter = isOpaque) BOOL opaque;
 @property (nonatomic) __attribute__((NSObject)) CGColorRef borderColor;
-@property (nonatomic) UIColor *backgroundColor;
+@property (nonatomic) ASColor *backgroundColor;
 @property (nonatomic) BOOL allowsGroupOpacity;
 @property (nonatomic) BOOL allowsEdgeAntialiasing;
 @property (nonatomic) CAEdgeAntialiasingMask edgeAntialiasingMask;
@@ -52,24 +52,28 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 /**
- These are all of the "good" properties of the UIView API that we support in pendingViewState or view of an ASDisplayNode.
+ These are all of the "good" properties of the ASDisplayView API that we support in pendingViewState or view of an ASDisplayNode.
  */
 @protocol ASDisplayNodeViewProperties
 
 @property (nonatomic)          BOOL clipsToBounds;
 @property (nonatomic, getter=isHidden) BOOL hidden;
 @property (nonatomic)          BOOL autoresizesSubviews;
+#if !AS_PLATFORM_MACOS
 @property (nonatomic)          UIViewAutoresizing autoresizingMask;
-@property (nonatomic, null_resettable) UIColor *tintColor;
+#endif
+@property (nonatomic, null_resettable) ASColor *tintColor;
 @property (nonatomic)          CGFloat alpha;
 @property (nonatomic)          CGRect bounds;
 @property (nonatomic)          CGRect frame;   // Only for use with nodes wrapping synchronous views
+#if !AS_PLATFORM_MACOS
 @property (nonatomic)          UIViewContentMode contentMode;
 @property (nonatomic)          UISemanticContentAttribute semanticContentAttribute API_AVAILABLE(ios(9.0), tvos(9.0));
+#endif
 @property (nonatomic, getter=isUserInteractionEnabled) BOOL userInteractionEnabled;
 @property (nonatomic, getter=isExclusiveTouch) BOOL exclusiveTouch;
 @property (nonatomic, getter=asyncdisplaykit_isAsyncTransactionContainer, setter = asyncdisplaykit_setAsyncTransactionContainer:) BOOL asyncdisplaykit_asyncTransactionContainer;
-@property (nonatomic)           UIEdgeInsets layoutMargins;
+@property (nonatomic)           ASEdgeInsets layoutMargins;
 @property (nonatomic)           BOOL preservesSuperviewLayoutMargins;
 @property (nonatomic)           BOOL insetsLayoutMarginsFromSafeArea;
 

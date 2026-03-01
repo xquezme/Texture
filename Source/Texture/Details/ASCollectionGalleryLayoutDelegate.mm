@@ -76,7 +76,7 @@
   }
 
   CGSize itemSize = [propertiesProvider galleryLayoutDelegate:self sizeForElements:elements];
-  UIEdgeInsets sectionInset = _propertiesProviderFlags.sectionInsetForElements ? [propertiesProvider galleryLayoutDelegate:self sectionInsetForElements:elements] : UIEdgeInsetsZero;
+  ASEdgeInsets sectionInset = _propertiesProviderFlags.sectionInsetForElements ? [propertiesProvider galleryLayoutDelegate:self sectionInsetForElements:elements] : ASEdgeInsetsZero;
   CGFloat lineSpacing = _propertiesProviderFlags.minimumLineSpacingForElements ? [propertiesProvider galleryLayoutDelegate:self minimumLineSpacingForElements:elements] : 0.0;
   CGFloat interitemSpacing = _propertiesProviderFlags.minimumInteritemSpacingForElements ? [propertiesProvider galleryLayoutDelegate:self minimumInteritemSpacingForElements:elements] : 0.0;
   return [[_ASCollectionGalleryLayoutInfo alloc] initWithItemSize:itemSize
@@ -119,8 +119,8 @@
   stackSpec.concurrent = YES;
 
   ASLayoutSpec *finalSpec = stackSpec;
-  UIEdgeInsets sectionInset = info.sectionInset;
-  if (UIEdgeInsetsEqualToEdgeInsets(sectionInset, UIEdgeInsetsZero) == NO) {
+  ASEdgeInsets sectionInset = info.sectionInset;
+  if (ASEdgeInsetsEqualToEdgeInsets(sectionInset, ASEdgeInsetsZero) == NO) {
     finalSpec = [ASInsetLayoutSpec insetLayoutSpecWithInsets:sectionInset child:stackSpec];
   }
 

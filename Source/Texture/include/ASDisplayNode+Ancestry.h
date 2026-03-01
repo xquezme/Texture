@@ -19,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
  *
  * For instance, you could write:
  *   for (ASDisplayNode *node in self.supernodes) {
- *     if ([node.backgroundColor isEqual:[UIColor blueColor]]) {
+ *     if ([node.backgroundColor isEqual:[ASColor blueColor]]) {
  *       node.hidden = YES;
  *     }
  *   }

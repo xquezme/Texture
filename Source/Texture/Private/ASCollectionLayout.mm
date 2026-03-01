@@ -119,7 +119,7 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
   return layout;
 }
 
-#pragma mark - UICollectionViewLayout overrides
+#pragma mark - ASCollectionViewLayout overrides
 
 - (void)prepareLayout
 {
@@ -173,7 +173,7 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
   return _layout ? _layout.contentSize : CGSizeZero;
 }
 
-- (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)blockingRect
+- (NSArray<ASCollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)blockingRect
 {
   ASDisplayNodeAssertMainThread();
   if (CGRectIsEmpty(blockingRect)) {
@@ -187,10 +187,10 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
                                                                    kASStaticScrollDirection);
   [ASCollectionLayout _measureElementsInRect:measureRect blockingRect:blockingRect layout:_layout];
   
-  NSArray<UICollectionViewLayoutAttributes *> *result = [_layout layoutAttributesForElementsInRect:blockingRect];
+  NSArray<ASCollectionViewLayoutAttributes *> *result = [_layout layoutAttributesForElementsInRect:blockingRect];
 
   ASElementMap *elements = _layout.context.elements;
-  for (UICollectionViewLayoutAttributes *attrs in result) {
+  for (ASCollectionViewLayoutAttributes *attrs in result) {
     ASCollectionElement *element = [elements elementForLayoutAttributes:attrs];
     ASCollectionLayoutSetSizeToElement(attrs.frame.size, element);
   }
@@ -198,12 +198,12 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
   return result;
 }
 
-- (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
+- (ASCollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
 {
   ASDisplayNodeAssertMainThread();
 
   ASCollectionElement *element = [_layout.context.elements elementForItemAtIndexPath:indexPath];
-  UICollectionViewLayoutAttributes *attrs = [_layout layoutAttributesForElement:element];
+  ASCollectionViewLayoutAttributes *attrs = [_layout layoutAttributesForElement:element];
 
   ASCellNode *node = element.node;
   CGSize elementSize = attrs.frame.size;
@@ -215,10 +215,10 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
   return attrs;
 }
 
-- (UICollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
+- (ASCollectionViewLayoutAttributes *)layoutAttributesForSupplementaryViewOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)indexPath
 {
   ASCollectionElement *element = [_layout.context.elements supplementaryElementOfKind:elementKind atIndexPath:indexPath];
-  UICollectionViewLayoutAttributes *attrs = [_layout layoutAttributesForElement:element];
+  ASCollectionViewLayoutAttributes *attrs = [_layout layoutAttributesForElement:element];
 
   ASCellNode *node = element.node;
   CGSize elementSize = attrs.frame.size;
@@ -260,7 +260,7 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
 
   CGSize result = [ASCollectionLayout _boundsForCollectionNode:collectionNode];
   // TODO: Consider using adjustedContentInset on iOS 11 and later, to include the safe area of the scroll view
-  UIEdgeInsets contentInset = collectionNode.contentInset;
+  ASEdgeInsets contentInset = collectionNode.contentInset;
   if (ASScrollDirectionContainsHorizontalDirection(scrollableDirections)) {
     result.height -= (contentInset.top + contentInset.bottom);
   } else {
@@ -306,11 +306,11 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
   // Use ordered sets here because some items may span multiple pages, and the sets will be accessed by indexes later on.
   ASCollectionLayoutContext *context = layout.context;
   CGSize pageSize = context.viewportSize;
-  NSMutableOrderedSet<UICollectionViewLayoutAttributes *> *blockingAttrs = hasBlockingRect ? [NSMutableOrderedSet orderedSet] : nil;
-  NSMutableOrderedSet<UICollectionViewLayoutAttributes *> *nonBlockingAttrs = [NSMutableOrderedSet orderedSet];
+  NSMutableOrderedSet<ASCollectionViewLayoutAttributes *> *blockingAttrs = hasBlockingRect ? [NSMutableOrderedSet orderedSet] : nil;
+  NSMutableOrderedSet<ASCollectionViewLayoutAttributes *> *nonBlockingAttrs = [NSMutableOrderedSet orderedSet];
   for (id pagePtr in attrsTable) {
     ASPageCoordinate page = (ASPageCoordinate)pagePtr;
-    NSArray<UICollectionViewLayoutAttributes *> *attrsInPage = [attrsTable objectForPage:page];
+    NSArray<ASCollectionViewLayoutAttributes *> *attrsInPage = [attrsTable objectForPage:page];
     // Calculate the page's rect but only if it's going to be used.
     CGRect pageRect = hasBlockingRect ? ASPageCoordinateGetPageRect(page, pageSize) : CGRectZero;
 
@@ -319,7 +319,7 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
       [blockingAttrs addObjectsFromArray:attrsInPage];
     } else if (hasBlockingRect && CGRectIntersectsRect(blockingRect, pageRect)) {
       // The page intersects the blocking rect. Some elements in this page are blocking, some are not.
-      for (UICollectionViewLayoutAttributes *attrs in attrsInPage) {
+      for (ASCollectionViewLayoutAttributes *attrs in attrsInPage) {
         if (CGRectIntersectsRect(blockingRect, attrs.frame)) {
           [blockingAttrs addObject:attrs];
         } else {
@@ -337,7 +337,7 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
   dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
   if (NSUInteger count = blockingAttrs.count) {
     ASDispatchApply(count, queue, 0, ^(size_t i) {
-      UICollectionViewLayoutAttributes *attrs = blockingAttrs[i];
+      ASCollectionViewLayoutAttributes *attrs = blockingAttrs[i];
       ASCellNode *node;
       if (attrs.representedElementKind == nil) {
         node = [elements elementForItemAtIndexPath:attrs.indexPath].node;
@@ -357,7 +357,7 @@ static const ASScrollDirection kASStaticScrollDirection = (ASScrollDirectionRigh
     ASDispatchAsync(count, queue, 0, ^(size_t i) {
       __strong ASElementMap *strongElements = weakElements;
       if (strongElements) {
-        UICollectionViewLayoutAttributes *attrs = nonBlockingAttrs[i];
+        ASCollectionViewLayoutAttributes *attrs = nonBlockingAttrs[i];
         ASCellNode *node;
         if (attrs.representedElementKind == nil) {
           node = [elements elementForItemAtIndexPath:attrs.indexPath].node;

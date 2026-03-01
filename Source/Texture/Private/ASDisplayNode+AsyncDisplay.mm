@@ -33,6 +33,58 @@ using AS::MutexLocker;
                                                                     return nil; \
                                                                   } \
 
+static inline CGContextRef ASDisplayNodeCurrentContext(void)
+{
+#if AS_PLATFORM_MACOS
+  return NSGraphicsContext.currentContext.CGContext;
+#else
+  return UIGraphicsGetCurrentContext();
+#endif
+}
+
+static inline void ASDisplayNodeClipRoundedRect(CGContextRef context, CGRect bounds, CGFloat cornerRadius)
+{
+#if AS_PLATFORM_MACOS
+  CGPathRef roundedRectPath = CGPathCreateWithRoundedRect(bounds, cornerRadius, cornerRadius, NULL);
+  CGContextAddPath(context, roundedRectPath);
+  CGContextClip(context);
+  CGPathRelease(roundedRectPath);
+#else
+  [[ASBezierPath bezierPathWithRoundedRect:bounds cornerRadius:cornerRadius] addClip];
+#endif
+}
+
+static inline void ASDisplayNodeClipRoundedRectWithMaskedCorners(CGContextRef context, CGRect bounds, CGFloat cornerRadius, CACornerMask maskedCorners)
+{
+#if AS_PLATFORM_MACOS
+  (void)maskedCorners;
+  ASDisplayNodeClipRoundedRect(context, bounds, cornerRadius);
+#else
+  CGSize radii = CGSizeMake(cornerRadius, cornerRadius);
+  [[ASBezierPath bezierPathWithRoundedRect:bounds byRoundingCorners:maskedCorners cornerRadii:radii] addClip];
+#endif
+}
+
+static inline CGImageRef ASDisplayNodeCopyCGImage(ASImage *image)
+{
+#if AS_PLATFORM_MACOS
+  return [image CGImageForProposedRect:NULL context:nil hints:nil];
+#else
+  return image.CGImage;
+#endif
+}
+
+static inline void ASDisplayNodeDrawImage(ASImage *image, CGRect bounds, BOOL opaque)
+{
+#if AS_PLATFORM_MACOS
+  NSCompositingOperation operation = opaque ? NSCompositingOperationCopy : NSCompositingOperationSourceOver;
+  [image drawInRect:NSRectFromCGRect(bounds) fromRect:NSZeroRect operation:operation fraction:1.0 respectFlipped:NO hints:nil];
+#else
+  CGBlendMode blendMode = opaque ? kCGBlendModeCopy : kCGBlendModeNormal;
+  [image drawInRect:bounds blendMode:blendMode alpha:1];
+#endif
+}
+
 - (NSObject *)drawParameters
 {
   __instanceLock__.lock();
@@ -63,7 +115,7 @@ using AS::MutexLocker;
   }
 
   // Capture these outside the display block so they are retained.
-  UIColor *backgroundColor = self.backgroundColor;
+  ASColor *backgroundColor = self.backgroundColor;
   CGRect bounds = self.bounds;
   CGFloat cornerRadius = self.cornerRadius;
   BOOL clipsToBounds = self.clipsToBounds;
@@ -96,7 +148,7 @@ using AS::MutexLocker;
   if (shouldDisplay) {
     dispatch_block_t pushAndDisplayBlock = ^{
       // Push transform relative to parent.
-      CGContextRef context = UIGraphicsGetCurrentContext();
+      CGContextRef context = ASDisplayNodeCurrentContext();
       CGContextSaveGState(context);
 
       CGContextTranslateCTM(context, frame.origin.x, frame.origin.y);
@@ -104,7 +156,7 @@ using AS::MutexLocker;
       //support cornerRadius
       if (rasterizingFromAscendent && clipsToBounds) {
         if (cornerRadius) {
-          [[UIBezierPath bezierPathWithRoundedRect:bounds cornerRadius:cornerRadius] addClip];
+          ASDisplayNodeClipRoundedRect(context, bounds, cornerRadius);
         } else {
           CGContextClipToRect(context, bounds);
         }
@@ -119,11 +171,11 @@ using AS::MutexLocker;
 
       // If there is a display block, call it to get the image, then copy the image into the current context (which is the rasterized container's backing store).
       if (displayBlock) {
-        UIImage *image = (UIImage *)displayBlock();
+        ASImage *image = (ASImage *)displayBlock();
         if (image) {
-          BOOL opaque = ASImageAlphaInfoIsOpaque(CGImageGetAlphaInfo(image.CGImage));
-          CGBlendMode blendMode = opaque ? kCGBlendModeCopy : kCGBlendModeNormal;
-          [image drawInRect:bounds blendMode:blendMode alpha:1];
+          CGImageRef cgImage = ASDisplayNodeCopyCGImage(image);
+          BOOL opaque = cgImage != NULL && ASImageAlphaInfoIsOpaque(CGImageGetAlphaInfo(cgImage));
+          ASDisplayNodeDrawImage(image, bounds, opaque);
         }
       }
     };
@@ -142,7 +194,7 @@ using AS::MutexLocker;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
       popBlock = ^{
-        CGContextRef context = UIGraphicsGetCurrentContext();
+        CGContextRef context = ASDisplayNodeCurrentContext();
         CGContextRestoreGState(context);
       };
     });
@@ -177,7 +229,7 @@ using AS::MutexLocker;
   
   BOOL opaque = self.opaque;
   CGRect bounds = self.bounds;
-  UIColor *backgroundColor = self.backgroundColor;
+  ASColor *backgroundColor = self.backgroundColor;
   CGColorRef borderColor = self.borderColor;
   CGFloat borderWidth = self.borderWidth;
   CGFloat contentsScaleForDisplay = _contentsScaleForDisplay;
@@ -202,14 +254,14 @@ using AS::MutexLocker;
     [self _recursivelyRasterizeSelfAndSublayersWithIsCancelledBlock:isCancelledBlock displayBlocks:displayBlocks];
     CHECK_CANCELLED_AND_RETURN_NIL();
     
-    // If [UIColor clearColor] or another semitransparent background color is used, include alpha channel when rasterizing.
+    // If [ASColor clearColor] or another semitransparent background color is used, include alpha channel when rasterizing.
     // Unlike CALayer drawing, we include the backgroundColor as a base during rasterization.
     opaque = opaque && CGColorGetAlpha(backgroundColor.CGColor) == 1.0f;
 
     displayBlock = ^id{
       CHECK_CANCELLED_AND_RETURN_NIL();
 
-      UIImage *image = ASGraphicsCreateImage(self.primitiveTraitCollection, bounds.size, opaque, contentsScaleForDisplay, nil, isCancelledBlock, ^{
+      ASImage *image = ASGraphicsCreateImage(self.primitiveTraitCollection, bounds.size, opaque, contentsScaleForDisplay, nil, isCancelledBlock, ^{
         for (dispatch_block_t block in displayBlocks) {
           if (isCancelledBlock()) return;
           block();
@@ -223,9 +275,9 @@ using AS::MutexLocker;
     displayBlock = ^id{
       CHECK_CANCELLED_AND_RETURN_NIL();
 
-      __block UIImage *image = nil;
+      __block ASImage *image = nil;
       void (^workWithContext)() = ^{
-        CGContextRef currentContext = UIGraphicsGetCurrentContext();
+        CGContextRef currentContext = ASDisplayNodeCurrentContext();
 
         if (shouldCreateGraphicsContext && !currentContext) {
           ASDisplayNodeAssert(NO, @"Failed to create a CGContext (size: %@)", NSStringFromCGSize(bounds.size));
@@ -283,11 +335,10 @@ using AS::MutexLocker;
     __instanceLock__.unlock();
 
     if (cornerRoundingType == ASCornerRoundingTypePrecomposited && cornerRadius > 0.0) {
-      ASDisplayNodeAssert(context == UIGraphicsGetCurrentContext(), @"context is expected to be pushed on UIGraphics stack %@", self);
+      ASDisplayNodeAssert(context == ASDisplayNodeCurrentContext(), @"context is expected to be pushed on the current graphics stack %@", self);
       // TODO: This clip path should be removed if we are rasterizing.
       CGRect boundingBox = CGContextGetClipBoundingBox(context);
-      CGSize radii = CGSizeMake(cornerRadius, cornerRadius);
-      [[UIBezierPath bezierPathWithRoundedRect:boundingBox byRoundingCorners:maskedCorners cornerRadii:radii] addClip];
+      ASDisplayNodeClipRoundedRectWithMaskedCorners(context, boundingBox, cornerRadius, maskedCorners);
     }
     
     if (willDisplayNodeContentWithRenderingContext) {
@@ -296,7 +347,7 @@ using AS::MutexLocker;
   }
 
 }
-- (void)__didDisplayNodeContentWithRenderingContext:(CGContextRef)context image:(UIImage **)image drawParameters:(id _Nullable)drawParameters backgroundColor:(UIColor *)backgroundColor borderWidth:(CGFloat)borderWidth borderColor:(CGColorRef)borderColor
+- (void)__didDisplayNodeContentWithRenderingContext:(CGContextRef)context image:(ASImage **)image drawParameters:(id _Nullable)drawParameters backgroundColor:(ASColor *)backgroundColor borderWidth:(CGFloat)borderWidth borderColor:(CGColorRef)borderColor
 {
   if (context == NULL && *image == NULL) {
     return;
@@ -319,6 +370,9 @@ using AS::MutexLocker;
   if (cornerRoundingType == ASCornerRoundingTypePrecomposited && cornerRadius > 0.0f) {
     CGRect bounds = CGRectZero;
     if (context == NULL) {
+#if AS_PLATFORM_MACOS
+      return;
+#else
       bounds = self.threadSafeBounds;
       bounds.size.width *= contentsScale;
       bounds.size.height *= contentsScale;
@@ -326,41 +380,78 @@ using AS::MutexLocker;
       [backgroundColor getWhite:&white alpha:&alpha];
       UIGraphicsBeginImageContextWithOptions(bounds.size, (alpha == 1.0f), contentsScale);
       [*image drawInRect:bounds];
+#endif
     } else {
       bounds = CGContextGetClipBoundingBox(context);
     }
-    
-    ASDisplayNodeAssert(UIGraphicsGetCurrentContext(), @"context is expected to be pushed on UIGraphics stack %@", self);
-    
-    UIBezierPath *roundedHole = [UIBezierPath bezierPathWithRect:bounds];
+
+    ASDisplayNodeAssert(ASDisplayNodeCurrentContext(), @"context is expected to be pushed on the current graphics stack %@", self);
+
+#if AS_PLATFORM_MACOS
+    CGFloat scaledCornerRadius = cornerRadius * contentsScale;
+    CGMutablePathRef roundedHolePath = CGPathCreateMutable();
+    CGPathAddRect(roundedHolePath, NULL, bounds);
+    CGPathRef roundedRectPath = CGPathCreateWithRoundedRect(bounds, scaledCornerRadius, scaledCornerRadius, NULL);
+    CGPathAddPath(roundedHolePath, NULL, roundedRectPath);
+
+    CGContextSaveGState(context);
+    CGContextSetBlendMode(context, kCGBlendModeCopy);
+    CGContextSetFillColorWithColor(context, backgroundColor.CGColor);
+    CGContextAddPath(context, roundedHolePath);
+    CGContextEOFillPath(context);
+    CGContextRestoreGState(context);
+
+    if (borderWidth > 0.0f) {
+      CGFloat strokeThickness = borderWidth * contentsScale;
+      CGFloat strokeInset = ((strokeThickness + 1.0f) / 2.0f) - 1.0f;
+      CGRect strokeBounds = CGRectInset(bounds, strokeInset, strokeInset);
+      CGPathRef strokePath = CGPathCreateWithRoundedRect(strokeBounds, _cornerRadius * contentsScale, _cornerRadius * contentsScale, NULL);
+      CGContextSaveGState(context);
+      CGContextSetStrokeColorWithColor(context, borderColor);
+      CGContextSetLineWidth(context, strokeThickness);
+      CGContextAddPath(context, strokePath);
+      CGContextStrokePath(context);
+      CGContextRestoreGState(context);
+      CGPathRelease(strokePath);
+    }
+
+    CGPathRelease(roundedRectPath);
+    CGPathRelease(roundedHolePath);
+#else
+    ASBezierPath *roundedHole = [ASBezierPath bezierPathWithRect:bounds];
     CGSize radii = CGSizeMake(cornerRadius * contentsScale, cornerRadius * contentsScale);
-    [roundedHole appendPath:[UIBezierPath bezierPathWithRoundedRect:bounds
+    [roundedHole appendPath:[ASBezierPath bezierPathWithRoundedRect:bounds
                                                   byRoundingCorners:maskedCorners
                                                         cornerRadii:radii]];
     roundedHole.usesEvenOddFillRule = YES;
-    
-    UIBezierPath *roundedPath = nil;
+
+    ASBezierPath *roundedPath = nil;
     if (borderWidth > 0.0f) {  // Don't create roundedPath and stroke if borderWidth is 0.0
       CGFloat strokeThickness = borderWidth * contentsScale;
       CGFloat strokeInset = ((strokeThickness + 1.0f) / 2.0f) - 1.0f;
-      roundedPath = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(bounds, strokeInset, strokeInset)
+      roundedPath = [ASBezierPath bezierPathWithRoundedRect:CGRectInset(bounds, strokeInset, strokeInset)
                                                cornerRadius:_cornerRadius * contentsScale];
       roundedPath.lineWidth = strokeThickness;
-      [[UIColor colorWithCGColor:borderColor] setStroke];
+      [[ASColor colorWithCGColor:borderColor] setStroke];
     }
-    
+
     // Punch out the corners by copying the backgroundColor over them.
     // This works for everything from clearColor to opaque colors.
     [backgroundColor setFill];
     [roundedHole fillWithBlendMode:kCGBlendModeCopy alpha:1.0f];
-    
+
     [roundedPath stroke];  // Won't do anything if borderWidth is 0 and roundedPath is nil.
+#endif
     
     if (*image) {
+#if !AS_PLATFORM_MACOS
       *image = UIGraphicsGetImageFromCurrentImageContext();
+#endif
     }
     if (context == NULL) {
+#if !AS_PLATFORM_MACOS
       UIGraphicsEndImageContext();
+#endif
     }
   }
 }
@@ -401,7 +492,7 @@ using AS::MutexLocker;
     };
   }
 
-  // Set up displayBlock to call either display or draw on the delegate and return a UIImage contents
+  // Set up displayBlock to call either display or draw on the delegate and return a ASImage contents
   asyncdisplaykit_async_transaction_operation_block_t displayBlock = [self _displayBlockWithAsynchronous:asynchronously isCancelledBlock:isCancelledBlock rasterizing:NO];
   
   if (!displayBlock) {
@@ -414,14 +505,20 @@ using AS::MutexLocker;
   asyncdisplaykit_async_transaction_operation_completion_block_t completionBlock = ^(id<NSObject> value, BOOL canceled){
     ASDisplayNodeCAssertMainThread();
     if (!canceled && !isCancelledBlock()) {
-      UIImage *image = (UIImage *)value;
-      BOOL stretchable = (NO == UIEdgeInsetsEqualToEdgeInsets(image.capInsets, UIEdgeInsetsZero));
+      ASImage *image = (ASImage *)value;
+#if !AS_PLATFORM_MACOS
+      BOOL stretchable = (NO == ASEdgeInsetsEqualToEdgeInsets(image.capInsets, ASEdgeInsetsZero));
+#endif
+#if !AS_PLATFORM_MACOS
       if (stretchable) {
         ASDisplayNodeSetResizableContents(layer, image);
       } else {
+#endif
         layer.contentsScale = self.contentsScale;
-        layer.contents = (id)image.CGImage;
+        layer.contents = (__bridge id)ASDisplayNodeCopyCGImage(image);
+#if !AS_PLATFORM_MACOS
       }
+#endif
       [self didDisplayAsyncLayer:self.asyncLayer];
       
       if (rasterizesSubtree) {
@@ -457,7 +554,7 @@ using AS::MutexLocker;
     // The only function of the transaction commit is to gate the calling of the completionBlock.
     [transaction addOperationWithBlock:displayBlock priority:self.drawingPriority queue:[_ASDisplayLayer displayQueue] completion:completionBlock];
   } else {
-    UIImage *contents = (UIImage *)displayBlock();
+    ASImage *contents = (ASImage *)displayBlock();
     completionBlock(contents, NO);
   }
 }

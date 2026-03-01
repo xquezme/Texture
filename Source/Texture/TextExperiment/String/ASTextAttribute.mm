@@ -10,6 +10,7 @@
 #import "ASTextAttribute.h"
 #import <CoreText/CoreText.h>
 #import "NSAttributedString+ASText.h"
+#import "ASTextUtilities.h"
 
 NSString *const ASTextBackedStringAttributeName = @"ASTextBackedString";
 NSString *const ASTextBindingAttributeName = @"ASTextBinding";
@@ -60,7 +61,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
     dic[(id)kCTSuperscriptAttributeName] = UIKit; //it's a CoreText attrubite, but only supported by UIKit...
     dic[NSVerticalGlyphFormAttributeName] = All;
     dic[(id)kCTGlyphInfoAttributeName] = CoreText_ASText;
-#if TARGET_OS_IOS
+#if !AS_PLATFORM_MACOS
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     dic[(id)kCTCharacterShapeAttributeName] = CoreText_ASText;
@@ -102,7 +103,6 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   if (num) return num.integerValue;
   return ASTextAttributeTypeNone;
 }
-
 
 @implementation ASTextBackedString
 
@@ -160,7 +160,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
 
 @implementation ASTextShadow
 
-+ (instancetype)shadowWithColor:(UIColor *)color offset:(CGSize)offset radius:(CGFloat)radius NS_RETURNS_RETAINED {
++ (instancetype)shadowWithColor:(ASColor *)color offset:(CGSize)offset radius:(CGFloat)radius NS_RETURNS_RETAINED {
   ASTextShadow *one = [self new];
   one.color = color;
   one.offset = offset;
@@ -176,9 +176,9 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   id color = nsShadow.shadowColor;
   if (color) {
     if (CGColorGetTypeID() == CFGetTypeID((__bridge CFTypeRef)(color))) {
-      color = [UIColor colorWithCGColor:(__bridge CGColorRef)(color)];
+      color = [ASColor colorWithCGColor:(__bridge CGColorRef)(color)];
     }
-    if ([color isKindOfClass:[UIColor class]]) {
+    if ([color isKindOfClass:[ASColor class]]) {
       shadow.color = color;
     }
   }
@@ -196,7 +196,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
 - (void)encodeWithCoder:(NSCoder *)aCoder {
   [aCoder encodeObject:self.color forKey:@"color"];
   [aCoder encodeObject:@(self.radius) forKey:@"radius"];
-  [aCoder encodeObject:[NSValue valueWithCGSize:self.offset] forKey:@"offset"];
+  [aCoder encodeObject:ASValueWithCGSize(self.offset) forKey:@"offset"];
   [aCoder encodeObject:self.subShadow forKey:@"subShadow"];
 }
 
@@ -204,7 +204,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   self = [super init];
   _color = [aDecoder decodeObjectForKey:@"color"];
   _radius = ((NSNumber *)[aDecoder decodeObjectForKey:@"radius"]).floatValue;
-  _offset = ((NSValue *)[aDecoder decodeObjectForKey:@"offset"]).CGSizeValue;
+  _offset = ASSizeFromValue([aDecoder decodeObjectForKey:@"offset"]);
   _subShadow = [aDecoder decodeObjectForKey:@"subShadow"];
   return self;
 }
@@ -234,7 +234,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   one.style = style;
   return one;
 }
-+ (instancetype)decorationWithStyle:(ASTextLineStyle)style width:(NSNumber *)width color:(UIColor *)color NS_RETURNS_RETAINED {
++ (instancetype)decorationWithStyle:(ASTextLineStyle)style width:(NSNumber *)width color:(ASColor *)color NS_RETURNS_RETAINED {
   ASTextDecoration *one = [self new];
   one.style = style;
   one.width = width;
@@ -269,7 +269,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
 
 @implementation ASTextBorder
 
-+ (instancetype)borderWithLineStyle:(ASTextLineStyle)lineStyle lineWidth:(CGFloat)width strokeColor:(UIColor *)color NS_RETURNS_RETAINED {
++ (instancetype)borderWithLineStyle:(ASTextLineStyle)lineStyle lineWidth:(CGFloat)width strokeColor:(ASColor *)color NS_RETURNS_RETAINED {
   ASTextBorder *one = [self new];
   one.lineStyle = lineStyle;
   one.strokeWidth = width;
@@ -277,11 +277,11 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   return one;
 }
 
-+ (instancetype)borderWithFillColor:(UIColor *)color cornerRadius:(CGFloat)cornerRadius NS_RETURNS_RETAINED {
++ (instancetype)borderWithFillColor:(ASColor *)color cornerRadius:(CGFloat)cornerRadius NS_RETURNS_RETAINED {
   ASTextBorder *one = [self new];
   one.fillColor = color;
   one.cornerRadius = cornerRadius;
-  one.insets = UIEdgeInsetsMake(-2, 0, 0, -2);
+  one.insets = ASEdgeInsetsMake(-2, 0, 0, -2);
   return one;
 }
 
@@ -296,7 +296,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   [aCoder encodeObject:@(self.strokeWidth) forKey:@"strokeWidth"];
   [aCoder encodeObject:self.strokeColor forKey:@"strokeColor"];
   [aCoder encodeObject:@(self.lineJoin) forKey:@"lineJoin"];
-  [aCoder encodeObject:[NSValue valueWithUIEdgeInsets:self.insets] forKey:@"insets"];
+  [aCoder encodeObject:ASValueWithEdgeInsets(self.insets) forKey:@"insets"];
   [aCoder encodeObject:@(self.cornerRadius) forKey:@"cornerRadius"];
   [aCoder encodeObject:self.shadow forKey:@"shadow"];
   [aCoder encodeObject:self.fillColor forKey:@"fillColor"];
@@ -308,7 +308,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   _strokeWidth = ((NSNumber *)[aDecoder decodeObjectForKey:@"strokeWidth"]).doubleValue;
   _strokeColor = [aDecoder decodeObjectForKey:@"strokeColor"];
   _lineJoin = (CGLineJoin)((NSNumber *)[aDecoder decodeObjectForKey:@"join"]).unsignedIntegerValue;
-  _insets = ((NSValue *)[aDecoder decodeObjectForKey:@"insets"]).UIEdgeInsetsValue;
+  _insets = ASEdgeInsetsFromValue([aDecoder decodeObjectForKey:@"insets"]);
   _cornerRadius = ((NSNumber *)[aDecoder decodeObjectForKey:@"cornerRadius"]).doubleValue;
   _shadow = [aDecoder decodeObjectForKey:@"shadow"];
   _fillColor = [aDecoder decodeObjectForKey:@"fillColor"];
@@ -341,14 +341,14 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
 
 - (void)encodeWithCoder:(NSCoder *)aCoder {
   [aCoder encodeObject:self.content forKey:@"content"];
-  [aCoder encodeObject:[NSValue valueWithUIEdgeInsets:self.contentInsets] forKey:@"contentInsets"];
+  [aCoder encodeObject:ASValueWithEdgeInsets(self.contentInsets) forKey:@"contentInsets"];
   [aCoder encodeObject:self.userInfo forKey:@"userInfo"];
 }
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
   self = [super init];
   _content = [aDecoder decodeObjectForKey:@"content"];
-  _contentInsets = ((NSValue *)[aDecoder decodeObjectForKey:@"contentInsets"]).UIEdgeInsetsValue;
+  _contentInsets = ASEdgeInsetsFromValue([aDecoder decodeObjectForKey:@"contentInsets"]);
   _userInfo = [aDecoder decodeObjectForKey:@"userInfo"];
   return self;
 }
@@ -376,9 +376,9 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   return one;
 }
 
-+ (instancetype)highlightWithBackgroundColor:(UIColor *)color NS_RETURNS_RETAINED {
++ (instancetype)highlightWithBackgroundColor:(ASColor *)color NS_RETURNS_RETAINED {
   ASTextBorder *highlightBorder = [ASTextBorder new];
-  highlightBorder.insets = UIEdgeInsetsMake(-2, -1, -2, -1);
+  highlightBorder.insets = ASEdgeInsetsMake(-2, -1, -2, -1);
   highlightBorder.cornerRadius = 3;
   highlightBorder.fillColor = color;
   
@@ -405,7 +405,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   }
 }
 
-- (void)setFont:(UIFont *)font {
+- (void)setFont:(ASFont *)font {
   [self _makeMutableAttributes];
   if (font == (id)[NSNull null] || font == nil) {
     ((NSMutableDictionary *)_attributes)[(id)kCTFontAttributeName] = [NSNull null];
@@ -418,7 +418,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   }
 }
 
-- (void)setColor:(UIColor *)color {
+- (void)setColor:(ASColor *)color {
   [self _makeMutableAttributes];
   if (color == (id)[NSNull null] || color == nil) {
     ((NSMutableDictionary *)_attributes)[(id)kCTForegroundColorAttributeName] = [NSNull null];
@@ -438,7 +438,7 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
   }
 }
 
-- (void)setStrokeColor:(UIColor *)color {
+- (void)setStrokeColor:(ASColor *)color {
   [self _makeMutableAttributes];
   if (color == (id)[NSNull null] || color == nil) {
     ((NSMutableDictionary *)_attributes)[(id)kCTStrokeColorAttributeName] = [NSNull null];
@@ -484,4 +484,3 @@ ASTextAttributeType ASTextAttributeGetType(NSString *name){
 }
 
 @end
-

@@ -7,6 +7,8 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
+#import <TargetConditionals.h>
+
 #import "ASImageNode.h"
 
 #import <tgmath.h>
@@ -32,15 +34,27 @@
 
 typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
 
+static inline CGFloat ASImageNodeImageScale(ASImage *image)
+{
+#if AS_PLATFORM_MACOS
+  (void)image;
+  return 1.0;
+#else
+  return image.scale;
+#endif
+}
+
 @interface ASImageNodeDrawParameters : NSObject {
 @package
-  UIImage *_image;
+  ASImage *_image;
   BOOL _opaque;
   CGRect _bounds;
   CGFloat _contentsScale;
-  UIColor *_backgroundColor;
-  UIColor *_tintColor;
+  ASColor *_backgroundColor;
+  ASColor *_tintColor;
+#if !AS_PLATFORM_MACOS
   UIViewContentMode _contentMode;
+#endif
   BOOL _cropEnabled;
   BOOL _forceUpscaling;
   CGSize _forcedSize;
@@ -64,16 +78,18 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
  */
 @interface ASImageNodeContentsKey : NSObject
 
-@property (nonatomic) UIImage *image;
+@property (nonatomic) ASImage *image;
 @property CGSize backingSize;
 @property CGRect imageDrawRect;
 @property BOOL isOpaque;
-@property (nonatomic, copy) UIColor *backgroundColor;
-@property (nonatomic, copy) UIColor *tintColor;
+@property (nonatomic, copy) ASColor *backgroundColor;
+@property (nonatomic, copy) ASColor *tintColor;
 @property (nonatomic) ASDisplayNodeContextModifier willDisplayNodeContentWithRenderingContext;
 @property (nonatomic) ASDisplayNodeContextModifier didDisplayNodeContentWithRenderingContext;
 @property (nonatomic) asimagenode_modification_block_t imageModificationBlock;
+#if !AS_PLATFORM_MACOS
 @property UIUserInterfaceStyle userInterfaceStyle API_AVAILABLE(tvos(10.0), ios(12.0));
+#endif
 @end
 
 @implementation ASImageNodeContentsKey
@@ -100,7 +116,9 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
       && _didDisplayNodeContentWithRenderingContext == other.didDisplayNodeContentWithRenderingContext
       && _imageModificationBlock == other.imageModificationBlock;
     // iOS 12, tvOS 10 and later (userInterfaceStyle only available in iOS12+)
+#if !AS_PLATFORM_MACOS
     areKeysEqual = areKeysEqual && _userInterfaceStyle == other.userInterfaceStyle;
+#endif
     return areKeysEqual;
   } else {
     return NO;
@@ -121,6 +139,9 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
     void *willDisplayNodeContentWithRenderingContext;
     void *didDisplayNodeContentWithRenderingContext;
     void *imageModificationBlock;
+#if !AS_PLATFORM_MACOS
+    NSInteger userInterfaceStyle;
+#endif
 #pragma clang diagnostic pop
   } data = {
     _image.hash,
@@ -131,7 +152,10 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
     _tintColor.hash,
     (void *)_willDisplayNodeContentWithRenderingContext,
     (void *)_didDisplayNodeContentWithRenderingContext,
-    (void *)_imageModificationBlock
+    (void *)_imageModificationBlock,
+#if !AS_PLATFORM_MACOS
+    _userInterfaceStyle
+#endif
   };
   return ASHashBytes(&data, sizeof(data));
 }
@@ -141,9 +165,9 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
 @implementation ASImageNode
 {
 @private
-  UIImage *_image;
+  ASImage *_image;
   ASWeakMapEntry *_weakCacheEntry;  // Holds a reference that keeps our contents in cache.
-  UIColor *_placeholderColor;
+  ASColor *_placeholderColor;
 
   void (^_displayCompletionBlock)(BOOL canceled);
 
@@ -168,14 +192,16 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
 
   // TODO can this be removed?
   self.contentsScale = ASScreenScale();
+#if !AS_PLATFORM_MACOS
   self.contentMode = UIViewContentModeScaleAspectFill;
+#endif
   self.opaque = NO;
   self.clipsToBounds = YES;
 
   // If no backgroundColor is set to the image node and it's a subview of UITableViewCell, UITableView is setting
   // the opaque value of all subviews to YES if highlighting / selection is happening and does not set it back to the
   // initial value. With setting a explicit backgroundColor we can prevent that change.
-  self.backgroundColor = [UIColor clearColor];
+  self.backgroundColor = [ASColor clearColor];
 
   _imageNodeFlags.cropEnabled = YES;
   _imageNodeFlags.forceUpscaling = NO;
@@ -196,7 +222,7 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
 
 #pragma mark - Placeholder
 
-- (UIImage *)placeholderImage
+- (ASImage *)placeholderImage
 {
   // FIXME: Replace this implementation with reusable CALayers that have .backgroundColor set.
   // This would completely eliminate the memory and performance cost of the backing store.
@@ -211,7 +237,13 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   return ASGraphicsCreateImage(tc, size, NO, 1, nil, nil, ^{
     AS::MutexLocker l(__instanceLock__);
     [_placeholderColor setFill];
+#if AS_PLATFORM_MACOS
+    CGContextRef context = NSGraphicsContext.currentContext.CGContext;
+    CGContextSetFillColorWithColor(context, _placeholderColor.CGColor);
+    CGContextFillRect(context, CGRectMake(0, 0, size.width, size.height));
+#else
     UIRectFill(CGRectMake(0, 0, size.width, size.height));
+#endif
   });
 }
 
@@ -230,13 +262,13 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
 
 #pragma mark - Setter / Getter
 
-- (void)setImage:(UIImage *)image
+- (void)setImage:(ASImage *)image
 {
   AS::MutexLocker l(__instanceLock__);
   [self _locked_setImage:image];
 }
 
-- (void)_locked_setImage:(UIImage *)image
+- (void)_locked_setImage:(ASImage *)image
 {
   DISABLED_ASAssertLocked(__instanceLock__);
   if (ASObjectIsEqual(_image, image)) {
@@ -265,17 +297,17 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   }
 }
 
-- (UIImage *)image
+- (ASImage *)image
 {
   return ASLockedSelf(_image);
 }
 
-- (UIColor *)placeholderColor
+- (ASColor *)placeholderColor
 {
   return ASLockedSelf(_placeholderColor);
 }
 
-- (void)setPlaceholderColor:(UIColor *)placeholderColor
+- (void)setPlaceholderColor:(ASColor *)placeholderColor
 {
   ASLockScopeSelf();
   if (ASCompareAssignCopy(_placeholderColor, placeholderColor)) {
@@ -291,14 +323,18 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   
   {
     ASLockScopeSelf();
-    UIImage *drawImage = _image;
+    ASImage *drawImage = _image;
     if (_imageNodeFlags.regenerateFromImageAsset && drawImage != nil) {
+#if !AS_PLATFORM_MACOS
       _imageNodeFlags.regenerateFromImageAsset = NO;
       UITraitCollection *tc = [UITraitCollection traitCollectionWithUserInterfaceStyle:_primitiveTraitCollection.userInterfaceStyle];
-      UIImage *generatedImage = [drawImage.imageAsset imageWithTraitCollection:tc];
+      ASImage *generatedImage = [drawImage.imageAsset imageWithTraitCollection:tc];
       if ( generatedImage != nil ) {
         drawImage = generatedImage;
       }
+#else
+      _imageNodeFlags.regenerateFromImageAsset = NO;
+#endif
     }
 
     drawParameters->_image = drawImage;
@@ -325,17 +361,19 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   drawParameters->_bounds = [self threadSafeBounds];
   drawParameters->_opaque = self.opaque;
   drawParameters->_backgroundColor = self.backgroundColor;
+#if !AS_PLATFORM_MACOS
   drawParameters->_contentMode = self.contentMode;
+#endif
   drawParameters->_tintColor = self.tintColor;
 
   return drawParameters;
 }
 
-+ (UIImage *)displayWithParameters:(id<NSObject>)parameter isCancelled:(NS_NOESCAPE asdisplaynode_iscancelled_block_t)isCancelled
++ (ASImage *)displayWithParameters:(id<NSObject>)parameter isCancelled:(NS_NOESCAPE asdisplaynode_iscancelled_block_t)isCancelled
 {
   ASImageNodeDrawParameters *drawParameter = (ASImageNodeDrawParameters *)parameter;
 
-  UIImage *image = drawParameter->_image;
+  ASImage *image = drawParameter->_image;
   if (image == nil) {
     return nil;
   }
@@ -345,9 +383,8 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   CGSize forcedSize                = drawParameter->_forcedSize;
   BOOL cropEnabled                 = drawParameter->_cropEnabled;
   BOOL isOpaque                    = drawParameter->_opaque;
-  UIColor *backgroundColor         = drawParameter->_backgroundColor;
-  UIColor *tintColor               = drawParameter->_tintColor;
-  UIViewContentMode contentMode    = drawParameter->_contentMode;
+  ASColor *backgroundColor         = drawParameter->_backgroundColor;
+  ASColor *tintColor               = drawParameter->_tintColor;
   CGFloat contentsScale            = drawParameter->_contentsScale;
   CGRect cropDisplayBounds         = drawParameter->_cropDisplayBounds;
   CGRect cropRect                  = drawParameter->_cropRect;
@@ -362,7 +399,11 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   ASDisplayNodeAssert(contentsScale > 0, @"invalid contentsScale at display time");
 
   // if the image is resizable, bail early since the image has likely already been configured
-  BOOL stretchable = !UIEdgeInsetsEqualToEdgeInsets(image.capInsets, UIEdgeInsetsZero);
+  BOOL stretchable = NO;
+#if !AS_PLATFORM_MACOS
+  UIViewContentMode contentMode    = drawParameter->_contentMode;
+  stretchable = !ASEdgeInsetsEqualToEdgeInsets(image.capInsets, ASEdgeInsetsZero);
+#endif
   if (stretchable) {
     if (imageModificationBlock != NULL) {
       image = imageModificationBlock(image, drawParameter->_traitCollection);
@@ -371,12 +412,16 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   }
 
   CGSize imageSize = image.size;
-  CGSize imageSizeInPixels = CGSizeMake(imageSize.width * image.scale, imageSize.height * image.scale);
+  CGFloat imageScale = ASImageNodeImageScale(image);
+  CGSize imageSizeInPixels = CGSizeMake(imageSize.width * imageScale, imageSize.height * imageScale);
   CGSize boundsSizeInPixels = CGSizeMake(std::floor(bounds.size.width * contentsScale), std::floor(bounds.size.height * contentsScale));
 
-  BOOL contentModeSupported = contentMode == UIViewContentModeScaleAspectFill ||
-                              contentMode == UIViewContentModeScaleAspectFit ||
-                              contentMode == UIViewContentModeCenter;
+  BOOL contentModeSupported = NO;
+#if !AS_PLATFORM_MACOS
+  contentModeSupported = contentMode == UIViewContentModeScaleAspectFill ||
+                         contentMode == UIViewContentModeScaleAspectFit ||
+                         contentMode == UIViewContentModeCenter;
+#endif
 
   CGSize backingSize   = CGSizeZero;
   CGRect imageDrawRect = CGRectZero;
@@ -397,6 +442,16 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
       forcedSize.width *= contentsScale;
       forcedSize.height *= contentsScale;
     }
+#if AS_PLATFORM_MACOS
+    ASCroppedImageBackingSizeAndDrawRectInBounds(imageSizeInPixels,
+                                                 boundsSizeInPixels,
+                                                 0,
+                                                 cropRect,
+                                                 forceUpscaling,
+                                                 forcedSize,
+                                                 &backingSize,
+                                                 &imageDrawRect);
+#else
     ASCroppedImageBackingSizeAndDrawRectInBounds(imageSizeInPixels,
                                                  boundsSizeInPixels,
                                                  contentMode,
@@ -405,6 +460,7 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
                                                  forcedSize,
                                                  &backingSize,
                                                  &imageDrawRect);
+#endif
   }
 
   if (backingSize.width <= 0.0f        || backingSize.height <= 0.0f ||
@@ -422,13 +478,15 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   contentsKey.willDisplayNodeContentWithRenderingContext = willDisplayNodeContentWithRenderingContext;
   contentsKey.didDisplayNodeContentWithRenderingContext = didDisplayNodeContentWithRenderingContext;
   contentsKey.imageModificationBlock = imageModificationBlock;
+#if !AS_PLATFORM_MACOS
   contentsKey.userInterfaceStyle = drawParameter->_traitCollection.userInterfaceStyle;
+#endif
 
   if (isCancelled()) {
     return nil;
   }
 
-  ASWeakMapEntry<UIImage *> *entry = [self.class contentsForkey:contentsKey
+  ASWeakMapEntry<ASImage *> *entry = [self.class contentsForkey:contentsKey
                                                  drawParameters:parameter
                                                     isCancelled:isCancelled];
   // If nil, we were cancelled.
@@ -443,7 +501,7 @@ typedef void (^ASImageNodeDrawParametersBlock)(ASWeakMapEntry *entry);
   return entry.value;
 }
 
-static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
+static ASWeakMap<ASImageNodeContentsKey *, ASImage *> *cache = nil;
 
 + (ASWeakMapEntry *)contentsForkey:(ASImageNodeContentsKey *)key drawParameters:(id)drawParameters isCancelled:(asdisplaynode_iscancelled_block_t)isCancelled
 {
@@ -465,7 +523,7 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
   }
 
   // cache miss
-  UIImage *contents = [self createContentsForkey:key drawParameters:drawParameters isCancelled:isCancelled];
+  ASImage *contents = [self createContentsForkey:key drawParameters:drawParameters isCancelled:isCancelled];
   if (contents == nil) { // If nil, we were cancelled
     return nil;
   }
@@ -476,7 +534,7 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
   }
 }
 
-+ (UIImage *)createContentsForkey:(ASImageNodeContentsKey *)key drawParameters:(id)parameter isCancelled:(asdisplaynode_iscancelled_block_t)isCancelled
++ (ASImage *)createContentsForkey:(ASImageNodeContentsKey *)key drawParameters:(id)parameter isCancelled:(asdisplaynode_iscancelled_block_t)isCancelled
 {
   // The following `ASGraphicsCreateImage` call will sometimes take take longer than 5ms on an
   // A5 processor for a 400x800 backingSize.
@@ -489,10 +547,15 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
 
   // Use contentsScale of 1.0 and do the contentsScale handling in boundsSizeInPixels so ASCroppedImageBackingSizeAndDrawRectInBounds
   // will do its rounding on pixel instead of point boundaries
-  UIImage *result = ASGraphicsCreateImage(drawParameters->_traitCollection, key.backingSize, key.isOpaque, 1.0, key.image, isCancelled, ^{
+  ASImage *result = ASGraphicsCreateImage(drawParameters->_traitCollection, key.backingSize, key.isOpaque, 1.0, key.image, isCancelled, ^{
     BOOL contextIsClean = YES;
 
-    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGContextRef context =
+#if AS_PLATFORM_MACOS
+      NSGraphicsContext.currentContext.CGContext;
+#else
+      UIGraphicsGetCurrentContext();
+#endif
     if (context && key.willDisplayNodeContentWithRenderingContext) {
       key.willDisplayNodeContentWithRenderingContext(context, drawParameters);
       contextIsClean = NO;
@@ -501,7 +564,12 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
     // if view is opaque, fill the context with background color
     if (key.isOpaque && key.backgroundColor) {
       [key.backgroundColor setFill];
+#if AS_PLATFORM_MACOS
+      CGContextSetFillColorWithColor(context, key.backgroundColor.CGColor);
+      CGContextFillRect(context, (CGRect){ .size = key.backingSize });
+#else
       UIRectFill({ .size = key.backingSize });
+#endif
       contextIsClean = NO;
     }
 
@@ -517,16 +585,27 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
     // Another option is to have ASDisplayNode+AsyncDisplay coordinate these cases, and share the decoded buffer.
     // Details tracked in https://github.com/facebook/AsyncDisplayKit/issues/1068
 
-    UIImage *image = key.image;
-    BOOL canUseCopy = (contextIsClean || ASImageAlphaInfoIsOpaque(CGImageGetAlphaInfo(image.CGImage)));
+    ASImage *image = key.image;
+    BOOL canUseCopy = contextIsClean;
+#if !AS_PLATFORM_MACOS
+    canUseCopy = canUseCopy || ASImageAlphaInfoIsOpaque(CGImageGetAlphaInfo(image.CGImage));
+#endif
     CGBlendMode blendMode = canUseCopy ? kCGBlendModeCopy : kCGBlendModeNormal;
-    UIImageRenderingMode renderingMode = [image renderingMode];
-    if (renderingMode == UIImageRenderingModeAlwaysTemplate && key.tintColor) {
-      [key.tintColor setFill];
-    }
 
     @synchronized(image) {
+#if AS_PLATFORM_MACOS
+      [image drawInRect:key.imageDrawRect];
+      if ([image isTemplate] && key.tintColor) {
+        [key.tintColor setFill];
+        NSRectFillUsingOperation(key.imageDrawRect, NSCompositingOperationSourceAtop);
+      }
+#else
+      UIImageRenderingMode renderingMode = [image renderingMode];
+      if (renderingMode == UIImageRenderingModeAlwaysTemplate && key.tintColor) {
+        [key.tintColor setFill];
+      }
       [image drawInRect:key.imageDrawRect blendMode:blendMode alpha:1];
+#endif
     }
 
     if (context && key.didDisplayNodeContentWithRenderingContext) {
@@ -535,10 +614,12 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
   });
 
   // if the original image was stretchy, keep it stretchy
-  UIImage *originalImage = key.image;
-  if (!UIEdgeInsetsEqualToEdgeInsets(originalImage.capInsets, UIEdgeInsetsZero)) {
+  ASImage *originalImage = key.image;
+#if !AS_PLATFORM_MACOS
+  if (!ASEdgeInsetsEqualToEdgeInsets(originalImage.capInsets, ASEdgeInsetsZero)) {
     result = [result resizableImageWithCapInsets:originalImage.capInsets resizingMode:originalImage.resizingMode];
   }
+#endif
 
   if (key.imageModificationBlock) {
     result = key.imageModificationBlock(result, drawParameters->_traitCollection);
@@ -552,7 +633,7 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
   [super displayDidFinish];
 
   __instanceLock__.lock();
-    UIImage *image = _image;
+    ASImage *image = _image;
     void (^displayCompletionBlock)(BOOL canceled) = _displayCompletionBlock;
     BOOL shouldPerformDisplayCompletionBlock = (image && displayCompletionBlock);
 
@@ -568,7 +649,8 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
   if (hasDebugLabel) {
     // For debugging purposes we don't care about locking for now
     CGSize imageSize = image.size;
-    CGSize imageSizeInPixels = CGSizeMake(imageSize.width * image.scale, imageSize.height * image.scale);
+    CGFloat imageScale = ASImageNodeImageScale(image);
+    CGSize imageSizeInPixels = CGSizeMake(imageSize.width * imageScale, imageSize.height * imageScale);
     CGSize boundsSizeInPixels = CGSizeMake(std::floor(self.bounds.size.width * self.contentsScale), std::floor(self.bounds.size.height * self.contentsScale));
     CGFloat pixelCountRatio            = (imageSizeInPixels.width * imageSizeInPixels.height) / (boundsSizeInPixels.width * boundsSizeInPixels.height);
     if (pixelCountRatio != 1.0) {
@@ -611,7 +693,11 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
   BOOL isTemplateImage = NO;
   {
     AS::MutexLocker l(__instanceLock__);
+#if AS_PLATFORM_MACOS
+    isTemplateImage = [_image isTemplate];
+#else
     isTemplateImage = (_image.renderingMode == UIImageRenderingModeAlwaysTemplate);
+#endif
   }
 
   if (isTemplateImage) {
@@ -667,7 +753,7 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
   _imageNodeFlags.cropEnabled = cropEnabled;
   _cropDisplayBounds = cropBounds;
 
-  UIImage *image = _image;
+  ASImage *image = _image;
   __instanceLock__.unlock();
 
   // If we have an image to display, display it, respecting our recrop flag.
@@ -706,7 +792,11 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
 
   // Re-display if we need to.
   ASPerformBlockOnMainThread(^{
+#if AS_PLATFORM_MACOS
+    if (self.nodeLoaded && isCroppingImage)
+#else
     if (self.nodeLoaded && self.contentMode == UIViewContentModeScaleAspectFill && isCroppingImage)
+#endif
       [self setNeedsDisplay];
   });
 }
@@ -765,14 +855,15 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
 - (NSDictionary *)debugLabelAttributes
 {
   return @{
-    NSFontAttributeName: [UIFont systemFontOfSize:15.0],
-    NSForegroundColorAttributeName: [UIColor redColor]
+    NSFontAttributeName: [ASFont systemFontOfSize:15.0],
+    NSForegroundColorAttributeName: [ASColor redColor]
   };
 }
 
 - (void)asyncTraitCollectionDidChangeWithPreviousTraitCollection:(ASPrimitiveTraitCollection)previousTraitCollection {
   [super asyncTraitCollectionDidChangeWithPreviousTraitCollection:previousTraitCollection];
 
+#if !AS_PLATFORM_MACOS
   {
     AS::MutexLocker l(__instanceLock__);
       // update image if userInterfaceStyle was changed (dark mode)
@@ -781,6 +872,9 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
         _imageNodeFlags.regenerateFromImageAsset = YES;
       }
   }
+#else
+  (void)previousTraitCollection;
+#endif
 }
 
 
@@ -788,17 +882,21 @@ static ASWeakMap<ASImageNodeContentsKey *, UIImage *> *cache = nil;
 
 #pragma mark - Extras
 
-asimagenode_modification_block_t ASImageNodeRoundBorderModificationBlock(CGFloat borderWidth, UIColor *borderColor)
+asimagenode_modification_block_t ASImageNodeRoundBorderModificationBlock(CGFloat borderWidth, ASColor *borderColor)
 {
-  return ^(UIImage *originalImage, ASPrimitiveTraitCollection traitCollection) {
-    return ASGraphicsCreateImage(traitCollection, originalImage.size, NO, originalImage.scale, originalImage, nil, ^{
-      UIBezierPath *roundOutline = [UIBezierPath bezierPathWithOvalInRect:(CGRect){CGPointZero, originalImage.size}];
+  return ^(ASImage *originalImage, ASPrimitiveTraitCollection traitCollection) {
+    return ASGraphicsCreateImage(traitCollection, originalImage.size, NO, ASImageNodeImageScale(originalImage), originalImage, nil, ^{
+      ASBezierPath *roundOutline = [ASBezierPath bezierPathWithOvalInRect:(CGRect){CGPointZero, originalImage.size}];
 
       // Make the image round
       [roundOutline addClip];
 
       // Draw the original image
+#if AS_PLATFORM_MACOS
+      [originalImage drawAtPoint:CGPointZero fromRect:CGRectZero operation:NSCompositingOperationCopy fraction:1.0];
+#else
       [originalImage drawAtPoint:CGPointZero blendMode:kCGBlendModeCopy alpha:1];
+#endif
 
       // Draw a border on top.
       if (borderWidth > 0.0) {
@@ -810,20 +908,27 @@ asimagenode_modification_block_t ASImageNodeRoundBorderModificationBlock(CGFloat
   };
 }
 
-asimagenode_modification_block_t ASImageNodeTintColorModificationBlock(UIColor *color)
+asimagenode_modification_block_t ASImageNodeTintColorModificationBlock(ASColor *color)
 {
-  return ^(UIImage *originalImage, ASPrimitiveTraitCollection traitCollection) {
-    UIImage *modifiedImage = ASGraphicsCreateImage(traitCollection, originalImage.size, NO, originalImage.scale, originalImage, nil, ^{
+  return ^(ASImage *originalImage, ASPrimitiveTraitCollection traitCollection) {
+    ASImage *modifiedImage = ASGraphicsCreateImage(traitCollection, originalImage.size, NO, ASImageNodeImageScale(originalImage), originalImage, nil, ^{
       // Set color and render template
       [color setFill];
-      UIImage *templateImage = [originalImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+#if AS_PLATFORM_MACOS
+      [originalImage drawAtPoint:CGPointZero fromRect:CGRectZero operation:NSCompositingOperationSourceOver fraction:1.0];
+      NSRectFillUsingOperation((CGRect){CGPointZero, originalImage.size}, NSCompositingOperationSourceAtop);
+#else
+      ASImage *templateImage = [originalImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
       [templateImage drawAtPoint:CGPointZero blendMode:kCGBlendModeCopy alpha:1];
+#endif
     });
 
     // if the original image was stretchy, keep it stretchy
-    if (!UIEdgeInsetsEqualToEdgeInsets(originalImage.capInsets, UIEdgeInsetsZero)) {
+#if !AS_PLATFORM_MACOS
+    if (!ASEdgeInsetsEqualToEdgeInsets(originalImage.capInsets, ASEdgeInsetsZero)) {
       modifiedImage = [modifiedImage resizableImageWithCapInsets:originalImage.capInsets resizingMode:originalImage.resizingMode];
     }
+#endif
 
     return modifiedImage;
   };

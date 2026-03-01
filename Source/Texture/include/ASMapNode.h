@@ -10,7 +10,7 @@
 #import <Foundation/Foundation.h>
 #import "ASAvailability.h"
 
-#if TARGET_OS_IOS && AS_USE_MAPKIT
+#if AS_USE_MAPKIT && !TARGET_OS_TV
 #import "ASImageNode.h"
 #import <MapKit/MapKit.h>
 
@@ -83,7 +83,7 @@ typedef NS_OPTIONS(NSUInteger, ASMapNodeShowAnnotationsOptions)
  * @abstract The block which should return annotation image for static map based on provided annotation.
  * @discussion This block is executed on an arbitrary serial queue. If this block is nil, standard pin is used.
  */
-@property (nullable) UIImage * _Nullable (^imageForStaticMapAnnotationBlock)(id<MKAnnotation> annotation, CGPoint *centerOffset);
+@property (nullable) ASImage * _Nullable (^imageForStaticMapAnnotationBlock)(id<MKAnnotation> annotation, CGPoint *centerOffset);
 
 @end
 

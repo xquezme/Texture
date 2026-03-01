@@ -8,7 +8,7 @@
 //
 
 #import "ASElementMap.h"
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
 #import "ASCollectionElement.h"
 #import "ASTwoDimensionalArrayUtils.h"
 #import "ASMutableElementMap.h"
@@ -138,19 +138,34 @@
   return _supplementaryElements[supplementaryElementKind][indexPath];
 }
 
-- (ASCollectionElement *)elementForLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+- (ASCollectionElement *)elementForLayoutAttributes:(ASCollectionViewLayoutAttributes *)layoutAttributes
 {
   switch (layoutAttributes.representedElementCategory) {
+#if AS_PLATFORM_MACOS
+    case NSCollectionElementCategoryItem:
+#else
     case UICollectionElementCategoryCell:
+#endif
       // Cell
       return [self elementForItemAtIndexPath:layoutAttributes.indexPath];
+#if AS_PLATFORM_MACOS
+    case NSCollectionElementCategorySupplementaryView:
+#else
     case UICollectionElementCategorySupplementaryView:
+#endif
       // Supplementary element.
       return [self supplementaryElementOfKind:layoutAttributes.representedElementKind atIndexPath:layoutAttributes.indexPath];
+#if AS_PLATFORM_MACOS
+    case NSCollectionElementCategoryDecorationView:
+    case NSCollectionElementCategoryInterItemGap:
+#else
     case UICollectionElementCategoryDecorationView:
-      // No support for decoration views.
+#endif
+      // No support for decoration/inter-item-gap views.
       return nil;
   }
+
+  return nil;
 }
 
 - (NSIndexPath *)convertIndexPath:(NSIndexPath *)indexPath fromMap:(ASElementMap *)map

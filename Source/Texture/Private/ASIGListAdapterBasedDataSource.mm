@@ -9,7 +9,7 @@
 
 #import "ASAvailability.h"
 
-#if AS_IG_LIST_KIT
+#if AS_IG_LIST_KIT && !AS_PLATFORM_MACOS
 
 #import "ASIGListAdapterBasedDataSource.h"
 #import "AsyncDisplayKit.h"
@@ -100,17 +100,17 @@ typedef struct {
   [self.delegate collectionView:collectionNode.view didUnhighlightItemAtIndexPath:indexPath];
 }
 
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+- (void)scrollViewDidScroll:(ASScrollView *)scrollView
 {
   [self.delegate scrollViewDidScroll:scrollView];
 }
 
-- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
+- (void)scrollViewWillBeginDragging:(ASScrollView *)scrollView
 {
   [self.delegate scrollViewWillBeginDragging:scrollView];
 }
 
-- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset
+- (void)scrollViewWillEndDragging:(ASScrollView *)scrollView withVelocity:(CGPoint)velocity targetContentOffset:(inout CGPoint *)targetContentOffset
 {
   // IGListAdapter doesn't implement scrollViewWillEndDragging yet (pending pull request), so we need this check for now. Doesn't hurt to have it anyways :)
   if ([self.delegate respondsToSelector:@selector(scrollViewWillEndDragging:withVelocity:targetContentOffset:)]) {
@@ -118,12 +118,12 @@ typedef struct {
   }
 }
 
-- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+- (void)scrollViewDidEndDragging:(ASScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
   [self.delegate scrollViewDidEndDragging:scrollView willDecelerate:decelerate];
 }
 
-- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+- (void)scrollViewDidEndDecelerating:(ASScrollView *)scrollView
 {
   [self.delegate scrollViewDidEndDecelerating:scrollView];
 }
@@ -164,7 +164,7 @@ typedef struct {
 - (void)collectionNode:(ASCollectionNode *)collectionNode willDisplayItemWithNode:(ASCellNode *)node
 {
   NSIndexPath *indexPath = [collectionNode.view indexPathForNode:node];
-  UIView *contentView = node.view.superview;
+  ASDisplayView *contentView = node.view.superview;
   UICollectionViewCell *cell = (UICollectionViewCell *)contentView.superview;
 
   if (cell == nil || indexPath == nil) {
@@ -177,7 +177,7 @@ typedef struct {
 - (void)collectionNode:(ASCollectionNode *)collectionNode didEndDisplayingItemWithNode:(ASCellNode *)node
 {
   NSIndexPath *indexPath = [collectionNode.view indexPathForNode:node];
-  UIView *contentView = node.view.superview;
+  ASDisplayView *contentView = node.view.superview;
   UICollectionViewCell *cell = (UICollectionViewCell *)contentView.superview;
 
   if (cell == nil || indexPath == nil) {
@@ -226,17 +226,17 @@ typedef struct {
   }
 }
 
-- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section
+- (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout insetForSectionAtIndex:(NSInteger)section
 {
   return [self.delegate collectionView:collectionView layout:collectionViewLayout insetForSectionAtIndex:section];
 }
 
-- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout minimumLineSpacingForSectionAtIndex:(NSInteger)section
 {
   return [self.delegate collectionView:collectionView layout:collectionViewLayout minimumLineSpacingForSectionAtIndex:section];
 }
 
-- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section
+- (CGFloat)collectionView:(UICollectionView *)collectionView layout:(ASCollectionViewLayout *)collectionViewLayout minimumInteritemSpacingForSectionAtIndex:(NSInteger)section
 {
   return [self.delegate collectionView:collectionView layout:collectionViewLayout minimumInteritemSpacingForSectionAtIndex:section];
 }

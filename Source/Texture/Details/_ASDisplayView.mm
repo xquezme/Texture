@@ -78,49 +78,51 @@
   return description;
 }
 
-#pragma mark - UIView Overrides
+#pragma mark - ASDisplayView Overrides
 
 - (id<CAAction>)actionForLayer:(CALayer *)layer forKey:(NSString *)event
 {
+#if !AS_PLATFORM_MACOS
   id<CAAction> uikitAction = [super actionForLayer:layer forKey:event];
+#endif
 
   // Even though the UIKit action will take precedence, we still unconditionally forward to the node so that it can
   // track events like kCAOnOrderIn.
   id<CAAction> nodeAction = [_asyncdisplaykit_node actionForLayer:layer forKey:event];
 
   // If UIKit specifies an action, that takes precedence. That's an animation block so it's explicit.
+#if !AS_PLATFORM_MACOS
   if (uikitAction && uikitAction != (id)kCFNull) {
     return uikitAction;
   }
+#endif
   return nodeAction;
 }
 
-- (void)willMoveToWindow:(UIWindow *)newWindow
+- (void)_as_willMoveToWindowVisible:(BOOL)visible
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
-  BOOL visible = (newWindow != nil);
   if (visible && !node.inHierarchy) {
     [node __enterHierarchy];
   }
 }
 
-- (void)didMoveToWindow
+- (void)_as_didMoveToWindowVisible:(BOOL)visible
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
-  BOOL visible = (self.window != nil);
   if (!visible && node.inHierarchy) {
     [node __exitHierarchy];
   }
 }
 
-- (void)willMoveToSuperview:(UIView *)newSuperview
+- (void)_as_willMoveToSuperview:(ASDisplayView *)newSuperview
 {
   // Keep the node alive while the view is in a view hierarchy.  This helps ensure that async-drawing views can always
   // display their contents as long as they are visible somewhere, and aids in lifecycle management because the
   // lifecycle of the node can be treated as the same as the lifecycle of the view (let the view hierarchy own the
   // view).
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
-  UIView *currentSuperview = self.superview;
+  ASDisplayView *currentSuperview = self.superview;
   if (!currentSuperview && newSuperview) {
     self.keepalive_node = node;
   }
@@ -157,10 +159,10 @@
   }
 }
 
-- (void)didMoveToSuperview
+- (void)_as_didMoveToSuperview
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
-  UIView *superview = self.superview;
+  ASDisplayView *superview = self.superview;
   if (superview == nil) {
     // Clearing keepalive_node may cause deallocation of the node.  In this case, __exitHierarchy may not have an opportunity (e.g. _node will be cleared
     // by the time -didMoveToWindow occurs after this) to clear the Visible interfaceState, which we need to do before deallocation to meet an API guarantee.
@@ -174,7 +176,7 @@
   // This is only to help detect issues when a root-of-view-controller node is reused separately from its view controller.
   // Avoid overhead in release.
   if (superview && node.viewControllerRoot) {
-    UIViewController *vc = [node closestViewController];
+    ASDisplayViewController *vc = [node closestViewController];
 
     ASDisplayNodeAssert(vc != nil && [vc isKindOfClass:[ASDKViewController class]] && ((ASDKViewController*)vc).node == node, @"This node was once used as a view controller's node. You should not reuse it without its view controller.");
   }
@@ -218,37 +220,95 @@
   }
 }
 
-- (void)insertSubview:(UIView *)view atIndex:(NSInteger)index {
+#if AS_PLATFORM_MACOS
+- (void)viewWillMoveToWindow:(nullable NSWindow *)newWindow
+{
+  [self _as_willMoveToWindowVisible:(newWindow != nil)];
+  [super viewWillMoveToWindow:newWindow];
+}
+
+- (void)viewDidMoveToWindow
+{
+  [super viewDidMoveToWindow];
+  [self _as_didMoveToWindowVisible:(self.window != nil)];
+}
+
+- (void)viewWillMoveToSuperview:(nullable NSView *)newSuperview
+{
+  [self _as_willMoveToSuperview:newSuperview];
+  [super viewWillMoveToSuperview:newSuperview];
+}
+
+- (void)viewDidMoveToSuperview
+{
+  [super viewDidMoveToSuperview];
+  [self _as_didMoveToSuperview];
+}
+#else
+- (void)willMoveToWindow:(nullable UIWindow *)newWindow
+{
+  [self _as_willMoveToWindowVisible:(newWindow != nil)];
+  [super willMoveToWindow:newWindow];
+}
+
+- (void)didMoveToWindow
+{
+  [super didMoveToWindow];
+  [self _as_didMoveToWindowVisible:(self.window != nil)];
+}
+
+- (void)willMoveToSuperview:(nullable UIView *)newSuperview
+{
+  [self _as_willMoveToSuperview:newSuperview];
+  [super willMoveToSuperview:newSuperview];
+}
+
+- (void)didMoveToSuperview
+{
+  [super didMoveToSuperview];
+  [self _as_didMoveToSuperview];
+}
+#endif
+
+#if !AS_PLATFORM_MACOS
+- (void)insertSubview:(ASDisplayView *)view atIndex:(NSInteger)index {
   [super insertSubview:view atIndex:index];
 
 #ifndef ASDK_ACCESSIBILITY_DISABLE
   self.accessibilityElements = nil;
 #endif
 }
+#endif
 
-- (void)addSubview:(UIView *)view
+- (void)addSubview:(ASDisplayView *)view
 {
   [super addSubview:view];
   
 #ifndef ASDK_ACCESSIBILITY_DISABLE
+#if !AS_PLATFORM_MACOS
   self.accessibilityElements = nil;
+#endif
 #endif
 }
 
-- (void)willRemoveSubview:(UIView *)subview
+- (void)willRemoveSubview:(ASDisplayView *)subview
 {
   [super willRemoveSubview:subview];
   
 #ifndef ASDK_ACCESSIBILITY_DISABLE
+#if !AS_PLATFORM_MACOS
   self.accessibilityElements = nil;
+#endif
 #endif
 }
 
+#if !AS_PLATFORM_MACOS
 - (CGSize)sizeThatFits:(CGSize)size
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   return node ? [node layoutThatFits:ASSizeRangeMake(size)].size : [super sizeThatFits:size];
 }
+#endif
 
 - (void)setNeedsDisplay
 {
@@ -257,6 +317,7 @@
   [self.layer setNeedsDisplay];
 }
 
+#if !AS_PLATFORM_MACOS
 - (UIViewContentMode)contentMode
 {
   return ASDisplayNodeUIContentModeFromCAContentsGravity(self.layer.contentsGravity);
@@ -269,6 +330,7 @@
   // Do our own mapping so as not to call super and muck up needsDisplayOnBoundsChange. If we're in a production build, fall back to resize if we see redraw
   self.layer.contentsGravity = (contentMode != UIViewContentModeRedraw) ? ASDisplayNodeCAContentsGravityFromUIContentMode(contentMode) : kCAGravityResize;
 }
+#endif
 
 - (void)setBounds:(CGRect)bounds
 {
@@ -277,13 +339,16 @@
   node.threadSafeBounds = bounds;
 }
 
-- (void)addGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+- (void)addGestureRecognizer:(ASGestureRecognizer *)gestureRecognizer
 {
   [super addGestureRecognizer:gestureRecognizer];
   [_asyncdisplaykit_node nodeViewDidAddGestureRecognizer];
 }
 
-#pragma mark - Event Handling + UIResponder Overrides
+#pragma mark - Event Handling + ASResponder Overrides
+
+#if !AS_PLATFORM_MACOS
+
 - (void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
@@ -344,19 +409,19 @@
   [super touchesCancelled:touches withEvent:event];
 }
 
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+- (ASDisplayView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
   // REVIEW: We should optimize these types of messages by setting a boolean in the associated ASDisplayNode subclass if
   // they actually override the method.  Same goes for -pointInside:withEvent: below.  Many UIKit classes use that
   // pattern for meaningful reductions of message send overhead in hot code (especially event handling).
 
-  // Set boolean so this method can be re-entrant.  If the node subclass wants to default to / make use of UIView
+  // Set boolean so this method can be re-entrant.  If the node subclass wants to default to / make use of ASDisplayView
   // hitTest:, it will call it on the view, which is _ASDisplayView.  After calling into the node, any additional calls
-  // should use the UIView implementation of hitTest:
+  // should use the ASDisplayView implementation of hitTest:
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   if (!_internalFlags.inHitTest) {
     _internalFlags.inHitTest = YES;
-    UIView *hitView = [node hitTest:point withEvent:event];
+    ASDisplayView *hitView = [node hitTest:point withEvent:event];
     _internalFlags.inHitTest = NO;
     return hitView;
   } else {
@@ -378,12 +443,15 @@
   }
 }
 
-- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+#endif
+
+- (BOOL)gestureRecognizerShouldBegin:(ASGestureRecognizer *)gestureRecognizer
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   return [node gestureRecognizerShouldBegin:gestureRecognizer];
 }
 
+#if !AS_PLATFORM_MACOS
 - (void)tintColorDidChange
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
@@ -391,10 +459,14 @@
   
   [node tintColorDidChange];
 }
+#endif
 
-#pragma mark UIResponder Handling
+#pragma mark ASResponder Handling
 
-- (BOOL)canBecomeFirstResponder
+// Shared logic for both platforms' "can this view receive keyboard focus" override points.
+// AppKit calls -acceptsFirstResponder; UIKit calls -canBecomeFirstResponder.
+// Each platform overrides its own method and delegates here so the logic lives once.
+- (BOOL)_as_firstResponderEligibility
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   if (!_internalFlags.inCanBecomeFirstResponder) {
@@ -403,9 +475,29 @@
     _internalFlags.inCanBecomeFirstResponder = NO;
     return result;
   } else {
+#if AS_PLATFORM_MACOS
+    return [super acceptsFirstResponder];
+#else
     return [super canBecomeFirstResponder];
+#endif
   }
 }
+
+// AppKit override point.
+- (BOOL)acceptsFirstResponder { return [self _as_firstResponderEligibility]; }
+
+#if AS_PLATFORM_MACOS
+// AppKit key-view-loop override point.
+- (BOOL)canBecomeKeyView
+{
+  return [self acceptsFirstResponder];
+}
+#endif
+
+#if !AS_PLATFORM_MACOS
+// UIKit override point.
+- (BOOL)canBecomeFirstResponder { return [self _as_firstResponderEligibility]; }
+#endif
 
 - (BOOL)becomeFirstResponder
 {
@@ -429,7 +521,11 @@
     _internalFlags.inCanResignFirstResponder = NO;
     return result;
   } else {
+#if AS_PLATFORM_MACOS
+    return YES;
+#else
     return [super canResignFirstResponder];
+#endif
   }
 }
 
@@ -455,7 +551,11 @@
     _internalFlags.inIsFirstResponder = NO;
     return result;
   } else {
+#if AS_PLATFORM_MACOS
+    return self.window.firstResponder == self;
+#else
     return [super isFirstResponder];
+#endif
   }
 }
 
@@ -463,35 +563,58 @@
 {
   // We forward responder-chain actions to our node if we can't handle them ourselves. See -targetForAction:withSender:.
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
+#if AS_PLATFORM_MACOS
+  return [node respondsToSelector:action];
+#else
   return ([super canPerformAction:action withSender:sender] || [node respondsToSelector:action]);
+#endif
 }
+
+#if AS_PLATFORM_MACOS
+- (void)keyDown:(NSEvent *)event
+{
+  ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
+  SEL keyDownSelector = @selector(keyDown:);
+  if ([node respondsToSelector:keyDownSelector]) {
+    IMP imp = [node methodForSelector:keyDownSelector];
+    ((void (*)(id, SEL, NSEvent *))imp)(node, keyDownSelector, event);
+    return;
+  }
+
+  [super keyDown:event];
+}
+#endif
 
 - (void)layoutMarginsDidChange
 {
+#if !AS_PLATFORM_MACOS
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   [super layoutMarginsDidChange];
 
   [node layoutMarginsDidChange];
+#endif
 }
 
 - (void)safeAreaInsetsDidChange
 {
+#if !AS_PLATFORM_MACOS
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   [super safeAreaInsetsDidChange];
 
   [node safeAreaInsetsDidChange];
+#endif
 }
 
 - (id)forwardingTargetForSelector:(SEL)aSelector
 {
   // Ideally, we would implement -targetForAction:withSender: and simply return the node where we don't respond personally.
-  // Unfortunately UIResponder's default implementation of -targetForAction:withSender: doesn't follow its own documentation. It doesn't call -targetForAction:withSender: up the responder chain when -canPerformAction:withSender: fails, but instead merely calls -canPerformAction:withSender: on itself and then up the chain. rdar://20111500.
+  // Unfortunately ASResponder's default implementation of -targetForAction:withSender: doesn't follow its own documentation. It doesn't call -targetForAction:withSender: up the responder chain when -canPerformAction:withSender: fails, but instead merely calls -canPerformAction:withSender: on itself and then up the chain. rdar://20111500.
   // Consequently, to forward responder-chain actions to our node, we override -canPerformAction:withSender: (used by the chain) to indicate support for responder chain-driven actions that our node supports, and then provide the node as a forwarding target here.
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   return node;
 }
 
-#if TARGET_OS_TV
+#if AS_PLATFORM_TVOS
 #pragma mark - tvOS
 - (BOOL)canBecomeFocused
 {
@@ -523,7 +646,7 @@
   return [node shouldUpdateFocusInContext:context];
 }
 
-- (UIView *)preferredFocusedView
+- (ASDisplayView *)preferredFocusedView
 {
   ASDisplayNode *node = _asyncdisplaykit_node; // Create strong reference to weak ivar.
   return [node preferredFocusedView];

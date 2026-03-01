@@ -9,7 +9,9 @@
 
 #import "ASTableLayoutController.h"
 
-#import <UIKit/UIKit.h>
+#import "ASPlatformDefines.h"
+#import "ASTableView.h"
+#import "ASTableViewInternal.h"
 
 #import "ASAssert.h"
 #import "ASElementMap.h"
@@ -19,7 +21,7 @@
 
 @implementation ASTableLayoutController
 
-- (instancetype)initWithTableView:(UITableView *)tableView
+- (instancetype)initWithTableView:(ASTableView *)tableView
 {
   if (!(self = [super init])) {
     return nil;
@@ -36,8 +38,28 @@
 
   ASRangeTuningParameters tuningParameters = [self tuningParametersForRangeMode:rangeMode rangeType:rangeType];
   CGRect rangeBounds = CGRectExpandToRangeWithScrollableDirections(bounds, tuningParameters, ASScrollDirectionVerticalDirections, scrollDirection);
+#if AS_PLATFORM_MACOS
+  NSRange rows = [_tableView rowsInRect:rangeBounds];
+  NSHashTable<ASCollectionElement *> *result = [NSHashTable weakObjectsHashTable];
+  if (rows.location == NSNotFound || rows.length == 0) {
+    return result;
+  }
+  NSUInteger rowEnd = NSMaxRange(rows);
+  for (NSUInteger row = rows.location; row < rowEnd; row++) {
+    NSIndexPath *indexPath = [_tableView indexPathForFlatRow:(NSInteger)row inMap:map];
+    if (indexPath == nil) {
+      continue;
+    }
+    ASCollectionElement *element = [map elementForItemAtIndexPath:indexPath];
+    if (element != nil) {
+      [result addObject:element];
+    }
+  }
+  return result;
+#else
   NSArray *array = [_tableView indexPathsForRowsInRect:rangeBounds];
   return ASPointerTableByFlatMapping(array, NSIndexPath *indexPath, [map elementForItemAtIndexPath:indexPath]);
+#endif
 }
 
 - (void)allElementsForScrolling:(ASScrollDirection)scrollDirection rangeMode:(ASLayoutRangeMode)rangeMode displaySet:(NSHashTable<ASCollectionElement *> *__autoreleasing  _Nullable *)displaySet preloadSet:(NSHashTable<ASCollectionElement *> *__autoreleasing  _Nullable *)preloadSet map:(ASElementMap *)map

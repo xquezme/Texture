@@ -129,6 +129,52 @@ tests|all)
     success="1"
     ;;
 
+spm-tests|all)
+    echo "Building & testing via Swift Package Manager (TextureUnitTests + TextureSnapshotTests)."
+    SPM_WORKSPACE=".swiftpm/xcode/package.xcworkspace"
+
+    set -o pipefail && xcodebuild test \
+        -workspace "$SPM_WORKSPACE" \
+        -scheme Texture \
+        -sdk "$SDK" \
+        -destination "$PLATFORM" \
+        -only-testing:TextureUnitTests
+
+    set -o pipefail && xcodebuild test \
+        -workspace "$SPM_WORKSPACE" \
+        -scheme Texture \
+        -sdk "$SDK" \
+        -destination "$PLATFORM" \
+        -only-testing:TextureSnapshotTests
+
+    success="1"
+    ;;
+
+spm-record-snapshots)
+    # Record (or re-record) snapshot reference images into Tests/ReferenceImages_64/.
+    #
+    # ASSnapshotTestCase.setUp derives bundleResourcePath from __FILE__ so no env
+    # var forwarding is needed.  To enable record mode, temporarily add
+    # `self.recordMode = YES;` in ASSnapshotTestCase.setUp (or the individual test's
+    # setUp), run this target, then remove the line.
+    #
+    # FBSnapshotTestCase marks each recorded test as *failed* with "Wrote reference
+    # image." – that is expected and the images are still written.
+    echo "Recording SPM snapshot reference images into Tests/ReferenceImages_64/."
+    SPM_WORKSPACE=".swiftpm/xcode/package.xcworkspace"
+
+    mkdir -p "Tests/ReferenceImages_64"
+
+    set -o pipefail && xcodebuild test \
+        -workspace "$SPM_WORKSPACE" \
+        -scheme Texture \
+        -sdk "$SDK" \
+        -destination "$PLATFORM" \
+        -only-testing:TextureSnapshotTests || true
+
+    success="1"
+    ;;
+
 tests_listkit)
     echo "Building & testing AsyncDisplayKit+IGListKit."
     pod install --project-directory=SubspecWorkspaces/ASDKListKit
